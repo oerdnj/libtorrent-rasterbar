@@ -1,0 +1,91 @@
+libtorrent-rasterbar (0.14.2-2) unstable; urgency=low
+
+  * debian/control, debian/rules: revert building only against boost1.37 since
+    the dependencies on the -dev packages are causing some problems with
+    reverse depends clients and backporting to stable is not really needed
+    (too much maintenance work) at the moment.
+  * debian/README.source: deleted.
+
+ -- Cristian Greco <cristian.debian@gmail.com>  Wed, 11 Mar 2009 16:27:20 +0100
+
+libtorrent-rasterbar (0.14.2-1) unstable; urgency=low
+
+  * New upstream version.
+    - new package libtorrent-rasterbar2 (bump up library SONAME);
+    - remove patch 01_fix_ax_python_m4.patch (merged upstream);
+    - debian/control, debian/rules, debian/README.source: drop build
+      dependency on quilt system.
+  * debian/control, debian/rules, debian/README.source: adjusting build
+    dependencies and configure flags to build against boost1.37 and continue
+    to provide compatibility with boost1.34.1 for backports (adding some notes).
+  * debian/control: fix lintian I:binary-control-field-duplicates-source.
+  * Moving section from 'Programming' to 'Programming/C++' for the doc-base
+    files in libtorrent-rasterbar-doc.
+  * Closing a bug already fixed in 0.14-1: fixed documentation about
+    storage_mode_allocate (Closes: #502241).
+  * Upload to unstable (Closes: #517000).
+
+ -- Cristian Greco <cristian.debian@gmail.com>  Fri, 27 Feb 2009 07:46:38 +0100
+
+libtorrent-rasterbar (0.14.1-1) experimental; urgency=low
+
+  * New upstream version
+    - remove patch 01_python_bindings.patch (included upstream);
+    - add patch 01_fix_ax_python_m4.patch (already merged upstream, see
+      description for details).
+  * Revert build-depends on libboost-dev (>= 1.34.1) and libasio-dev because
+    boost1.36 has been removed from unstable and boost1.37 is not yet fully
+    supported by the library (added notes on README.Debian).
+  * Install .cpp examples using dh_installexamples and a .examples file.
+  * debian/copyright: fix main BSD license text.
+
+ -- Cristian Greco <cristian.debian@gmail.com>  Mon, 15 Dec 2008 15:34:17 +0100
+
+libtorrent-rasterbar (0.14-1) experimental; urgency=low
+
+  * New upstream version.
+    - debian/copyright: new and updated copyright notes and files.
+    - debian/control:
+      + build-depends on libboost1.36-dev and python-dev;
+      + new package libtorrent-rasterbar1 (bump up library SONAME);
+      + new package python-libtorrent which contains python bindings
+        for the library.
+    - debian/rules:
+      + use multi-threaded boost libraries (--with-boost-system=mt, ...);
+      + add --disable-examples and --disable-tests options;
+      + delete specific information about debian revision in dh_makeshlibs
+        (i.e., use only dh_makeshlibs -V).
+    - debian/control, debian/rules, debian/README.source, debian/patches:
+      build-depends on quilt patch system and install a patch of mine
+      (01_python_bindings, already merged upstream) in order to build python
+      bindings; use a temporary fix for the 'clean' target.
+  * Install example files (.cpp) with the -doc package.
+  * Provide a doc-base control file to install html docs
+    (libtorrent-rasterbar-doc.doc-base).
+  * debian/README.Debian: new notes about the python package and the lintian
+    tag 'no-symbols-control-file' for libtorrent-rasterbar1.
+  * Close a bug in Ubuntu about build with --disable-debug, already solved
+    with 0.13.1-2  (LP: #291448).
+  * Upload to experimental to test the new python bindings package.
+  * New maintainer email address.
+
+ -- Cristian Greco <cristian.debian@gmail.com>  Sun, 23 Nov 2008 18:55:24 +0100
+
+libtorrent-rasterbar (0.13.1-2) unstable; urgency=low
+
+  * debian/rules:
+    - build with --disable-debug option because enabling debug seems to cause
+    some clients to crash, and most upstream authors prefer a release build of
+    the library.
+    - added specific version information to dh_makeshlibs so that reverse
+    dependencies will depend on this particular version.
+  * README.Debian: updated with info about --disable-debug.
+
+ -- Cristian Greco <cgreco@cs.unibo.it>  Wed, 23 Jul 2008 11:18:31 +0200
+
+libtorrent-rasterbar (0.13.1-1) unstable; urgency=low
+
+  * Initial release (Closes: #402462)
+
+ -- Cristian Greco <cgreco@cs.unibo.it>  Wed, 02 Jul 2008 10:46:21 +0200
+

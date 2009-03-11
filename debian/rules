@@ -1,0 +1,53 @@
+#!/usr/bin/make -f
+
+CONFIGUREFLAGS = \
+	--prefix=/usr \
+	--disable-dependency-tracking \
+	--disable-fast-install \
+	--enable-static \
+	--enable-shared \
+	--disable-debug \
+	--with-logging=none \
+	--with-dht=on \
+	--with-encryption=on \
+	--with-ssl \
+	--with-zlib=system \
+	--disable-examples \
+	--disable-tests \
+	--enable-python-binding \
+	--with-boost-system=boost_system-mt \
+	--with-boost-filesystem=boost_filesystem-mt \
+	--with-boost-thread=boost_thread-mt \
+    --with-boost-python=boost_python-mt-py25
+
+build: build-stamp
+build-stamp:
+	dh build --before configure
+	dh_auto_configure -- PTHREAD_LIBS="-lpthread" CFLAGS="$(CFLAGS)" \
+		LDFLAGS="-Wl,--as-needed -lrt" $(CONFIGUREFLAGS)
+	dh build --after configure
+	touch $@
+
+clean:
+	dh $@
+
+install: build install-stamp
+install-stamp:
+	dh install --before dh_compress
+	dh_compress -Xcpp
+	dh install --after dh_compress
+	touch $@
+
+binary-arch: install
+	dh binary-arch --before dh_strip
+	dh_strip -a --dbg-package=libtorrent-rasterbar-dbg
+	dh binary-arch --after dh_strip --before dh_makeshlibs
+	dh_makeshlibs -a -V
+	dh binary-arch --after dh_makeshlibs
+
+binary-indep: install
+	dh $@
+
+binary: binary-arch binary-indep
+
+.PHONY: build clean binary-indep binary-arch binary install
