@@ -113,6 +113,8 @@ void run_storage_tests(boost::intrusive_ptr<torrent_info> info
 {
 	TORRENT_ASSERT(fs.num_files() > 0);
 	create_directory(test_path / "temp_storage");
+	remove_all(test_path / "temp_storage2");
+	remove_all(test_path / "part0");
 
 	int num_pieces = (1 + 612 + 17 + piece_size - 1) / piece_size;
 	TEST_CHECK(info->num_pieces() == num_pieces);
@@ -170,30 +172,11 @@ void run_storage_tests(boost::intrusive_ptr<torrent_info> info
 	ios.reset();
 	ios.poll();
 
-	// test move_storage
-	boost::function<void(int, disk_io_job const&)> none;
-	TEST_CHECK(exists(test_path / "temp_storage"));
-	pm->async_move_storage(test_path / "temp_storage2", bind(on_move_storage, _1, _2, (test_path / "temp_storage2").string()));
-
-	test_sleep(2000);
-	ios.reset();
-	ios.poll();
-
-	TEST_CHECK(!exists(test_path / "temp_storage"));
-	TEST_CHECK(exists(test_path / "temp_storage2/temp_storage"));
-	pm->async_move_storage(test_path, bind(on_move_storage, _1, _2, test_path.string()));
-
-	test_sleep(2000);
-	ios.reset();
-	ios.poll();
-
-	TEST_CHECK(!exists(test_path / "temp_storage2/temp_storage"));	
-	remove_all(test_path / "temp_storage2");
-
 	// test rename_file
 	remove(test_path / "part0");
 	TEST_CHECK(exists(test_path / "temp_storage/test1.tmp"));
 	TEST_CHECK(!exists(test_path / "part0"));	
+	boost::function<void(int, disk_io_job const&)> none;
 	pm->async_rename_file(0, "part0", none);
 
 	test_sleep(2000);
@@ -201,7 +184,31 @@ void run_storage_tests(boost::intrusive_ptr<torrent_info> info
 	ios.poll();
 
 	TEST_CHECK(!exists(test_path / "temp_storage/test1.tmp"));
+	TEST_CHECK(!exists(test_path / "temp_storage2"));
 	TEST_CHECK(exists(test_path / "part0"));
+
+	// test move_storage with two files in the root directory
+	TEST_CHECK(exists(test_path / "temp_storage"));
+	pm->async_move_storage(test_path / "temp_storage2", bind(on_move_storage, _1, _2, (test_path / "temp_storage2").string()));
+
+	test_sleep(2000);
+	ios.reset();
+	ios.poll();
+
+	if (fs.num_files() > 1)
+	{
+		TEST_CHECK(!exists(test_path / "temp_storage"));
+		TEST_CHECK(exists(test_path / "temp_storage2/temp_storage"));
+	}
+	TEST_CHECK(exists(test_path / "temp_storage2/part0"));
+	pm->async_move_storage(test_path, bind(on_move_storage, _1, _2, test_path.string()));
+
+	test_sleep(2000);
+	ios.reset();
+	ios.poll();
+
+	TEST_CHECK(!exists(test_path / "temp_storage2/temp_storage"));	
+	TEST_CHECK(!exists(test_path / "temp_storage2/part0"));	
 
 	peer_request r;
 	r.piece = 0;
@@ -215,12 +222,18 @@ void run_storage_tests(boost::intrusive_ptr<torrent_info> info
 	pm->async_release_files(none);
 
 	pm->async_rename_file(0, "temp_storage/test1.tmp", none);
-	test_sleep(1000);
+
+	test_sleep(2000);
+	ios.reset();
+	ios.poll();
+
 	TEST_CHECK(!exists(test_path / "part0"));	
 
 	ios.run();
 
 	io.join();
+	remove_all(test_path / "temp_storage2");
+	remove_all(test_path / "part0");
 	}
 }
 

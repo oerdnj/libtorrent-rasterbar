@@ -1,3 +1,40 @@
+
+release 0.14.3
+
+	* added python binding for create_torrent
+	* fixed boost-1.38 build
+	* fixed bug where web seeds would be connected before the files
+	  were checked
+	* fixed filename bug when using wide characters
+	* fixed rare crash in peer banning code
+	* fixed potential HTTP compatibility issue
+	* fixed UPnP crash
+	* fixed UPnP issue where the control url contained the base url
+	* fixed a replace_trackers bug
+	* fixed bug where the DHT port mapping would not be removed when
+	  changing DHT port
+	* fixed move_storage bug when files were renamed to be moved out
+	  of the root directory
+	* added error handling for set_piece_hashes
+	* fixed missing include in enum_if.cpp
+	* fixed dual IP stack issue
+	* fixed issue where renamed files were sometimes not saved in resume data
+	* accepts tracker responses with no 'peers' field, as long as 'peers6'
+	  is present
+	* fixed CIDR-distance calculation in the precense of IPv6 peers
+	* save partial resume data for torrents that are queued for checking
+	  or checking, to maintain stats and renamed files
+	* Don't try IPv6 on windows if it's not installed
+	* move_storage fix
+	* fixed potential crash on shutdown
+	* fixed leaking exception from bdecode on malformed input
+	* fixed bug where connection would hang when receiving a keepalive
+	* fixed bug where an asio exception could be thrown when resolving
+	  peer countries
+	* fixed crash when shutting down while checking a torrent
+	* fixed potential crash in connection_queue when a peer_connection
+	  fail to open its socket
+
 release 0.14.2
 
 	* added missing functions to the python bindings torrent_info::map_file,
