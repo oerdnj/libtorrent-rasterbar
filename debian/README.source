@@ -1,3 +1,31 @@
+* Notes for Ubuntu MOTU packagers (libtorrent-rasterbar 0.14.3) *
+-----------------------------------------------------------------
+
+Upstream author included a patch of mine in this new version, so that actually
+the diff for python2.6 should be minimized. The patch you should apply to
+debian/rules should be as simple as the following changes:
+
+@@ -17,13 +17,14 @@ CONFIGUREFLAGS = \
+        --with-boost-system=boost_system-mt \
+        --with-boost-filesystem=boost_filesystem-mt \
+        --with-boost-thread=boost_thread-mt \
+-       --with-boost-python=boost_python-mt-py25
++       --with-boost-python=boost_python-mt-py26
+
+ # override dh targets
+ override_dh_auto_configure:
+        cp -f /usr/share/misc/config.sub config.sub
+        cp -f /usr/share/misc/config.guess config.guess
+        dh_auto_configure -- PTHREAD_LIBS="-lpthread" CFLAGS="$(CFLAGS)" \
++               PYTHON_INSTALL_PARAMS="--root=$(CURDIR)/debian/tmp --install-layout=deb" \
+                LDFLAGS="-Wl,--as-needed -lrt" $(CONFIGUREFLAGS)
+
+ override_dh_compress:
+
+
+* Notes about Quilt patch system *
+----------------------------------
+
 This package uses quilt to manage all modifications to the upstream
 source.  Changes are stored in the source package as diffs in
 debian/patches and applied during the build.
