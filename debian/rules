@@ -1,9 +1,6 @@
 #!/usr/bin/make -f
 
 CONFIGUREFLAGS = \
-	--prefix=/usr \
-	--disable-dependency-tracking \
-	--disable-fast-install \
 	--enable-static \
 	--enable-shared \
 	--disable-debug \
@@ -20,12 +17,24 @@ CONFIGUREFLAGS = \
 	--with-boost-thread=boost_thread-mt \
     --with-boost-python=boost_python-mt-py25
 
-build: build-stamp
-build-stamp:
-	dh build --before configure
+# override dh targets
+override_dh_auto_configure:
 	dh_auto_configure -- PTHREAD_LIBS="-lpthread" CFLAGS="$(CFLAGS)" \
 		LDFLAGS="-Wl,--as-needed -lrt" $(CONFIGUREFLAGS)
-	dh build --after configure
+
+override_dh_compress:
+	dh_compress -Xcpp
+
+override_dh_strip:
+	dh_strip -a --dbg-package=libtorrent-rasterbar-dbg
+
+override_dh_makeshlibs:
+	dh_makeshlibs -a -V
+
+
+build: build-stamp
+build-stamp:
+	dh build
 	touch $@
 
 clean:
@@ -33,17 +42,11 @@ clean:
 
 install: build install-stamp
 install-stamp:
-	dh install --before dh_compress
-	dh_compress -Xcpp
-	dh install --after dh_compress
+	dh install
 	touch $@
 
 binary-arch: install
-	dh binary-arch --before dh_strip
-	dh_strip -a --dbg-package=libtorrent-rasterbar-dbg
-	dh binary-arch --after dh_strip --before dh_makeshlibs
-	dh_makeshlibs -a -V
-	dh binary-arch --after dh_makeshlibs
+	dh $@
 
 binary-indep: install
 	dh $@
