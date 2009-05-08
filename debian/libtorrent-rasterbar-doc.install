@@ -1,1 +1,2 @@
 docs/*.html docs/*.jpg docs/*.gif docs/*.png docs/style.css usr/share/doc/libtorrent-rasterbar-doc/html/
+debian/examples.makefile
