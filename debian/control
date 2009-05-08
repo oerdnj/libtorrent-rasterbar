@@ -4,6 +4,7 @@ Priority: optional
 Maintainer: Cristian Greco <cristian.debian@gmail.com>
 Build-Depends: debhelper (>= 7.0.50),
                quilt (>= 0.40),
+               autotools-dev,
                libboost1.37-dev,
                libboost-system1.37-dev,
                libboost-filesystem1.37-dev,

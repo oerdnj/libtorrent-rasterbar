@@ -21,6 +21,8 @@ CONFIGUREFLAGS = \
 
 # override dh targets
 override_dh_auto_configure:
+	cp -f /usr/share/misc/config.sub config.sub
+	cp -f /usr/share/misc/config.guess config.guess
 	dh_auto_configure -- PTHREAD_LIBS="-lpthread" CFLAGS="$(CFLAGS)" \
 		LDFLAGS="-Wl,--as-needed -lrt" $(CONFIGUREFLAGS)
 
@@ -40,6 +42,7 @@ build-stamp: $(QUILT_STAMPFN)
 	touch $@
 
 clean: unpatch
+	rm -f config.sub config.guess
 	dh $@
 
 install: build install-stamp
