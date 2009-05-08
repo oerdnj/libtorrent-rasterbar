@@ -1,2 +1,3 @@
 docs/*.html docs/*.jpg docs/*.gif docs/*.png docs/style.css usr/share/doc/libtorrent-rasterbar-doc/html/
-debian/examples.makefile
+docs/img/* usr/share/doc/libtorrent-rasterbar-doc/html/img/
+docs/css/* usr/share/doc/libtorrent-rasterbar-doc/html/css/

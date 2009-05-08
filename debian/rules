@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 
+include /usr/share/quilt/quilt.make
+
 CONFIGUREFLAGS = \
 	--enable-static \
 	--enable-shared \
@@ -33,11 +35,11 @@ override_dh_makeshlibs:
 
 
 build: build-stamp
-build-stamp:
+build-stamp: $(QUILT_STAMPFN)
 	dh build
 	touch $@
 
-clean:
+clean: unpatch
 	dh $@
 
 install: build install-stamp
