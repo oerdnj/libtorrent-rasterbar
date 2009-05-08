@@ -1,3 +1,9 @@
+libtorrent-rasterbar (0.14.3-1) UNRELEASED; urgency=low
+
+  * New Upstream Version
+
+ -- Cristian Greco <cristian.debian@gmail.com>  Fri, 08 May 2009 13:02:52 +0200
+
 libtorrent-rasterbar (0.14.2-2) unstable; urgency=low
 
   * debian/control, debian/rules: revert building only against boost1.37 since
