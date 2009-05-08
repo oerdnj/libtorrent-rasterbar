@@ -10,8 +10,8 @@ package=libtorrent-rasterbar
 
 Name: libtorrent-rasterbar
 Description: Bittorrent library.
-Version: 0.14.2
+Version: 0.14.3
 Libs: -L${libdir} -ltorrent-rasterbar
-Libs.private:   -lboost_filesystem-mt-1_35 -lboost_thread-mt-1_35    -lssl -lcrypto -lboost_system-mt-1_35 -L/opt/local/lib -L/opt/local/lib -L/usr/lib
-Cflags: -I${includedir} -I${includedir}/libtorrent -DTORRENT_USE_OPENSSL -DTORRENT_LINKING_SHARED  -I/opt/local/include/boost-1_35 -I/usr/include/python2.5 -I/usr/include/openssl -DHAVE_SSL
+Libs.private:  -lboost_system-mt-1_35 -lboost_filesystem-mt-1_35 -lboost_thread-mt-1_35  -lssl -lcrypto $(top_builddir)/zlib/libzlib.la
+Cflags: -I${includedir} -I${includedir}/libtorrent -I/usr/include/openssl -DHAVE_SSL -DTORRENT_USE_OPENSSL -DTORRENT_LINKING_SHARED 
 

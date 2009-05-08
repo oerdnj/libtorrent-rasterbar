@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: autotool.sh 2408 2008-06-13 12:20:55Z roman_rybalko $
+# $Id: autotool.sh 2695 2008-09-20 16:52:56Z arvidn $
 
 set -e
 set -x
