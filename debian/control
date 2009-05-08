@@ -62,7 +62,7 @@ Description: Development files for libtorrent-rasterbar
  This package contains header files and static version of the library.
 
 Package: libtorrent-rasterbar-dbg
-Section: devel
+Section: debug
 Priority: extra
 Architecture: any
 Depends: ${misc:Depends}, libtorrent-rasterbar3 (= ${binary:Version})
