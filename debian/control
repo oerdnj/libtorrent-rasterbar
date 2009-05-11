@@ -13,7 +13,8 @@ Build-Depends: debhelper (>= 7.0.50),
                libboost-python1.37-dev,
                libssl-dev,
                libz-dev,
-               python-dev
+               python-dev,
+               python-docutils
 XS-Python-Version: current
 Standards-Version: 3.8.1
 Homepage: http://www.rasterbar.com/products/libtorrent/index.html

@@ -21,8 +21,11 @@ CONFIGUREFLAGS = \
 
 # override dh targets
 override_dh_auto_configure:
+	# overwrite config.{sub,guess} from autotools-dev
 	cp -f /usr/share/misc/config.sub config.sub
 	cp -f /usr/share/misc/config.guess config.guess
+	# generate html docs
+	(cd docs/ && $(MAKE) -f makefile)
 	dh_auto_configure -- PTHREAD_LIBS="-lpthread" CFLAGS="$(CFLAGS)" \
 		LDFLAGS="-Wl,--as-needed -lrt" $(CONFIGUREFLAGS)
 
@@ -43,6 +46,9 @@ build-stamp: $(QUILT_STAMPFN)
 
 clean: unpatch
 	rm -f config.sub config.guess
+	# delete the specific missing doc page added by fix_html_docs.patch
+	# (fixed upstream, remove this line in next release)
+	rm -f docs/libtorrent_plugins.html
 	dh $@
 
 install: build install-stamp
