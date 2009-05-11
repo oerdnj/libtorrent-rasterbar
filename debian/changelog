@@ -10,8 +10,8 @@ libtorrent-rasterbar (0.14.3-1) unstable; urgency=low
       override_dh_command feature;
     - [4227c46] move -dbg package to the new 'debug' section;
     - build-depends on quilt patch system (and add README.source):
-      + [a65654f] debian/patches/fix_html_docs.patch: fix html documentation
-        for offline browsing and add another missing doc file;
+      + [a65654f] [52a88ac] debian/patches/fix_html_docs.patch: fix html
+        documentation for offline browsing and add another missing doc file;
     - [9118e5f] debian/control, debian/rules: build-depends on autotools-dev
       and overwrite config.{sub,guess} with a recent version.
 
@@ -23,7 +23,7 @@ libtorrent-rasterbar (0.14.3-1) unstable; urgency=low
     diff).
   * [fa3d07b] debian/README.source: added notes for Ubuntu/Python2.6.
 
- -- Cristian Greco <cristian.debian@gmail.com>  Fri, 08 May 2009 14:39:13 +0200
+ -- Cristian Greco <cristian.debian@gmail.com>  Mon, 11 May 2009 14:43:27 +0200
 
 libtorrent-rasterbar (0.14.2-2) unstable; urgency=low
 
