@@ -1,29 +1,26 @@
 libtorrent-rasterbar (0.14.3-1) unstable; urgency=low
 
   * New Upstream Version
-    - [181f4cb] new package libtorrent-rasterbar3 (bump up library soname).
-
+    - new package libtorrent-rasterbar3 (bump up library soname).
   * debian/control:
-    - [cdd3923] add Vcs-* stuff (switch to git-buildpackage) and bump up
+    - add Vcs-* stuff (switch to git-buildpackage) and bump up
       Standards-Version to 3.8.1 (no changes required);
-    - [80fce47] build-depends on debhelper (>= 7.0.50) and use the
-      override_dh_command feature;
-    - [4227c46] move -dbg package to the new 'debug' section;
-    - build-depends on quilt patch system (and add README.source):
-      + [a65654f] [52a88ac] debian/patches/fix_html_docs.patch: fix html
-        documentation for offline browsing and add another missing doc file;
-    - [9118e5f] debian/control, debian/rules: build-depends on autotools-dev
-      and overwrite config.{sub,guess} with a recent version.
+    - build-depends on debhelper (>= 7.0.50) and use override_dh_command;
+    - move -dbg package to the new 'debug' section;
+    - build-depends on autotools-dev and overwrite config.{sub,guess} with a
+      recent version in debian/rules.
+    - build-depends on quilt and python-docutils:
+      + debian/patches/fix_html_docs.patch: fix html documentation for offline
+        browsing and add another missing doc file;
+      + rebuild docs at build time in debian/rules;
+  * debian/example.makefile: install a simple makefile for example programs
+    included in -doc package.
+  * debian/rules, debian/python-libtorrent.install: don't rely on hardcoded
+    python version, use --install-layout=deb when building python bindings,
+    and install to '*-packages' instead of 'site-packages' (this should
+    prepare for python2.6 and minimize Ubuntu diff).
 
-  * [66d2e98] debian/example.makefile: install a simple makefile for example
-    programs included in -doc package.
-
-  * [0f27233] debian/python-libtorrent.install: install to '*-packages'
-    instead of 'site-packages' (prepare for python2.6 and minimize Ubuntu
-    diff).
-  * [fa3d07b] debian/README.source: added notes for Ubuntu/Python2.6.
-
- -- Cristian Greco <cristian.debian@gmail.com>  Mon, 11 May 2009 14:43:27 +0200
+ -- Cristian Greco <cristian.debian@gmail.com>  Wed, 13 May 2009 12:08:59 +0200
 
 libtorrent-rasterbar (0.14.2-2) unstable; urgency=low
 
