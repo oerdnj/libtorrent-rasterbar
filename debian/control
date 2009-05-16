@@ -17,9 +17,9 @@ Build-Depends: debhelper (>= 7.0.50),
                python-docutils
 XS-Python-Version: current
 Standards-Version: 3.8.1
-Homepage: http://www.rasterbar.com/products/libtorrent/index.html
-Vcs-Browser: http://git.debian.org/git/users/cristian-guest/libtorrent-rasterbar.git
 Vcs-Git: git://git.debian.org/users/cristian-guest/libtorrent-rasterbar.git
+Vcs-Browser: http://git.debian.org/?p=users/cristian-guest/libtorrent-rasterbar.git
+Homepage: http://www.rasterbar.com/products/libtorrent/index.html
 
 Package: libtorrent-rasterbar3
 Architecture: any
