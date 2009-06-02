@@ -1,3 +1,28 @@
+release 0.14.4
+
+	* connect candidate calculation fix
+	* tightened up disk cache memory usage
+	* fixed magnet link parser to accept hex-encoded info-hashes
+	* fixed inverted logic when picking which peers to connect to
+	  (should mean a slight performance improvement)
+	* fixed a bug where a failed rename_file() would leave the storage
+	  in an error state which would pause the torrent
+	* fixed case when move_storage() would fail. Added a new alert
+	  to be posted when it does
+	* fixed crash bug when shutting down while checking a torrent
+	* fixed handling of web seed urls that didn't end with a
+	  slash for multi-file torrents
+	* lowered the default connection speed to 10 connection attempts
+	  per second
+	* optimized memory usage when checking files fails
+	* fixed bug when checking a torrent twice
+	* improved handling of out-of-memory conditions in disk I/O thread
+	* fixed bug when force-checking a torrent with partial pieces
+	* fixed memory leak in disk cache
+	* fixed torrent file path vulnerability
+	* fixed upnp
+	* fixed bug when dealing with clients that drop requests (i.e. BitComet)
+	  fixes assert as well
 
 release 0.14.3
 

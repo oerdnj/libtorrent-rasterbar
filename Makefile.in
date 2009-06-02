@@ -247,6 +247,7 @@ docs/dht_extensions.html docs/dht_extensions.rst \
 docs/make_torrent.html docs/make_torrent.rst \
 docs/examples.html docs/examples.rst \
 docs/features.html docs/features.rst \
+docs/libtorrent_plugins.html docs/libtorrent_plugins.rst \
 docs/arctic_thumb.png \
 docs/fdm.png \
 docs/tvitty.jpg \
@@ -285,7 +286,6 @@ bindings/python/src/big_number.cpp \
 bindings/python/src/converters.cpp \
 bindings/python/src/create_torrent.cpp \
 bindings/python/src/datetime.cpp \
-bindings/python/src/docstrings.cpp \
 bindings/python/src/entry.cpp \
 bindings/python/src/extensions.cpp \
 bindings/python/src/filesystem.cpp \

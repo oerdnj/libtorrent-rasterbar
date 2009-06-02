@@ -3,7 +3,7 @@ libtorrent API Documentation
 ============================
 
 :Author: Arvid Norberg, arvid@rasterbar.com
-:Version: 0.14.3
+:Version: 0.14.4
 
 .. contents:: Table of contents
   :depth: 2
@@ -1777,7 +1777,8 @@ drop while copying the file.
 
 Since disk IO is performed in a separate thread, this operation is also asynchronous.
 Once the operation completes, the ``storage_moved_alert`` is generated, with the new
-path as the message.
+path as the message. If the move fails for some reason, ``storage_moved_failed_alert``
+is generated instead, containing the error message.
 
 rename_file()
 -------------
@@ -4103,6 +4104,42 @@ generated and the torrent is paused.
 		std::string msg;
 	};
 
+file_renamed_alert
+------------------------
+
+This is posted as a response to a ``torrent_handle::rename_file`` call, if the rename
+operation succeeds.
+
+::
+
+	struct file_renamed_alert: torrent_alert
+	{
+		// ...
+		std::string name;
+		int index;
+	};
+
+The ``index`` member refers to the index of the file that was renamed,
+``name`` is the new name of the file.
+
+
+file_rename_failed_alert
+------------------------
+
+This is posted as a response to a ``torrent_handle::rename_file`` call, if the rename
+operation failed.
+
+::
+
+	struct file_rename_failed_alert: torrent_alert
+	{
+		// ...
+		std::string msg;
+		int index;
+	};
+
+The ``index`` member refers to the index of the file that was supposed to be renamed,
+``msg`` is the error message returned from the filesystem.
 
 tracker_announce_alert
 ----------------------
@@ -4431,6 +4468,21 @@ the storage.
 	{
 		// ...
 		std::string path;
+	};
+
+
+storage_moved_failed_alert
+--------------------------
+
+The ``storage_moved_failed_alert`` is generated when an attempt to move the storage
+(via torrent_handle::move_storage()) fails.
+
+::
+
+	struct storage_moved_failed_alert: torrent_alert
+	{
+		// ...
+		error_code error;
 	};
 
 
