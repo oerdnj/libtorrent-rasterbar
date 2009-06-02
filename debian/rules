@@ -5,21 +5,21 @@ include /usr/share/quilt/quilt.make
 PYVERSION = $(shell pyversions -v -r | tr -d . )
 
 CONFIGUREFLAGS = \
-	--enable-static \
-	--enable-shared \
-	--disable-debug \
-	--with-logging=none \
-	--with-dht=on \
-	--with-encryption=on \
-	--with-ssl \
-	--with-zlib=system \
-	--disable-examples \
-	--disable-tests \
-	--enable-python-binding \
-	--with-boost-system=boost_system-mt \
-	--with-boost-filesystem=boost_filesystem-mt \
-	--with-boost-thread=boost_thread-mt \
-    --with-boost-python=boost_python-mt-py$(PYVERSION)
+  --enable-static \
+  --enable-shared \
+  --disable-debug \
+  --with-logging=none \
+  --with-dht=on \
+  --with-encryption=on \
+  --with-ssl \
+  --with-zlib=system \
+  --disable-examples \
+  --disable-tests \
+  --enable-python-binding \
+  --with-boost-system=boost_system-mt \
+  --with-boost-filesystem=boost_filesystem-mt \
+  --with-boost-thread=boost_thread-mt \
+  --with-boost-python=boost_python-mt-py$(PYVERSION)
 
 # override dh targets
 override_dh_auto_configure:
@@ -49,9 +49,6 @@ build-stamp: $(QUILT_STAMPFN)
 
 clean: unpatch
 	rm -f config.sub config.guess
-	# delete the specific missing doc page added by fix_html_docs.patch
-	# (fixed upstream, remove this line in next release)
-	rm -f docs/libtorrent_plugins.html
 	dh $@
 
 install: build install-stamp
