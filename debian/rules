@@ -24,8 +24,16 @@ CONFIGUREFLAGS = \
 # override dh targets
 override_dh_auto_configure:
 	# overwrite config.{sub,guess} from autotools-dev
-	cp -f /usr/share/misc/config.sub config.sub
-	cp -f /usr/share/misc/config.guess config.guess
+	if [ -r /usr/share/misc/config.sub ] && [ ! -f config.sub.backup ]; then \
+		mv -v config.sub config.sub.backup; \
+		cp -f /usr/share/misc/config.sub $(CURDIR)/config.sub; \
+	fi
+
+	if [ -r /usr/share/misc/config.guess ] && [ ! -f config.guess.backup ]; then \
+		mv -v config.guess config.guess.backup; \
+		cp -f /usr/share/misc/config.guess $(CURDIR)/config.guess; \
+	fi
+
 	# generate html docs
 	(cd docs/ && $(MAKE) -f makefile)
 	dh_auto_configure -- PTHREAD_LIBS="-lpthread" CFLAGS="$(CFLAGS)" \
@@ -42,13 +50,22 @@ override_dh_makeshlibs:
 	dh_makeshlibs -a -V
 
 
+# standard targets
 build: build-stamp
 build-stamp: $(QUILT_STAMPFN)
 	dh build
 	touch $@
 
 clean: unpatch
-	rm -f config.sub config.guess
+	# restore backup config.{sub,guess}
+	if [ -f config.sub.backup ]; then \
+		mv -fv config.sub.backup config.sub; \
+	fi
+
+	if [ -f config.guess.backup ]; then \
+		mv -fv config.guess.backup config.guess; \
+	fi
+
 	dh $@
 
 install: build install-stamp
