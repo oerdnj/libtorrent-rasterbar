@@ -21,7 +21,7 @@ Vcs-Git: git://git.debian.org/users/cristian-guest/libtorrent-rasterbar.git
 Vcs-Browser: http://git.debian.org/?p=users/cristian-guest/libtorrent-rasterbar.git
 Homepage: http://www.rasterbar.com/products/libtorrent/index.html
 
-Package: libtorrent-rasterbar3
+Package: libtorrent-rasterbar4
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Suggests: libtorrent-rasterbar-dbg
@@ -41,7 +41,7 @@ Package: libtorrent-rasterbar-dev
 Section: libdevel
 Architecture: any
 Depends: ${misc:Depends},
-         libtorrent-rasterbar3 (= ${binary:Version}),
+         libtorrent-rasterbar4 (= ${binary:Version}),
          libboost1.37-dev,
          libboost-system1.37-dev,
          libboost-filesystem1.37-dev,
@@ -67,7 +67,7 @@ Package: libtorrent-rasterbar-dbg
 Section: debug
 Priority: extra
 Architecture: any
-Depends: ${misc:Depends}, libtorrent-rasterbar3 (= ${binary:Version})
+Depends: ${misc:Depends}, libtorrent-rasterbar4 (= ${binary:Version})
 Description: Debug symbols for libtorrent-rasterbar
  Bittorrent library by Rasterbar Software (Arvid Norberg).
  libtorrent-rasterbar is a C++ library that aims to be a good alternative to
@@ -99,7 +99,7 @@ Description: Documentation for libtorrent-rasterbar
 Package: python-libtorrent
 Section: python
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, libtorrent-rasterbar3 (= ${binary:Version})
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, libtorrent-rasterbar4 (= ${binary:Version})
 Provides: ${python:Provides}
 XB-Python-Version: ${python:Versions}
 Description: Python bindings for libtorrent-rasterbar
