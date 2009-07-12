@@ -12,7 +12,7 @@ Build-Depends: debhelper (>= 7.0.50),
                libboost-regex-dev,
                libboost-python-dev,
                libssl-dev,
-               libz-dev,
+               zlib1g-dev,
                python-dev,
                python-docutils
 XS-Python-Version: current
@@ -48,7 +48,7 @@ Depends: ${misc:Depends},
          libboost-thread-dev,
          libboost-date-time-dev,
          libssl-dev,
-         libz-dev,
+         zlib1g-dev,
          pkg-config
 Suggests: libtorrent-rasterbar-doc
 Description: Development files for libtorrent-rasterbar
