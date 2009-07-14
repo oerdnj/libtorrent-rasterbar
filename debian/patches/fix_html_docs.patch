@@ -1,7 +1,7 @@
 Author: Cristian Greco <cristian.debian@gmail.com>
-Description: Fix html documentation for offline browsing and add another
-missing doc file. The patch also includes the makefile and template.txt needed
-to rebuild html docs from rst files.
+Description: Fix html documentation for offline browsing. The patch also
+includes the makefile and template.txt needed to rebuild html docs from
+rst files.
 --- /dev/null
 +++ b/docs/template.txt
 @@ -0,0 +1,29 @@
