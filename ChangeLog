@@ -1,3 +1,21 @@
+release 0.14.5
+
+	* fixed bug when handling malformed webseed urls and an http proxy
+	* fixed bug when setting unlimited upload or download rates for torrents
+	* fix to make torrent_status::list_peers more accurate.
+	* fixed memory leak in disk io thread when not using the cache
+	* fixed bug in connect candidate counter
+	* allow 0 upload slots
+	* fixed bug in rename_file(). The new name would not always be saved in
+	  the resume data
+	* fixed resume data compatibility with 0.13
+	* fixed rare piece-picker bug
+	* fixed bug where one allowed-fast message would be sent even when
+	  disabled
+	* fixed race condition in UPnP which could lead to crash
+	* fixed inversed seed_time ratio logic
+	* added get_ip_filter() to session
+
 release 0.14.4
 
 	* connect candidate calculation fix

@@ -3,7 +3,7 @@ libtorrent API Documentation
 ============================
 
 :Author: Arvid Norberg, arvid@rasterbar.com
-:Version: 0.14.4
+:Version: 0.14.5
 
 .. contents:: Table of contents
   :depth: 2
@@ -138,6 +138,7 @@ The ``session`` class has the following synopsis::
 		entry state() const;
 
 		void set_ip_filter(ip_filter const& f);
+		ip_filter const& get_ip_filter() const;
       
 		session_status status() const;
 		cache_status get_cache_status() const;
@@ -261,7 +262,7 @@ add_torrent()
 	::
 
 		typedef storage_interface* (&storage_constructor_type)(
-			file_storage const&, fs::path const&, file_pool&);
+			file_storage const&, file_storage const*, fs::path const&, file_pool&);
 
 		struct add_torrent_params
 		{
@@ -509,6 +510,14 @@ accepted and not, see ip_filter_.
 
 Each time a peer is blocked because of the IP filter, a peer_blocked_alert_ is
 generated.
+
+get_ip_filter()
+---------------
+
+	::
+		ip_filter const& get_ip_filter() const;
+		
+Returns the ip_filter currently in the session. See ip_filter_.
 
 
 status()
@@ -3170,10 +3179,11 @@ queue up bufferes indefinitely on slow hard-drives or storage.
 delay responding to a protocol handshake. If no response is received within
 this time, the connection is closed.
 
-``use_dht_as_fallback`` determines how the DHT is used. If this is true
-(which it is by default), the DHT will only be used for torrents where
-all trackers in its tracker list has failed. Either by an explicit error
-message or a time out.
+``use_dht_as_fallback`` determines how the DHT is used. If this is true,
+the DHT will only be used for torrents where all trackers in its tracker
+list has failed. Either by an explicit error message or a time out. This
+is false by default, which means the DHT is used by default regardless of
+if the trackers fail or not.
 
 ``free_torrent_hashes`` determines whether or not the torrent's piece hashes
 are kept in memory after the torrent becomes a seed or not. If it is set to
@@ -4766,7 +4776,7 @@ The default storage moves the single file or the directory of the torrent.
 Before moving the files, any open file handles may have to be closed, like
 ``release_files()``.
 
-Returning ``true`` indicates an error occurred.
+Returning ``false`` indicates an error occurred.
 
 
 verify_resume_data()
@@ -4782,7 +4792,7 @@ not, set ``error`` to a description of what mismatched and return false.
 
 The default storage may compare file sizes and time stamps of the files.
 
-Returning ``true`` indicates an error occurred.
+Returning ``false`` indicates an error occurred.
 
 
 write_resume_data()
