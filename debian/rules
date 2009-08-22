@@ -1,7 +1,5 @@
 #!/usr/bin/make -f
 
-include /usr/share/quilt/quilt.make
-
 PYVERSION = $(shell pyversions -v -r | tr -d . )
 
 CONFIGUREFLAGS = \
@@ -21,7 +19,9 @@ CONFIGUREFLAGS = \
   --with-boost-thread=boost_thread-mt \
   --with-boost-python=boost_python-mt-py$(PYVERSION)
 
-# override dh targets
+%:
+	dh --with quilt $@
+
 override_dh_auto_configure:
 	# overwrite config.{sub,guess} from autotools-dev
 	if [ -r /usr/share/misc/config.sub ] && [ ! -f config.sub.backup ]; then \
@@ -40,23 +40,9 @@ override_dh_auto_configure:
 		PYTHON_INSTALL_PARAMS="--root=$(CURDIR)/debian/tmp --install-layout=deb" \
 		LDFLAGS="-Wl,--as-needed -lrt" $(CONFIGUREFLAGS)
 
-override_dh_compress:
-	dh_compress -Xcpp
+override_dh_auto_clean:
+	dh_auto_clean
 
-override_dh_strip:
-	dh_strip -a --dbg-package=libtorrent-rasterbar-dbg
-
-override_dh_makeshlibs:
-	dh_makeshlibs -a -V
-
-
-# standard targets
-build: build-stamp
-build-stamp: $(QUILT_STAMPFN)
-	dh build
-	touch $@
-
-clean: unpatch
 	# restore backup config.{sub,guess}
 	if [ -f config.sub.backup ]; then \
 		mv -fv config.sub.backup config.sub; \
@@ -66,19 +52,11 @@ clean: unpatch
 		mv -fv config.guess.backup config.guess; \
 	fi
 
-	dh $@
+override_dh_compress:
+	dh_compress -Xcpp
 
-install: build install-stamp
-install-stamp:
-	dh install
-	touch $@
+override_dh_strip:
+	dh_strip -a --dbg-package=libtorrent-rasterbar-dbg
 
-binary-arch: install
-	dh $@
-
-binary-indep: install
-	dh $@
-
-binary: binary-arch binary-indep
-
-.PHONY: build clean binary-indep binary-arch binary install
+override_dh_makeshlibs:
+	dh_makeshlibs -a -V

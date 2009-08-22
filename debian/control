@@ -2,8 +2,8 @@ Source: libtorrent-rasterbar
 Section: libs
 Priority: optional
 Maintainer: Cristian Greco <cristian.debian@gmail.com>
-Build-Depends: debhelper (>= 7.0.50),
-               quilt (>= 0.40),
+Build-Depends: debhelper (>= 7.3.0),
+               quilt (>= 0.46-7),
                autotools-dev,
                libboost-dev,
                libboost-system-dev,
