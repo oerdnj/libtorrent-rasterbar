@@ -1,0 +1,27 @@
+Author: Cristian Greco <cristian.debian@gmail.com>
+Description: merge two changes from upstream svn:
+(pulled from upstream r3796) fix BOOST_ASIO_HASH_MAP_BUCKETS define to 1021
+(instead of 1024) and make it apply to all files during build,
+(pulled from upstream r3797) define BOOST_EXCEPTION_DISABLE.
+--- a/configure
++++ b/configure
+@@ -24032,7 +24032,18 @@
+ 
+ 
+ # this works around a bug in asio in boost-1.39
+-COMPILETIME_OPTIONS="-DBOOST_ASIO_HASH_MAP_BUCKETS=1024 "
++# (upstream r3796) fix BOOST_ASIO_HASH_MAP_BUCKETS define to 1021
++COMPILETIME_OPTIONS="-DBOOST_ASIO_HASH_MAP_BUCKETS=1021 "
++cat >>confdefs.h <<\_ACEOF
++#define BOOST_ASIO_HASH_MAP_BUCKETS 1021
++_ACEOF
++
++# (upstream r3797) define BOOST_EXCEPTION_DISABLE
++COMPILETIME_OPTIONS+="-DBOOST_EXCEPTION_DISABLE "
++cat >>confdefs.h <<\_ACEOF
++#define BOOST_EXCEPTION_DISABLE /**/
++_ACEOF
++
+ 
+ { $as_echo "$as_me:$LINENO: checking what form of logging to use" >&5
+ $as_echo_n "checking what form of logging to use... " >&6; }
