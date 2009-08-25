@@ -11,10 +11,12 @@ libtorrent-rasterbar (0.14.5-1) unstable; urgency=low
     - bump up Standards-Version to 3.8.3 (no changes required).
     - (build-)depends on zlib1g-dev instead of libz-dev (which is
       a virtual package).
-  * debian/{control,rules}: build-depends on debhelper (>= 7.3.0) and
-    quilt (>= 0.46-7) and simplify debian/rules.
+    - build-depends on quilt (>= 0.46-7) and simplify debian/rules.
+  * debian/rules: allow building against boost 1.39 (which contains
+    libraries with no more -mt suffix) and try to retain compatibility
+    with older versions for ubuntu backports.
 
- -- Cristian Greco <cristian.debian@gmail.com>  Sat, 22 Aug 2009 16:46:51 +0200
+ -- Cristian Greco <cristian.debian@gmail.com>  Tue, 25 Aug 2009 17:29:29 +0200
 
 libtorrent-rasterbar (0.14.4-1) unstable; urgency=low
 
