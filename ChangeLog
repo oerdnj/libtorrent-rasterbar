@@ -1,3 +1,21 @@
+
+release 0.14.6
+
+	* various missing include fixes to be buildable with boost 1.40
+	* added missing functions to python binding related to torrent creation
+	* fixed to add filename on web seed urls that lack it
+	* fixed BOOST_ASIO_HASH_MAP_BUCKETS define for boost 1.39
+	* fixed checking of fast and suggest messages when used with magnet links
+	* fixed bug where web seeds would not disconnect if being resolved when
+	  the torrent was paused
+	* fixed download piece performance bug in piece picker
+	* fixed bug in connect candidate counter
+	* replaces invalid filename characters with .
+	* added --with-libgeoip option to configure script to allow building and
+	  linking against system wide library
+	* fixed potential pure virtual function call in extensions on shutdown
+	* fixed disk buffer leak in smart_ban extension
+
 release 0.14.5
 
 	* fixed bug when handling malformed webseed urls and an http proxy

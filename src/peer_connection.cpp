@@ -462,6 +462,32 @@ namespace libtorrent
 		boost::shared_ptr<torrent> t = associated_torrent().lock();
 		m_have_piece.resize(t->torrent_file().num_pieces(), m_have_all);
 		m_num_pieces = m_have_piece.count();
+
+		// now that we know how many pieces there are
+		// remove any invalid allowed_fast and suggest pieces
+		// now that we know what the number of pieces are
+		for (std::vector<int>::iterator i = m_allowed_fast.begin();
+			i != m_allowed_fast.end();)
+		{
+			if (*i < m_num_pieces)
+			{
+				++i;
+				continue;
+			}
+			i = m_allowed_fast.erase(i);
+		}
+
+		for (std::vector<int>::iterator i = m_suggested_pieces.begin();
+			i != m_suggested_pieces.end();)
+		{
+			if (*i < m_num_pieces)
+			{
+				++i;
+				continue;
+			}
+			i = m_suggested_pieces.erase(i);
+		}
+		
 		if (m_num_pieces == int(m_have_piece.size()))
 		{
 #ifdef TORRENT_VERBOSE_LOGGING
@@ -578,6 +604,10 @@ namespace libtorrent
 		TORRENT_ASSERT(m_disconnect_started);
 
 		m_disk_recv_buffer_size = 0;
+
+#ifndef TORRENT_DISABLE_EXTENSIONS
+		m_extensions.clear();
+#endif
 
 #if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_ERROR_LOGGING
 		if (m_logger)
@@ -1070,10 +1100,34 @@ namespace libtorrent
 #endif
 
 		if (is_disconnecting()) return;
-		if (t->have_piece(index)) return;
+		if (index < 0)
+		{
+#if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_ERROR_LOGGING
+			(*m_logger) << time_now_string() << " <== INVALID_SUGGEST_PIECE [ " << index << " ]\n";
+#endif
+			return;
+		}
 		
+		if (t->valid_metadata())
+		{
+			if (index >= int(m_have_piece.size()))
+			{
+#if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_ERROR_LOGGING
+				(*m_logger) << time_now_string() << " <== INVALID_ALLOWED_FAST [ " << index << " | s: "
+					<< int(m_have_piece.size()) << " ]\n";
+#endif
+				return;
+			}
+
+			// if we already have the piece, we can
+			// ignore this message
+			if (t->have_piece(index))
+				return;
+		}
+
 		if (m_suggested_pieces.size() > 9)
 			m_suggested_pieces.erase(m_suggested_pieces.begin());
+
 		m_suggested_pieces.push_back(index);
 
 #ifdef TORRENT_VERBOSE_LOGGING
@@ -1241,44 +1295,47 @@ namespace libtorrent
 #if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_ERROR_LOGGING
 			(*m_logger) << "   got redundant HAVE message for index: " << index << "\n";
 #endif
+			return;
 		}
-		else
+
+		m_have_piece.set_bit(index);
+		++m_num_pieces;
+
+		// only update the piece_picker if
+		// we have the metadata and if
+		// we're not a seed (in which case
+		// we won't have a piece picker)
+		if (!t->valid_metadata()) return;
+
+		t->peer_has(index);
+
+		// it is important that we don't disconnect before the
+		// torrent has accounted for this piece, otherwise
+		// we will have an inconsistent count for it in the
+		// piece picker since disconnecting will decrement the
+		// count
+		if (is_seed())
 		{
-			m_have_piece.set_bit(index);
-			++m_num_pieces;
+			t->get_policy().set_seed(m_peer_info, true);
+			m_upload_only = true;
+			disconnect_if_redundant();
+			if (is_disconnecting()) return;
+		}
 
-			// only update the piece_picker if
-			// we have the metadata and if
-			// we're not a seed (in which case
-			// we won't have a piece picker)
-			if (t->valid_metadata())
-			{
-				t->peer_has(index);
+		if (!t->have_piece(index)
+			&& !t->is_seed()
+			&& !is_interesting()
+			&& t->picker().piece_priority(index) != 0)
+			t->get_policy().peer_is_interesting(*this);
 
-				if (!t->have_piece(index)
-					&& !t->is_seed()
-					&& !is_interesting()
-					&& t->picker().piece_priority(index) != 0)
-					t->get_policy().peer_is_interesting(*this);
-
-				// this will disregard all have messages we get within
-				// the first two seconds. Since some clients implements
-				// lazy bitfields, these will not be reliable to use
-				// for an estimated peer download rate.
-				if (!peer_info_struct() || time_now() - peer_info_struct()->connected > seconds(2))
-				{
-					// update bytes downloaded since last timer
-					m_remote_bytes_dled += t->torrent_file().piece_size(index);
-				}
-			}
-			
-			if (is_seed())
-			{
-				t->get_policy().set_seed(m_peer_info, true);
-				m_upload_only = true;
-				disconnect_if_redundant();
-				if (is_disconnecting()) return;
-			}
+		// this will disregard all have messages we get within
+		// the first two seconds. Since some clients implements
+		// lazy bitfields, these will not be reliable to use
+		// for an estimated peer download rate.
+		if (!peer_info_struct() || time_now() - peer_info_struct()->connected > seconds(2))
+		{
+			// update bytes downloaded since last timer
+			m_remote_bytes_dled += t->torrent_file().piece_size(index);
 		}
 	}
 
@@ -2099,10 +2156,17 @@ namespace libtorrent
 		}
 #endif
 		if (is_disconnecting()) return;
+		if (index < 0)
+		{
+#if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_ERROR_LOGGING
+			(*m_logger) << time_now_string() << " <== INVALID_ALLOWED_FAST [ " << " ]\n";
+#endif
+			return;
+		}
 
 		if (t->valid_metadata())
 		{
-			if (index < 0 || index >= int(m_have_piece.size()))
+			if (index >= int(m_have_piece.size()))
 			{
 #if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_ERROR_LOGGING
 				(*m_logger) << time_now_string() << " <== INVALID_ALLOWED_FAST [ " << index << " | s: "
@@ -2117,6 +2181,8 @@ namespace libtorrent
 				return;
 		}
 
+		// if we don't have the metadata, we'll verify
+		// this piece index later
 		m_allowed_fast.push_back(index);
 
 		// if the peer has the piece and we want
