@@ -1,3 +1,18 @@
+libtorrent-rasterbar (0.14.6-1) unstable; urgency=low
+
+  * New upstream version.
+  * debian/{control,rules}:
+    - build-dep on libgeoip-dev and pkg-config, thus enable building against
+      geoip system library. (Closes: #544462)
+    - drop build-dep on autotools-dev and don't overwrite config.{guess,sub}
+      as upstream now ships up-to-date files.
+  * debian/rules: drop the hack for boost1.39 as latest revision now
+    ship again the -mt simlinks.
+  * 010_r3796_r3797_fix_configure.patch: deleted (merged upstream).
+  * debian/README.source: fix reference to quilt doc.
+
+ -- Cristian Greco <cristian.debian@gmail.com>  Tue, 22 Sep 2009 12:58:26 +0200
+
 libtorrent-rasterbar (0.14.5-1) unstable; urgency=low
 
   * New upstream version.
