@@ -6,7 +6,7 @@ import os
 import platform
 import sys
 
-if 'boost_python-mt-1_35' == '':
+if 'boost_python-mt' == '':
 	print 'You need to pass --enable-python-binding to configure in order ',
 	print 'to properly use this setup. There is no boost.python library configured now'
 	sys.exit(1)
@@ -41,7 +41,7 @@ if platform.system() == 'Windows':
 	except: pass
 	shutil.copyfile(r'bin\msvc-7.1\release\boost-source\geoip-static\link-static\optimization-space\threading-multi\libtorrent.pyd', r'.\build\lib\libtorrent.pyd')
 	setup( name='python-libtorrent',
-		version='0.14.5',
+		version='0.14.6',
 		author = 'Arvid Norberg',
 		author_email='arvid@cs.umu.se',
 		description = 'Python bindings for libtorrent-rasterbar',
@@ -62,10 +62,10 @@ if "OPT" in config_vars and "-Wstrict-prototypes" in config_vars["OPT"]:
 source_list = os.listdir(os.path.join(os.path.dirname(__file__), "src"))
 source_list = [os.path.join("src", s) for s in source_list if s.endswith(".cpp")]
 
-extra_cmd = '-DBOOST_ASIO_HASH_MAP_BUCKETS=1024 -DTORRENT_USE_OPENSSL -DTORRENT_LINKING_SHARED   -pthread -I/opt/local/include  -lboost_filesystem-mt-1_35 -lboost_thread-mt-1_35  -lssl -lcrypto -lboost_system-mt-1_35 -L/usr/lib -I/usr/include/openssl -DHAVE_SSL'
+extra_cmd = '-DBOOST_ASIO_HASH_MAP_BUCKETS=1021 -DTORRENT_USE_OPENSSL -DTORRENT_LINKING_SHARED -DBOOST_EXCEPTION_DISABLE   -pthread -I/opt/local/include  -lboost_filesystem-mt -lboost_thread-mt  -lssl -lcrypto -lboost_system-mt -L/usr/lib -I/usr/include/openssl -DHAVE_SSL'
 
 setup( name='python-libtorrent',
-	version='0.14.5',
+	version='0.14.6',
 	author = 'Arvid Norberg',
 	author_email='arvid@cs.umu.se',
 	description = 'Python bindings for libtorrent-rasterbar',
@@ -78,7 +78,7 @@ setup( name='python-libtorrent',
 		language='c++',
 		include_dirs = ['../../include','../../include/libtorrent'] + parse_cmd(extra_cmd, '-I'),
 		library_dirs = ['../../src/.libs'] + parse_cmd(extra_cmd, '-L'),
-		extra_link_args = '-L/opt/local/lib -L/opt/local/lib'.split() + arch(),
+		extra_link_args = ' -L/opt/local/lib'.split() + arch(),
 		extra_compile_args = parse_cmd(extra_cmd, '-D', True) + arch() + ['-DBOOST_MULTI_INDEX_DISABLE_SERIALIZATION'],
-		libraries = ['torrent-rasterbar','boost_python-mt-1_35'] + parse_cmd(extra_cmd, '-l'))],
+		libraries = ['torrent-rasterbar','boost_python-mt'] + parse_cmd(extra_cmd, '-l'))],
 )
