@@ -12,6 +12,8 @@ Build-Depends: debhelper (>= 7.0.50),
                libboost-python-dev,
                libssl-dev,
                zlib1g-dev,
+               libgeoip-dev,
+               pkg-config,
                python-dev,
                python-docutils
 XS-Python-Version: current
