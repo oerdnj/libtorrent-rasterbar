@@ -1,8 +1,5 @@
 #!/usr/bin/make -f
 
-BOOST_VERSION = $(shell grep "\#define BOOST_VERSION " /usr/include/boost/version.hpp | cut -d " " -f 3 )
-BOOST_PYTHON_MT = $(shell if test $(BOOST_VERSION) -lt 103900; then echo boost_python-mt-; fi )
-
 PYVERSION = $(shell pyversions -v -r | tr -d . )
 
 CONFIGUREFLAGS = \
@@ -17,7 +14,7 @@ CONFIGUREFLAGS = \
   --disable-examples \
   --disable-tests \
   --enable-python-binding \
-  --with-boost-python=$(BOOST_PYTHON_MT)py$(PYVERSION)
+  --with-boost-python=boost_python-mt-py$(PYVERSION)
 
 %:
 	dh --with quilt $@
