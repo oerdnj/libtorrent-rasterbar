@@ -18,7 +18,7 @@ CONFIGUREFLAGS = \
   --with-boost-python=boost_python-mt-py$(PYVERSION)
 
 %:
-	dh --with quilt $@
+	dh $@
 
 override_dh_auto_configure:
 	# generate html docs
