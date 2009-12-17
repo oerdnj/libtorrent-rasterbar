@@ -1,3 +1,10 @@
+libtorrent-rasterbar (0.14.7-2) unstable; urgency=low
+
+  * r4072_fix_broadcast_socket_regression.patch: new patch, pulled from
+    upstream svn (r4072).
+
+ -- Cristian Greco <cristian@regolo.cc>  Thu, 17 Dec 2009 13:21:49 +0100
+
 libtorrent-rasterbar (0.14.7-1) unstable; urgency=low
 
   * New upstream version.
