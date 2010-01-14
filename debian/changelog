@@ -1,3 +1,12 @@
+libtorrent-rasterbar (0.14.8-1) unstable; urgency=low
+
+  * New upstream version.
+    - r4072_fix_broadcast_socket_regression.patch: dropped, included upstream.
+  * debian/control: add dependency on libgeoip-dev for -dev package.
+  * debian/watch: point download url to googlecode.
+
+ -- Cristian Greco <cristian@regolo.cc>  Thu, 14 Jan 2010 23:25:42 +0100
+
 libtorrent-rasterbar (0.14.7-2) unstable; urgency=low
 
   * r4072_fix_broadcast_socket_regression.patch: new patch, pulled from
