@@ -51,6 +51,7 @@ Depends: ${misc:Depends},
          libboost-date-time-dev,
          libssl-dev,
          zlib1g-dev,
+         libgeoip-dev,
          pkg-config
 Suggests: libtorrent-rasterbar-doc
 Description: Development files for libtorrent-rasterbar
