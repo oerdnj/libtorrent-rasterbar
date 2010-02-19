@@ -4,7 +4,7 @@ Title: Libtorrent-rasterbar Documentation
 Author: Arvid Norberg
 Abstract: This documentation describes mainly the API
  interface of libtorrent-rasterbar and contains other
- useful informations for developers.
+ useful information for developers.
 
 Format: HTML
 Index: /usr/share/doc/libtorrent-rasterbar-doc/html/index.html
