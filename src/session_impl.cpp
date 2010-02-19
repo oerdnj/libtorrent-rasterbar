@@ -149,6 +149,7 @@ namespace aux {
 #endif
 		  m_files(40)
 		, m_io_service()
+		, m_host_resolver(m_io_service)
 		, m_disk_thread(m_io_service)
 		, m_half_open(m_io_service)
 		, m_download_channel(m_io_service, peer_connection::download_channel)
@@ -612,6 +613,10 @@ namespace aux {
 		{
 			s.sock->set_option(v6only(v6_only), ec);
 #ifdef TORRENT_WINDOWS
+
+#ifndef PROTECTION_LEVEL_UNRESTRICTED
+#define PROTECTION_LEVEL_UNRESTRICTED 10
+#endif
 			// enable Teredo on windows
 			s.sock->set_option(v6_protection_level(PROTECTION_LEVEL_UNRESTRICTED), ec);
 #endif
@@ -1634,6 +1639,7 @@ namespace aux {
 					bool ret = t->unchoke_peer(*optimistic_unchoke_candidate->get());
 					TORRENT_ASSERT(ret);
 					(*optimistic_unchoke_candidate)->peer_info_struct()->optimistically_unchoked = true;
+					(*optimistic_unchoke_candidate)->peer_info_struct()->last_optimistically_unchoked = time_now();
 				}
 			}
 		}
@@ -2148,12 +2154,11 @@ namespace aux {
 		}
 #endif
 
-		for (std::list<std::pair<std::string, int> >::iterator i = m_dht_router_nodes.begin()
+		for (std::list<udp::endpoint>::iterator i = m_dht_router_nodes.begin()
 			, end(m_dht_router_nodes.end()); i != end; ++i)
 		{
 			m_dht->add_router_node(*i);
 		}
-		std::list<std::pair<std::string, int> >().swap(m_dht_router_nodes);
 
 		m_dht->start(startup_state);
 
@@ -2241,10 +2246,20 @@ namespace aux {
 
 	void session_impl::add_dht_router(std::pair<std::string, int> const& node)
 	{
-		// router nodes should be added before the DHT is started (and bootstrapped)
+		tcp::resolver::query q(node.first, boost::lexical_cast<std::string>(node.second));
+		m_host_resolver.async_resolve(q,
+			bind(&session_impl::on_dht_router_name_lookup, this, _1, _2));
+	}
+
+	void session_impl::on_dht_router_name_lookup(error_code const& e
+		, tcp::resolver::iterator host)
+	{
+		if (e || host == tcp::resolver::iterator()) return;
 		mutex_t::scoped_lock l(m_mutex);
-		if (m_dht) m_dht->add_router_node(node);
-		else m_dht_router_nodes.push_back(node);
+		// router nodes should be added before the DHT is started (and bootstrapped)
+		udp::endpoint ep(host->endpoint().address(), host->endpoint().port());
+		if (m_dht) m_dht->add_router_node(ep);
+		m_dht_router_nodes.push_back(ep);
 	}
 
 #endif
@@ -2322,7 +2337,7 @@ namespace aux {
 		if (limit <= 0)
 		{
 			limit = (std::numeric_limits<int>::max)();
-#ifndef TORRENT_WINDOWS
+#if TORRENT_USE_RLIMIT
 			rlimit l;
 			if (getrlimit(RLIMIT_NOFILE, &l) == 0
 				&& l.rlim_cur != RLIM_INFINITY)

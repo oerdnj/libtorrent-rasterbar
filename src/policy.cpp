@@ -307,10 +307,24 @@ namespace libtorrent
 			num_requests--;
 		}
 
-		if (busy_pieces.empty() || num_requests <= 0)
+		// if we don't have any potential busy blocks to request
+		// or if we have picked as many blocks as we should
+		// or if we already have outstanding requests, don't
+		// pick a busy piece
+		if (busy_pieces.empty()
+			|| num_requests <= 0
+			|| dq.size() + rq.size() > 0)
 		{
 			return;
 		}
+
+		// if the number of pieces we have + the number of pieces
+		// we're requesting from is less than the number of pieces
+		// in the torrent, there are still some unrequested pieces
+		// and we're not strictly speaking in end-game mode yet
+		if (p.num_have() + p.get_download_queue().size()
+				< t.torrent_file().num_pieces())
+			return;
 
 		// if all blocks has the same number of peers on them
 		// we want to pick a random block
@@ -328,6 +342,15 @@ namespace libtorrent
 #endif
 		TORRENT_ASSERT(p.is_requested(*i));
 		TORRENT_ASSERT(p.num_peers(*i) > 0);
+
+		ptime last_request = p.last_request(i->piece_index);
+		ptime now = time_now();
+
+		// don't re-request from a piece more often than once every 20 seconds
+		// TODO: make configurable
+		if (now - last_request < seconds(5))
+			return;
+
 		c.add_request(*i);
 	}
 

@@ -3,7 +3,7 @@ libtorrent API Documentation
 ============================
 
 :Author: Arvid Norberg, arvid@rasterbar.com
-:Version: 0.14.8
+:Version: 0.14.9
 
 .. contents:: Table of contents
   :depth: 2
@@ -5146,7 +5146,7 @@ libtorrent starts 2 or 3 threads.
 
  * The second thread is the disk I/O thread. All disk read and write operations
    are passed to this thread and messages are passed back to the main thread when
-   the operation compeltes. The disk thread also verifies the piece hashes.
+   the operation completes. The disk thread also verifies the piece hashes.
 
  * The third and forth threads are spawned by asio on systems that don't support
    non-blocking host name resolution to simulate non-blocking getaddrinfo().
