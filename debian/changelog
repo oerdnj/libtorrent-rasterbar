@@ -1,3 +1,12 @@
+libtorrent-rasterbar (0.14.9-1) unstable; urgency=low
+
+  * New upstream version.
+  * debian/libtorrent-rasterbar-doc.doc-base: fix spelling error.
+  * debian/patches/100_fix_html_docs.patch: refreshed.
+  * debian/control: bump up standards-version to 3.8.4 (no changes).
+
+ -- Cristian Greco <cristian@regolo.cc>  Sat, 20 Feb 2010 02:00:20 +0100
+
 libtorrent-rasterbar (0.14.8-1) unstable; urgency=low
 
   * New upstream version.
