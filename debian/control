@@ -17,7 +17,7 @@ Build-Depends: debhelper (>= 7.0.50),
                python-dev,
                python-docutils
 XS-Python-Version: current
-Standards-Version: 3.8.3
+Standards-Version: 3.8.4
 Vcs-Git: git://git.debian.org/git/collab-maint/libtorrent-rasterbar.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/libtorrent-rasterbar.git
 Homepage: http://www.rasterbar.com/products/libtorrent/index.html
