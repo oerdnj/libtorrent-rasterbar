@@ -4,6 +4,7 @@
 
 * download_
 * features_
+* contributing_
 * `building libtorrent`_
 * examples_
 * `api documentation`_
@@ -47,8 +48,9 @@ Bindings
 libtorrent
 ==========
 
-.. _download: http://sourceforge.net/project/showfiles.php?group_id=79942
+.. _download: http://code.google.com/p/libtorrent/downloads/list
 .. _features: features.html
+.. _contributing: contributing.html
 .. _`building libtorrent`: building.html
 .. _examples: examples.html
 .. _`api documentation`: manual.html
@@ -66,7 +68,7 @@ libtorrent
 .. _`who's using libtorrent?`: projects.html
 .. _`report bugs`: http://code.google.com/p/libtorrent/issues/entry
 .. _sourceforge page: http://www.sourceforge.net/projects/libtorrent
-.. _wiki: http://code.rasterbar.com/libtorrent
+.. _wiki: http://code.google.com/p/libtorrent/wiki/index
 
 .. _`ruby bindings`: http://libtorrent-ruby.rubyforge.org/
 .. _`python bindings`: python_binding.html

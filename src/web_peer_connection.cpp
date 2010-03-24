@@ -67,6 +67,7 @@ namespace libtorrent
 		, policy::peer* peerinfo)
 		: peer_connection(ses, t, s, remote, peerinfo)
 		, m_url(url)
+		, m_original_url(url)
 		, m_first_request(true)
 		, m_range_pos(0)
 	{
@@ -252,7 +253,7 @@ namespace libtorrent
 			request += "\r\nRange: bytes=";
 			request += to_string(size_type(r.piece) * info.piece_length() + r.start).elems;
 			request += "-";
-			request += to_string(r.piece * info.piece_length() + r.start + r.length - 1).elems;
+			request += to_string(size_type(r.piece) * info.piece_length() + r.start + r.length - 1).elems;
 			if (m_first_request || using_proxy)
 				request += "\r\nConnection: keep-alive";
 			request += "\r\n\r\n";

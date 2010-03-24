@@ -717,6 +717,7 @@ namespace libtorrent
 			return;
 
 		disconnect_all();
+		stop_announcing();
 
 		m_owning_storage->async_release_files();
 		if (!m_picker) m_picker.reset(new piece_picker());
@@ -942,10 +943,15 @@ namespace libtorrent
 		tracker_request req;
 		req.info_hash = m_torrent_file->info_hash();
 		req.pid = m_ses.get_peer_id();
-		req.downloaded = m_stat.total_payload_download();
+		req.downloaded = m_stat.total_payload_download() - m_total_failed_bytes;
 		req.uploaded = m_stat.total_payload_upload();
+		req.corrupt = m_total_failed_bytes;
 		req.left = bytes_left();
 		if (req.left == -1) req.left = 16*1024;
+
+		// exclude redundant bytes
+		req.downloaded -= m_total_redundant_bytes;
+
 		req.event = e;
 		error_code ec;
 		tcp::endpoint ep;
@@ -2461,6 +2467,7 @@ namespace libtorrent
 	void torrent::resolve_peer_country(boost::intrusive_ptr<peer_connection> const& p) const
 	{
 		if (m_resolving_country
+			|| is_local(p->remote().address())
 			|| p->has_country()
 			|| p->is_connecting()
 			|| p->is_queued()
@@ -2982,7 +2989,6 @@ namespace libtorrent
 			pi.piece_index = i->index;
 			queue.push_back(pi);
 		}
-	
 	}
 	
 	bool torrent::connect_to_peer(policy::peer* peerinfo)
@@ -3257,7 +3263,7 @@ namespace libtorrent
 		INVARIANT_CHECK;
 
 		int ret = 0;
-		// buils a list of all connected peers and sort it by 'disconnectability'.
+		// builds a list of all connected peers and sort it by 'disconnectability'.
 		std::vector<peer_connection*> peers(m_connections.size());
 		std::copy(m_connections.begin(), m_connections.end(), peers.begin());
 		std::sort(peers.begin(), peers.end(), boost::bind(&compare_disconnect_peer, _1, _2));
@@ -3386,7 +3392,7 @@ namespace libtorrent
 
 		// we have to call completed() before we start
 		// disconnecting peers, since there's an assert
-		// to make sure we're cleared the piece picker
+		// to make sure we've cleared the piece picker
 		if (is_seed()) completed();
 
 		// disconnect all seeds
@@ -4232,9 +4238,15 @@ namespace libtorrent
 		{
 			// tell the tracker that we're back
 			m_start_sent = false;
-			m_stat.clear();
-			announce_with_tracker();
 		}
+
+		// reset the stats, since from the tracker's
+		// point of view, this is a new session
+		m_total_failed_bytes = 0;
+		m_total_redundant_bytes = 0;
+		m_stat.clear();
+
+		announce_with_tracker();
 
 		// private torrents are never announced on LSD
 		// or on DHT, we don't need this timer.

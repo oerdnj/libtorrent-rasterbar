@@ -328,9 +328,10 @@ namespace libtorrent
 	{
 		INVARIANT_CHECK;
 
+		if (!m_supports_fast) return;
+
 		TORRENT_ASSERT(m_sent_handshake && m_sent_bitfield);
 		TORRENT_ASSERT(associated_torrent().lock()->valid_metadata());
-		TORRENT_ASSERT(m_supports_fast);
 
 		char msg[] = {0,0,0,5, msg_allowed_fast, 0, 0, 0, 0};
 		char* ptr = msg + 5;
@@ -1136,12 +1137,6 @@ namespace libtorrent
 	void bt_peer_connection::on_dht_port(int received)
 	{
 		INVARIANT_CHECK;
-
-		if (!m_supports_dht_port)
-		{
-			disconnect("got 'dht_port' message from peer that doesn't support it", 2);
-			return;
-		}
 
 		TORRENT_ASSERT(received > 0);
 		if (packet_size() != 3)
