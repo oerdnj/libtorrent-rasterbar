@@ -148,11 +148,6 @@ public:
     timer_queues_.clear();
   }
 
-  // Initialise the task. Nothing to do here.
-  void init_task()
-  {
-  }
-
   // Register a handle with the IO completion port.
   asio::error_code register_handle(
       HANDLE handle, asio::error_code& ec)
@@ -535,7 +530,7 @@ private:
           // Wake up next thread that is blocked on GetQueuedCompletionStatus.
           if (!::PostQueuedCompletionStatus(iocp_.handle, 0, 0, 0))
           {
-            last_error = ::GetLastError();
+            DWORD last_error = ::GetLastError();
             ec = asio::error_code(last_error,
                 asio::error::get_system_category());
             return 0;

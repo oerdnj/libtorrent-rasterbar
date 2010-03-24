@@ -398,7 +398,7 @@ namespace libtorrent
 			disconnect_all();
 	}
 
-	peer_request torrent::to_req(piece_block const& p)
+	peer_request torrent::to_req(piece_block const& p) const
 	{
 		int block_offset = p.block_index * m_block_size;
 		int block_size = (std::min)(torrent_file().piece_size(
@@ -469,6 +469,14 @@ namespace libtorrent
 		{
 			set_error("too many pieces in torrent");
 			pause();
+			return;
+		}
+
+		if (m_torrent_file->num_pieces() == 0)
+		{
+			set_error("torrent size is 0");
+			pause();
+			return;
 		}
 
 		// the shared_from_this() will create an intentional
@@ -477,8 +485,10 @@ namespace libtorrent
 			, m_save_path, m_ses.m_files, m_ses.m_disk_thread, m_storage_constructor
 			, m_storage_mode);
 		m_storage = m_owning_storage.get();
-		m_picker->init((std::max)(m_torrent_file->piece_length() / m_block_size, 1)
-			, int((m_torrent_file->total_size()+m_block_size-1)/m_block_size));
+		int blocks_per_piece = (m_torrent_file->piece_length() + block_size() - 1) / block_size();
+		int blocks_in_last_piece = ((m_torrent_file->total_size() % m_torrent_file->piece_length())
+			+ block_size() - 1) / block_size();
+		m_picker->init(blocks_per_piece, blocks_in_last_piece, m_torrent_file->num_pieces());
 
 		std::vector<std::string> const& url_seeds = m_torrent_file->url_seeds();
 		std::copy(url_seeds.begin(), url_seeds.end(), std::inserter(m_web_seeds
@@ -721,8 +731,11 @@ namespace libtorrent
 
 		m_owning_storage->async_release_files();
 		if (!m_picker) m_picker.reset(new piece_picker());
-		m_picker->init(m_torrent_file->piece_length() / m_block_size
-			, int((m_torrent_file->total_size()+m_block_size-1)/m_block_size));
+
+		int blocks_per_piece = (m_torrent_file->piece_length() + block_size() - 1) / block_size();
+		int blocks_in_last_piece = ((m_torrent_file->total_size() % m_torrent_file->piece_length())
+			+ block_size() - 1) / block_size();
+		m_picker->init(blocks_per_piece, blocks_in_last_piece, m_torrent_file->num_pieces());
 		// assume that we don't have anything
 		m_files_checked = false;
 		set_state(torrent_status::checking_resume_data);
@@ -1309,12 +1322,8 @@ namespace libtorrent
 				}
 #ifdef TORRENT_DEBUG
 				TORRENT_ASSERT(p->bytes_downloaded <= p->full_block_bytes);
-				int last_piece = m_torrent_file->num_pieces() - 1;
-				if (p->piece_index == last_piece
-					&& p->block_index == m_torrent_file->piece_size(last_piece) / block_size())
-					TORRENT_ASSERT(p->full_block_bytes == m_torrent_file->piece_size(last_piece) % block_size());
-				else
-					TORRENT_ASSERT(p->full_block_bytes == block_size());
+				TORRENT_ASSERT(p->full_block_bytes == to_req(piece_block(
+					p->piece_index, p->block_index)).length);
 #endif
 			}
 		}
@@ -1672,9 +1681,9 @@ namespace libtorrent
 		disconnect_all();
 		if (m_owning_storage.get())
 		{
-			m_storage->async_release_files(
-				bind(&torrent::on_files_released, shared_from_this(), _1, _2));
 			m_storage->abort_disk_io();
+			m_storage->async_release_files(
+				bind(&torrent::on_torrent_aborted, shared_from_this(), _1, _2));
 		}
 		
 		dequeue_torrent_check();
@@ -1712,6 +1721,12 @@ namespace libtorrent
 			alerts().post_alert(torrent_paused_alert(get_handle()));
 		}
 */
+	}
+
+	void torrent::on_torrent_aborted(int ret, disk_io_job const& j)
+	{
+		// the torrent should be completely shut down now, and the
+		// destructor has to be called from the main thread
 	}
 
 	void torrent::on_save_resume_data(int ret, disk_io_job const& j)
@@ -3262,6 +3277,8 @@ namespace libtorrent
 	{
 		INVARIANT_CHECK;
 
+		if (num == 0) return 0;
+
 		int ret = 0;
 		// builds a list of all connected peers and sort it by 'disconnectability'.
 		std::vector<peer_connection*> peers(m_connections.size());
@@ -3277,7 +3294,12 @@ namespace libtorrent
 			peer_connection* p = *i;
 			if (p->connected_time() > cut_off) continue;
 			++ret;
+			TORRENT_ASSERT(p->associated_torrent().lock().get() == this);
+#ifdef TORRENT_DEBUG
+			int num_conns = m_connections.size();
+#endif
 			p->disconnect("optimistic disconnect");
+			TORRENT_ASSERT(m_connections.size() == num_conns - 1);
 		}
 		return ret;
 	}
@@ -3745,11 +3767,11 @@ namespace libtorrent
 
 		if (valid_metadata())
 		{
-			TORRENT_ASSERT(m_abort || !m_picker || m_picker->num_pieces() == m_torrent_file->num_pieces());
+			TORRENT_ASSERT(m_abort || !m_error.empty() || !m_picker || m_picker->num_pieces() == m_torrent_file->num_pieces());
 		}
 		else
 		{
-			TORRENT_ASSERT(m_abort || !m_picker || m_picker->num_pieces() == 0);
+			TORRENT_ASSERT(m_abort || !m_error.empty() || !m_picker || m_picker->num_pieces() == 0);
 		}
 
 #ifdef TORRENT_EXPENSIVE_INVARIANT_CHECKS
@@ -3799,8 +3821,10 @@ namespace libtorrent
 		}
 			
 // This check is very expensive.
-		TORRENT_ASSERT(!valid_metadata() || m_block_size > 0);
-		TORRENT_ASSERT(!valid_metadata() || (m_torrent_file->piece_length() % m_block_size) == 0);
+		if (m_files_checked && valid_metadata())
+		{
+			TORRENT_ASSERT(m_block_size > 0);
+		}
 //		if (is_seed()) TORRENT_ASSERT(m_picker.get() == 0);
 	}
 #endif
@@ -3967,6 +3991,8 @@ namespace libtorrent
 		if (m_ses.m_auto_manage_time_scaler > 2)
 			m_ses.m_auto_manage_time_scaler = 2;
 		m_error.clear();
+		// if the error happened during initialization, try again now
+		if (!m_storage) init();
 		if (!checking_files && should_check_files())
 			queue_torrent_check();
 	}

@@ -44,13 +44,14 @@ public:
   task_io_service(asio::io_service& io_service)
     : asio::detail::service_base<task_io_service<Task> >(io_service),
       mutex_(),
-      task_(0),
+      task_(use_service<Task>(io_service)),
       task_interrupted_(true),
       outstanding_work_(0),
       stopped_(false),
       shutdown_(false),
       first_idle_thread_(0)
   {
+    handler_queue_.push(&task_handler_);
   }
 
   void init(size_t /*concurrency_hint*/)
@@ -73,20 +74,8 @@ public:
         h->destroy();
     }
 
-    // Reset to initial state.
-    task_ = 0;
-  }
-
-  // Initialise the task, if required.
-  void init_task()
-  {
-    asio::detail::mutex::scoped_lock lock(mutex_);
-    if (!shutdown_ && !task_)
-    {
-      task_ = &use_service<Task>(this->get_io_service());
-      handler_queue_.push(&task_handler_);
-      interrupt_one_idle_thread(lock);
-    }
+    // Reset handler queue to initial state.
+    handler_queue_.push(&task_handler_);
   }
 
   // Run the event loop until interrupted or no more work.
@@ -205,10 +194,10 @@ public:
     // Wake up a thread to execute the handler.
     if (!interrupt_one_idle_thread(lock))
     {
-      if (!task_interrupted_ && task_)
+      if (!task_interrupted_)
       {
         task_interrupted_ = true;
-        task_->interrupt();
+        task_.interrupt();
       }
     }
   }
@@ -257,7 +246,7 @@ private:
           // Run the task. May throw an exception. Only block if the handler
           // queue is empty and we have an idle_thread_info object, otherwise
           // we want to return as soon as possible.
-          task_->run(!more_handlers && !polling);
+          task_.run(!more_handlers && !polling);
         }
         else
         {
@@ -296,10 +285,10 @@ private:
   {
     stopped_ = true;
     interrupt_all_idle_threads(lock);
-    if (!task_interrupted_ && task_)
+    if (!task_interrupted_)
     {
       task_interrupted_ = true;
-      task_->interrupt();
+      task_.interrupt();
     }
   }
 
@@ -387,7 +376,7 @@ private:
   asio::detail::mutex mutex_;
 
   // The task to be run by this service.
-  Task* task_;
+  Task& task_;
 
   // Handler object to represent the position of the task in the queue.
   class task_handler

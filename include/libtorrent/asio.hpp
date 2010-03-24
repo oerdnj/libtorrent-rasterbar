@@ -90,7 +90,6 @@
 #include "asio/windows/basic_handle.hpp"
 #include "asio/windows/basic_random_access_handle.hpp"
 #include "asio/windows/basic_stream_handle.hpp"
-#include "asio/windows/overlapped_ptr.hpp"
 #include "asio/windows/random_access_handle.hpp"
 #include "asio/windows/random_access_handle_service.hpp"
 #include "asio/windows/stream_handle.hpp"

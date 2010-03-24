@@ -38,21 +38,19 @@ std::size_t read_at(SyncRandomAccessReadDevice& d,
     boost::uint64_t offset, const MutableBufferSequence& buffers,
     CompletionCondition completion_condition, asio::error_code& ec)
 {
-  ec = asio::error_code();
   asio::detail::consuming_buffers<
     mutable_buffer, MutableBufferSequence> tmp(buffers);
   std::size_t total_transferred = 0;
-  tmp.set_max_size(detail::adapt_completion_condition_result(
-        completion_condition(ec, total_transferred)));
   while (tmp.begin() != tmp.end())
   {
     std::size_t bytes_transferred = d.read_some_at(
         offset + total_transferred, tmp, ec);
     tmp.consume(bytes_transferred);
     total_transferred += bytes_transferred;
-    tmp.set_max_size(detail::adapt_completion_condition_result(
-          completion_condition(ec, total_transferred)));
+    if (completion_condition(ec, total_transferred))
+      return total_transferred;
   }
+  ec = asio::error_code();
   return total_transferred;
 }
 
@@ -153,9 +151,8 @@ namespace detail
     {
       total_transferred_ += bytes_transferred;
       buffers_.consume(bytes_transferred);
-      buffers_.set_max_size(detail::adapt_completion_condition_result(
-            completion_condition_(ec, total_transferred_)));
-      if (buffers_.begin() == buffers_.end())
+      if (completion_condition_(ec, total_transferred_)
+          || buffers_.begin() == buffers_.end())
       {
         handler_(ec, total_transferred_);
       }
@@ -217,18 +214,6 @@ inline void async_read_at(AsyncRandomAccessReadDevice& d,
 {
   asio::detail::consuming_buffers<
     mutable_buffer, MutableBufferSequence> tmp(buffers);
-
-  asio::error_code ec;
-  std::size_t total_transferred = 0;
-  tmp.set_max_size(detail::adapt_completion_condition_result(
-        completion_condition(ec, total_transferred)));
-  if (tmp.begin() == tmp.end())
-  {
-    d.get_io_service().post(detail::bind_handler(
-          handler, ec, total_transferred));
-    return;
-  }
-
   d.async_read_some_at(offset, tmp,
       detail::read_at_handler<AsyncRandomAccessReadDevice,
         MutableBufferSequence, CompletionCondition, ReadHandler>(
@@ -268,17 +253,15 @@ namespace detail
     {
       total_transferred_ += bytes_transferred;
       streambuf_.commit(bytes_transferred);
-      std::size_t max_size = detail::adapt_completion_condition_result(
-            completion_condition_(ec, total_transferred_));
-      std::size_t bytes_available = std::min<std::size_t>(512,
-          std::min<std::size_t>(max_size,
-            streambuf_.max_size() - streambuf_.size()));
-      if (bytes_available == 0)
+      if (streambuf_.size() == streambuf_.max_size()
+          || completion_condition_(ec, total_transferred_))
       {
         handler_(ec, total_transferred_);
       }
       else
       {
+        std::size_t bytes_available =
+          std::min<std::size_t>(512, streambuf_.max_size() - streambuf_.size());
         stream_.async_read_some_at(offset_ + total_transferred_,
             streambuf_.prepare(bytes_available), *this);
       }
@@ -330,19 +313,8 @@ inline void async_read_at(AsyncRandomAccessReadDevice& d,
     boost::uint64_t offset, asio::basic_streambuf<Allocator>& b,
     CompletionCondition completion_condition, ReadHandler handler)
 {
-  asio::error_code ec;
-  std::size_t total_transferred = 0;
-  std::size_t max_size = detail::adapt_completion_condition_result(
-        completion_condition(ec, total_transferred));
-  std::size_t bytes_available = std::min<std::size_t>(512,
-      std::min<std::size_t>(max_size, b.max_size() - b.size()));
-  if (bytes_available == 0)
-  {
-    d.get_io_service().post(detail::bind_handler(
-          handler, ec, total_transferred));
-    return;
-  }
-
+  std::size_t bytes_available =
+    std::min<std::size_t>(512, b.max_size() - b.size());
   d.async_read_some_at(offset, b.prepare(bytes_available),
       detail::read_at_streambuf_handler<AsyncRandomAccessReadDevice, Allocator,
         CompletionCondition, ReadHandler>(
