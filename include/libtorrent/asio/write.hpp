@@ -44,7 +44,7 @@ namespace asio {
  *
  * @li An error occurred.
  *
- * This operation is implemented in terms of zero or more calls to the stream's
+ * This operation is implemented in terms of one or more calls to the stream's
  * write_some function.
  *
  * @param s The stream to which the data is to be written. The type must support
@@ -83,7 +83,7 @@ std::size_t write(SyncWriteStream& s, const ConstBufferSequence& buffers);
  *
  * @li The completion_condition function object returns true.
  *
- * This operation is implemented in terms of zero or more calls to the stream's
+ * This operation is implemented in terms of one or more calls to the stream's
  * write_some function.
  *
  * @param s The stream to which the data is to be written. The type must support
@@ -96,16 +96,16 @@ std::size_t write(SyncWriteStream& s, const ConstBufferSequence& buffers);
  * @param completion_condition The function object to be called to determine
  * whether the write operation is complete. The signature of the function object
  * must be:
- * @code std::size_t completion_condition(
- *   // Result of latest write_some operation.
- *   const asio::error_code& error,
+ * @code bool completion_condition(
+ *   const asio::error_code& error, // Result of latest write_some
+ *                                           // operation.
  *
- *   // Number of bytes transferred so far.
- *   std::size_t bytes_transferred
+ *   std::size_t bytes_transferred           // Number of bytes transferred
+ *                                           // so far.
  * ); @endcode
- * A return value of 0 indicates that the write operation is complete. A
- * non-zero return value indicates the maximum number of bytes to be written on
- * the next call to the stream's write_some function.
+ * A return value of true indicates that the write operation is complete. False
+ * indicates that further calls to the stream's write_some function are
+ * required.
  *
  * @returns The number of bytes transferred.
  *
@@ -134,7 +134,7 @@ std::size_t write(SyncWriteStream& s, const ConstBufferSequence& buffers,
  *
  * @li The completion_condition function object returns true.
  *
- * This operation is implemented in terms of zero or more calls to the stream's
+ * This operation is implemented in terms of one or more calls to the stream's
  * write_some function.
  *
  * @param s The stream to which the data is to be written. The type must support
@@ -147,16 +147,16 @@ std::size_t write(SyncWriteStream& s, const ConstBufferSequence& buffers,
  * @param completion_condition The function object to be called to determine
  * whether the write operation is complete. The signature of the function object
  * must be:
- * @code std::size_t completion_condition(
- *   // Result of latest write_some operation.
- *   const asio::error_code& error,
+ * @code bool completion_condition(
+ *   const asio::error_code& error, // Result of latest write_some
+ *                                           // operation.
  *
- *   // Number of bytes transferred so far.
- *   std::size_t bytes_transferred
+ *   std::size_t bytes_transferred           // Number of bytes transferred
+ *                                           // so far.
  * ); @endcode
- * A return value of 0 indicates that the write operation is complete. A
- * non-zero return value indicates the maximum number of bytes to be written on
- * the next call to the stream's write_some function.
+ * A return value of true indicates that the write operation is complete. False
+ * indicates that further calls to the stream's write_some function are
+ * required.
  *
  * @param ec Set to indicate what error occurred, if any.
  *
@@ -177,7 +177,7 @@ std::size_t write(SyncWriteStream& s, const ConstBufferSequence& buffers,
  *
  * @li An error occurred.
  *
- * This operation is implemented in terms of zero or more calls to the stream's
+ * This operation is implemented in terms of one or more calls to the stream's
  * write_some function.
  *
  * @param s The stream to which the data is to be written. The type must support
@@ -206,7 +206,7 @@ std::size_t write(SyncWriteStream& s, basic_streambuf<Allocator>& b);
  *
  * @li The completion_condition function object returns true.
  *
- * This operation is implemented in terms of zero or more calls to the stream's
+ * This operation is implemented in terms of one or more calls to the stream's
  * write_some function.
  *
  * @param s The stream to which the data is to be written. The type must support
@@ -217,16 +217,16 @@ std::size_t write(SyncWriteStream& s, basic_streambuf<Allocator>& b);
  * @param completion_condition The function object to be called to determine
  * whether the write operation is complete. The signature of the function object
  * must be:
- * @code std::size_t completion_condition(
- *   // Result of latest write_some operation.
- *   const asio::error_code& error,
+ * @code bool completion_condition(
+ *   const asio::error_code& error, // Result of latest write_some
+ *                                           // operation.
  *
- *   // Number of bytes transferred so far.
- *   std::size_t bytes_transferred
+ *   std::size_t bytes_transferred           // Number of bytes transferred
+ *                                           // so far.
  * ); @endcode
- * A return value of 0 indicates that the write operation is complete. A
- * non-zero return value indicates the maximum number of bytes to be written on
- * the next call to the stream's write_some function.
+ * A return value of true indicates that the write operation is complete. False
+ * indicates that further calls to the stream's write_some function are
+ * required.
  *
  * @returns The number of bytes transferred.
  *
@@ -246,7 +246,7 @@ std::size_t write(SyncWriteStream& s, basic_streambuf<Allocator>& b,
  *
  * @li The completion_condition function object returns true.
  *
- * This operation is implemented in terms of zero or more calls to the stream's
+ * This operation is implemented in terms of one or more calls to the stream's
  * write_some function.
  *
  * @param s The stream to which the data is to be written. The type must support
@@ -257,16 +257,16 @@ std::size_t write(SyncWriteStream& s, basic_streambuf<Allocator>& b,
  * @param completion_condition The function object to be called to determine
  * whether the write operation is complete. The signature of the function object
  * must be:
- * @code std::size_t completion_condition(
- *   // Result of latest write_some operation.
- *   const asio::error_code& error,
+ * @code bool completion_condition(
+ *   const asio::error_code& error, // Result of latest write_some
+ *                                           // operation.
  *
- *   // Number of bytes transferred so far.
- *   std::size_t bytes_transferred
+ *   std::size_t bytes_transferred           // Number of bytes transferred
+ *                                           // so far.
  * ); @endcode
- * A return value of 0 indicates that the write operation is complete. A
- * non-zero return value indicates the maximum number of bytes to be written on
- * the next call to the stream's write_some function.
+ * A return value of true indicates that the write operation is complete. False
+ * indicates that further calls to the stream's write_some function are
+ * required.
  *
  * @param ec Set to indicate what error occurred, if any.
  *
@@ -300,7 +300,7 @@ std::size_t write(SyncWriteStream& s, basic_streambuf<Allocator>& b,
  *
  * @li An error occurred.
  *
- * This operation is implemented in terms of zero or more calls to the stream's
+ * This operation is implemented in terms of one or more calls to the stream's
  * async_write_some function.
  *
  * @param s The stream to which the data is to be written. The type must support
@@ -354,7 +354,7 @@ void async_write(AsyncWriteStream& s, const ConstBufferSequence& buffers,
  *
  * @li The completion_condition function object returns true.
  *
- * This operation is implemented in terms of zero or more calls to the stream's
+ * This operation is implemented in terms of one or more calls to the stream's
  * async_write_some function.
  *
  * @param s The stream to which the data is to be written. The type must support
@@ -368,16 +368,16 @@ void async_write(AsyncWriteStream& s, const ConstBufferSequence& buffers,
  * @param completion_condition The function object to be called to determine
  * whether the write operation is complete. The signature of the function object
  * must be:
- * @code std::size_t completion_condition(
- *   // Result of latest async_write_some operation.
- *   const asio::error_code& error,
+ * @code bool completion_condition(
+ *   const asio::error_code& error, // Result of latest write_some
+ *                                           // operation.
  *
- *   // Number of bytes transferred so far.
- *   std::size_t bytes_transferred
+ *   std::size_t bytes_transferred           // Number of bytes transferred
+ *                                           // so far.
  * ); @endcode
- * A return value of 0 indicates that the write operation is complete. A
- * non-zero return value indicates the maximum number of bytes to be written on
- * the next call to the stream's async_write_some function.
+ * A return value of true indicates that the write operation is complete. False
+ * indicates that further calls to the stream's async_write_some function are
+ * required.
  *
  * @param handler The handler to be called when the write operation completes.
  * Copies will be made of the handler as required. The function signature of the
@@ -422,7 +422,7 @@ void async_write(AsyncWriteStream& s, const ConstBufferSequence& buffers,
  *
  * @li An error occurred.
  *
- * This operation is implemented in terms of zero or more calls to the stream's
+ * This operation is implemented in terms of one or more calls to the stream's
  * async_write_some function.
  *
  * @param s The stream to which the data is to be written. The type must support
@@ -464,7 +464,7 @@ void async_write(AsyncWriteStream& s, basic_streambuf<Allocator>& b,
  *
  * @li The completion_condition function object returns true.
  *
- * This operation is implemented in terms of zero or more calls to the stream's
+ * This operation is implemented in terms of one or more calls to the stream's
  * async_write_some function.
  *
  * @param s The stream to which the data is to be written. The type must support
@@ -477,16 +477,16 @@ void async_write(AsyncWriteStream& s, basic_streambuf<Allocator>& b,
  * @param completion_condition The function object to be called to determine
  * whether the write operation is complete. The signature of the function object
  * must be:
- * @code std::size_t completion_condition(
- *   // Result of latest async_write_some operation.
- *   const asio::error_code& error,
+ * @code bool completion_condition(
+ *   const asio::error_code& error, // Result of latest write_some
+ *                                           // operation.
  *
- *   // Number of bytes transferred so far.
- *   std::size_t bytes_transferred
+ *   std::size_t bytes_transferred           // Number of bytes transferred
+ *                                           // so far.
  * ); @endcode
- * A return value of 0 indicates that the write operation is complete. A
- * non-zero return value indicates the maximum number of bytes to be written on
- * the next call to the stream's async_write_some function.
+ * A return value of true indicates that the write operation is complete. False
+ * indicates that further calls to the stream's async_write_some function are
+ * required.
  *
  * @param handler The handler to be called when the write operation completes.
  * Copies will be made of the handler as required. The function signature of the

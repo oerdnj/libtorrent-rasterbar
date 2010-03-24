@@ -72,6 +72,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/assert.hpp"
 #include "libtorrent/bitfield.hpp"
 
+#if TORRENT_COMPLETE_TYPES_REQUIRED
+#include "libtorrent/peer_connection.hpp"
+#endif
+
 namespace libtorrent
 {
 #if defined(TORRENT_VERBOSE_LOGGING) || defined(TORRENT_LOGGING)
@@ -492,7 +496,7 @@ namespace libtorrent
 		}
 
 		int block_size() const { TORRENT_ASSERT(m_block_size > 0); return m_block_size; }
-		peer_request to_req(piece_block const& p);
+		peer_request to_req(piece_block const& p) const;
 
 		void disconnect_all();
 		int disconnect_peers(int num);
@@ -651,6 +655,7 @@ namespace libtorrent
 
 		void on_files_deleted(int ret, disk_io_job const& j);
 		void on_files_released(int ret, disk_io_job const& j);
+		void on_torrent_aborted(int ret, disk_io_job const& j);
 		void on_torrent_paused(int ret, disk_io_job const& j);
 		void on_storage_moved(int ret, disk_io_job const& j);
 		void on_save_resume_data(int ret, disk_io_job const& j);

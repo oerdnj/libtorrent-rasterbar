@@ -32,20 +32,18 @@ template <typename SyncWriteStream, typename ConstBufferSequence,
 std::size_t write(SyncWriteStream& s, const ConstBufferSequence& buffers,
     CompletionCondition completion_condition, asio::error_code& ec)
 {
-  ec = asio::error_code();
   asio::detail::consuming_buffers<
     const_buffer, ConstBufferSequence> tmp(buffers);
   std::size_t total_transferred = 0;
-  tmp.set_max_size(detail::adapt_completion_condition_result(
-        completion_condition(ec, total_transferred)));
   while (tmp.begin() != tmp.end())
   {
     std::size_t bytes_transferred = s.write_some(tmp, ec);
     tmp.consume(bytes_transferred);
     total_transferred += bytes_transferred;
-    tmp.set_max_size(detail::adapt_completion_condition_result(
-          completion_condition(ec, total_transferred)));
+    if (completion_condition(ec, total_transferred))
+      return total_transferred;
   }
+  ec = asio::error_code();
   return total_transferred;
 }
 
@@ -127,9 +125,8 @@ namespace detail
     {
       total_transferred_ += bytes_transferred;
       buffers_.consume(bytes_transferred);
-      buffers_.set_max_size(detail::adapt_completion_condition_result(
-            completion_condition_(ec, total_transferred_)));
-      if (buffers_.begin() == buffers_.end())
+      if (completion_condition_(ec, total_transferred_)
+          || buffers_.begin() == buffers_.end())
       {
         handler_(ec, total_transferred_);
       }
@@ -186,18 +183,6 @@ inline void async_write(AsyncWriteStream& s, const ConstBufferSequence& buffers,
 {
   asio::detail::consuming_buffers<
     const_buffer, ConstBufferSequence> tmp(buffers);
-
-  asio::error_code ec;
-  std::size_t total_transferred = 0;
-  tmp.set_max_size(detail::adapt_completion_condition_result(
-        completion_condition(ec, total_transferred)));
-  if (tmp.begin() == tmp.end())
-  {
-    s.get_io_service().post(detail::bind_handler(
-          handler, ec, total_transferred));
-    return;
-  }
-
   s.async_write_some(tmp,
       detail::write_handler<AsyncWriteStream, ConstBufferSequence,
         CompletionCondition, WriteHandler>(

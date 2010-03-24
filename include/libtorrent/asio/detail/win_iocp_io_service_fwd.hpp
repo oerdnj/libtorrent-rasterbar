@@ -36,7 +36,6 @@ namespace asio {
 namespace detail {
 
 class win_iocp_io_service;
-class win_iocp_overlapped_ptr;
 
 } // namespace detail
 } // namespace asio
