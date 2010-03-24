@@ -1,3 +1,9 @@
+libtorrent-rasterbar (0.14.10-1) unstable; urgency=low
+
+  * New upstream version.
+
+ -- Cristian Greco <cristian@regolo.cc>  Wed, 24 Mar 2010 18:23:04 +0100
+
 libtorrent-rasterbar (0.14.9-1) unstable; urgency=low
 
   * New upstream version.
