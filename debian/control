@@ -14,9 +14,9 @@ Build-Depends: debhelper (>= 7.0.50),
                zlib1g-dev,
                libgeoip-dev,
                pkg-config,
-               python-dev,
+               python-all-dev (>= 2.3.5-11),
                python-docutils
-XS-Python-Version: current
+XS-Python-Version: all
 Standards-Version: 3.8.4
 Vcs-Git: git://git.debian.org/git/collab-maint/libtorrent-rasterbar.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/libtorrent-rasterbar.git

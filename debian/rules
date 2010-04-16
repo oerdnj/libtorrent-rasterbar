@@ -1,8 +1,8 @@
 #!/usr/bin/make -f
 
-PYVERSION = $(shell pyversions -v -r | tr -d . )
+PYVERSIONS=$(shell pyversions -v -r)
 
-CONFIGUREFLAGS = \
+CONFIGURE_ARGS = \
   --enable-static \
   --enable-shared \
   --disable-debug \
@@ -13,19 +13,48 @@ CONFIGUREFLAGS = \
   --with-zlib=system \
   --with-libgeoip=system \
   --disable-examples \
-  --disable-tests \
-  --enable-python-binding \
-  --with-boost-python=boost_python-mt-py$(PYVERSION)
+  --disable-tests
 
 %:
 	dh $@
 
-override_dh_auto_configure:
-	# generate html docs
-	(cd docs/ && $(MAKE) -f makefile)
-	dh_auto_configure -- PTHREAD_LIBS="-lpthread" CFLAGS="$(CFLAGS)" \
-		PYTHON_INSTALL_PARAMS="--root=$(CURDIR)/debian/tmp --install-layout=deb" \
-		LDFLAGS="-Wl,--as-needed -lrt" $(CONFIGUREFLAGS)
+override_dh_auto_configure-nopy:
+	dh_auto_configure --builddirectory build -- PTHREAD_LIBS="-lpthread" LDFLAGS="-Wl,--as-needed -lrt" \
+		$(CONFIGURE_ARGS)
+
+override_dh_auto_configure-%:
+	dh_auto_configure --builddirectory build-py$* -- PTHREAD_LIBS="-lpthread" LDFLAGS="-Wl,--as-needed -lrt" \
+		PYTHON=python$* PYTHON_INSTALL_PARAMS="--root=$(CURDIR)/debian/tmp --install-layout=deb" \
+		--enable-python-binding --with-boost-python=boost_python-mt-py$(subst .,,$*) \
+		$(CONFIGURE_ARGS)
+	mv build-py$*/bindings/python build/bindings/python$*
+	cp -r bindings/python/src build/bindings/python$*
+
+override_dh_auto_configure: override_dh_auto_configure-nopy $(PYVERSIONS:%=override_dh_auto_configure-%)
+
+
+override_dh_auto_build-nopy:
+	dh_auto_build --builddirectory build
+	$(MAKE) -C docs/ -f makefile
+
+override_dh_auto_build-%:
+	dh_auto_build --builddirectory build/bindings/python$*
+
+override_dh_auto_build: override_dh_auto_build-nopy $(PYVERSIONS:%=override_dh_auto_build-%)
+
+
+override_dh_auto_install-nopy:
+	dh_auto_install --builddirectory build
+
+override_dh_auto_install-%:
+	dh_auto_install --builddirectory build/bindings/python$*
+
+override_dh_auto_install: override_dh_auto_install-nopy $(PYVERSIONS:%=override_dh_auto_install-%)
+
+
+override_dh_auto_clean:
+	rm -rf build build-py*
+	dh_auto_clean
 
 override_dh_compress:
 	dh_compress -Xcpp
