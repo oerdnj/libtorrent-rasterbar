@@ -1,3 +1,11 @@
+libtorrent-rasterbar (0.14.10-2) unstable; urgency=low
+
+  * debian/{control,rules}: build python-libtorrent for all supported
+    python versions. (Closes: #578078)
+  * debian/README.source: remove now unneeded file.
+
+ -- Cristian Greco <cristian@regolo.cc>  Sat, 17 Apr 2010 00:19:00 +0200
+
 libtorrent-rasterbar (0.14.10-1) unstable; urgency=low
 
   * New upstream version.
