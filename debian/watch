@@ -1,3 +1,5 @@
 version=3
-http://code.google.com/p/libtorrent/downloads/list \
-http://libtorrent.googlecode.com/files/libtorrent-rasterbar-(.*)\.tar\.gz
+opts=\
+downloadurlmangle=s|.*[?]name=(.*?)&.*|http://libtorrent.googlecode.com/files/$1|,\
+filenamemangle=s|[^/]+[?]name=(.*?)&.*|$1| \
+http://code.google.com/p/libtorrent/downloads/detail[?]name=libtorrent-rasterbar-([0-9.]+).tar.gz&.*
