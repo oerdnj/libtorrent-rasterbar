@@ -16,7 +16,7 @@ CONFIGURE_ARGS = \
   --disable-tests
 
 %:
-	dh $@
+	dh $@ --parallel
 
 override_dh_auto_configure-nopy:
 	dh_auto_configure --builddirectory build -- PTHREAD_LIBS="-lpthread" LDFLAGS="-Wl,--as-needed -lrt" \
