@@ -1,5 +1,2 @@
 version=3
-opts=\
-downloadurlmangle=s|.*[?]name=(.*?)&.*|http://libtorrent.googlecode.com/files/$1|,\
-filenamemangle=s|[^/]+[?]name=(.*?)&.*|$1| \
-http://code.google.com/p/libtorrent/downloads/detail[?]name=libtorrent-rasterbar-([0-9.]+).tar.gz&.*
+http://googlecode.debian.net/p/libtorrent/libtorrent-rasterbar-([\d\.]*)\.tar\.gz
