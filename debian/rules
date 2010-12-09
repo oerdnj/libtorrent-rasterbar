@@ -3,29 +3,19 @@
 PYVERSIONS=$(shell pyversions -v -r)
 
 CONFIGURE_ARGS = \
-  --enable-static \
-  --enable-shared \
-  --disable-debug \
-  --with-logging=none \
-  --with-dht=on \
-  --with-encryption=on \
-  --with-ssl \
-  --with-zlib=system \
-  --with-libgeoip=system \
-  --disable-examples \
-  --disable-tests
+  --with-zlib \
+  --with-libgeoip
 
 %:
 	dh $@ --parallel
 
 override_dh_auto_configure-nopy:
-	dh_auto_configure --builddirectory build -- PTHREAD_LIBS="-lpthread" LDFLAGS="-Wl,--as-needed -lrt" \
+	dh_auto_configure --builddirectory build -- LDFLAGS="-Wl,--as-needed" \
 		$(CONFIGURE_ARGS)
 
 override_dh_auto_configure-%:
-	dh_auto_configure --builddirectory build-py$* -- PTHREAD_LIBS="-lpthread" LDFLAGS="-Wl,--as-needed -lrt" \
-		PYTHON=python$* PYTHON_INSTALL_PARAMS="--root=$(CURDIR)/debian/tmp --install-layout=deb" \
-		--enable-python-binding --with-boost-python=boost_python-mt-py$(subst .,,$*) \
+	dh_auto_configure --builddirectory build-py$* -- LDFLAGS="-Wl,--as-needed" \
+		PYTHON=python$* --enable-python-binding --with-boost-python=boost_python-mt-py$(subst .,,$*) \
 		$(CONFIGURE_ARGS)
 	mv build-py$*/bindings/python build/bindings/python$*
 	cp -r bindings/python/src build/bindings/python$*
