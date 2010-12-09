@@ -1,3 +1,25 @@
+libtorrent-rasterbar (0.15.4-1) experimental; urgency=low
+
+  * New upstream version.
+    - upload to experimental: the library is pretty stable, but will be
+      uploaded to unstable only after the release of Squeeze and the
+      update of boost-defaults to boost1.44 (or higher).
+  * debian/control:
+    - new package libtorrent-rasterbar6 (bump up library soname).
+    - rework boost build-deps, drop unneeded.
+    - bump up Standards-Version to 3.9.1.
+  * debian/rules:
+    - rework (update) configuration options.
+    - bump debhelper build-dep to (>= 7.4.10) and enable parallel
+      build support.
+  * debian/copyright:
+    - updated to reflect upstream changes.
+    - fix copyright-refers-to-deprecated-bsd-license-file.
+  * debian/patches/100_fix_html_docs.patch: refreshed.
+  * debian/watch: use a simplified regexp.
+
+ -- Cristian Greco <cristian@regolo.cc>  Fri, 10 Dec 2010 00:18:46 +0100
+
 libtorrent-rasterbar (0.14.10-2) unstable; urgency=low
 
   * debian/{control,rules}: build python-libtorrent for all supported
