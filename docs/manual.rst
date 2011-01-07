@@ -3,7 +3,7 @@ libtorrent API Documentation
 ============================
 
 :Author: Arvid Norberg, arvid@rasterbar.com
-:Version: 0.15.4
+:Version: 0.15.5
 
 .. contents:: Table of contents
   :depth: 2
@@ -121,14 +121,11 @@ The ``session`` class has the following synopsis::
 		{
 			save_settings = 0x001,
 			save_dht_settings = 0x002,
-			save_dht_proxy = 0x004,
 			save_dht_state = 0x008,
 			save_i2p_proxy = 0x010,
 			save_encryption_settings = 0x020,
-			save_peer_proxy = 0x040,
-			save_web_proxy = 0x080,
-			save_tracker_proxy = 0x100,
 			save_as_map = 0x200,
+			save_proxy = 0x1c4
 		};
 
 		void load_state(lazy_entry const& e);
@@ -182,13 +179,8 @@ The ``session`` class has the following synopsis::
 		void set_max_half_open_connections(int limit);
 		int max_half_open_connections() const;
 
-		void set_peer_proxy(proxy_settings const& s);
-		void set_web_seed_proxy(proxy_settings const& s);
-		void set_tracker_proxy(proxy_settings const& s);
-
-		proxy_settings const& peer_proxy() const;
-		proxy_settings const& web_seed_proxy() const;
-		proxy_settings const& tracker_proxy() const;
+		void set_proxy(proxy_settings const& s);
+		proxy_settings proxy() const;
 
 		int num_uploads() const;
 		int num_connections() const;
@@ -309,14 +301,11 @@ torrents). These are the possible flags. A flag that's set, means those settings
 	{
 		save_settings = 0x001,
 		save_dht_settings = 0x002,
-		save_dht_proxy = 0x004,
 		save_dht_state = 0x008,
 		save_i2p_proxy = 0x010,
 		save_encryption_settings = 0x020,
-		save_peer_proxy = 0x040,
-		save_web_proxy = 0x080,
-		save_tracker_proxy = 0x100,
 		save_as_map = 0x200,
+		save_proxy = 0x1c4
 	};
 
 
@@ -1051,46 +1040,18 @@ See session_settings_ and pe_settings_ for more information on available
 options.
 
 
-set_peer_proxy() set_web_seed_proxy() set_tracker_proxy() set_dht_proxy()
--------------------------------------------------------------------------
+set_proxy() proxy()
+-------------------
 
 	::
 
-		void set_peer_proxy(proxy_settings const& s);
-		void set_web_seed_proxy(proxy_settings const& s);
-		void set_tracker_proxy(proxy_settings const& s);
-		void set_dht_proxy(proxy_settings const& s);
+		void set_proxy(proxy_settings const& s);
+		proxy_settings const& proxy() const;
 
-The ``set_dht_proxy`` is not available when DHT is disabled. These functions
-sets the proxy settings for different kinds of connections, bittorrent peers,
-web seeds, trackers and the DHT traffic.
-
-``set_peer_proxy`` affects regular bittorrent peers. ``set_web_seed_proxy``
-affects only web seeds. see `HTTP seeding`_.
-
-``set_tracker_proxy`` only affects HTTP tracker connections (UDP tracker
-connections are affected if the given proxy supports UDP, e.g. SOCKS5).
-
-``set_dht_proxy`` affects the DHT messages. Since they are sent over UDP,
-it only has any effect if the proxy supports UDP.
+These functions sets and queries the proxy settings to be used for the session.
 
 For more information on what settings are available for proxies, see
 `proxy_settings`_.
-
-
-peer_proxy() web_seed_proxy() tracker_proxy() dht_proxy()
----------------------------------------------------------
-
-	::
-
-		proxy_settings const& peer_proxy() const;
-		proxy_settings const& web_seed_proxy() const;
-		proxy_settings const& tracker_proxy() const;
-		proxy_settings const& dht_proxy() const;
-
-These functions returns references to their respective current settings.
-
-The ``dht_proxy`` is not available when DHT is disabled.
 
 
 start_dht() stop_dht() set_dht_settings() dht_state() is_dht_running()
@@ -2716,7 +2677,14 @@ fast resume data, and then close it down. Make sure to not `remove_torrent()`_ b
 the `save_resume_data_alert`_ though. There's no need to pause when saving intermittent resume data.
 
 .. warning:: If you pause every torrent individually instead of pausing the session, every torrent
-	will have its paused state saved in the resume data!
+	will have its paused state saved in the resume data! The paused state can however be overridden
+	when loading the resume data.
+
+.. warning:: The resume data contains the modification timestamps for all files. If one file has
+	been modified when the torrent is added again, the will be rechecked. When shutting down, make
+	sure to flush the disk cache before saving the resume data. This will make sure that the file
+	timestamps are up to date and won't be modified after saving the resume data. The recommended way
+	to do this is to pause the torrent, which will flush the cache and disconnect all peers.
 
 .. note:: It is typically a good idea to save resume data whenever a torrent is completed or paused. In those
 	cases you don't need to pause the torrent or the session, since the torrent will do no more writing
@@ -3254,6 +3222,7 @@ It contains the following fields::
 			optimistic_unchoke = 0x800,
 			snubbed = 0x1000,
 			upload_only = 0x2000,
+			endgame_mode = 0x4000,
 			rc4_encrypted = 0x100000,
 			plaintext_encrypted = 0x200000
 		};
@@ -3399,6 +3368,11 @@ any combination of the enums above. The following table describes each flag:
 |                         | or implicitly (by becoming a seed) told us that it    |
 |                         | will not downloading anything more, regardless of     |
 |                         | which pieces we have.                                 |
++-------------------------+-------------------------------------------------------+
+| ``endgame_mode``        | This means the last time this peer picket a piece,    |
+|                         | it could not pick as many as it wanted because there  |
+|                         | were not enough free ones. i.e. all pieces this peer  |
+|                         | has were already requested from other peers.          |
 +-------------------------+-------------------------------------------------------+
 
 __ extension_protocol.html
@@ -3680,6 +3654,9 @@ session_settings
 		float share_ratio_limit;
 		float seed_time_ratio_limit;
 		int seed_time_limit;
+		int peer_turnover_interval;
+		float peer_turnover;
+		float peer_turnover_cutoff;
 		bool close_redundant_connections;
 
 		int auto_scrape_interval;
@@ -4026,6 +4003,19 @@ for considering a seeding torrent to have met the seed limit criteria. See queui
 ``seed_time_limit`` is the limit on the time a torrent has been an active seed
 (specified in seconds) before it is considered having met the seed limit criteria.
 See queuing_.
+
+``peer_turnover_interval`` controls a feature where libtorrent periodically can disconnect
+the least useful peers in the hope of connecting to better ones. This settings controls
+the interval of this optimistic disconnect. It defaults to every 5 minutes, and
+is specified in seconds.
+
+``peer_turnover`` Is the fraction of the peers that are disconnected. This is
+a float where 1.f represents all peers an 0 represents no peers. It defaults to
+4% (i.e. 0.04f)
+
+``peer_turnover_cutoff`` is the cut off trigger for optimistic unchokes. If a torrent
+has more than this fraction of its connection limit, the optimistic unchoke is
+triggered. This defaults to 90% (i.e. 0.9f).
 
 ``close_redundant_connections`` specifies whether libtorrent should close
 connections where both ends have no utility in keeping the connection open.

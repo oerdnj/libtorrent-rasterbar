@@ -128,7 +128,7 @@ namespace libtorrent
 		// be extra nice on the hard drive when running
 		// on embedded devices. This might slow down
 		// torrent checking
-		set.file_checks_delay_per_block = 15;
+		set.file_checks_delay_per_block = 5;
 
 		// only have 4 files open at a time
 		set.file_pool_size = 4;
@@ -698,6 +698,19 @@ namespace libtorrent
 		return m_impl->settings();
 	}
 
+	void session::set_proxy(proxy_settings const& s)
+	{
+		session_impl::mutex_t::scoped_lock l(m_impl->m_mutex);
+		m_impl->set_proxy(s);
+	}
+
+	proxy_settings const& session::proxy() const
+	{
+		session_impl::mutex_t::scoped_lock l(m_impl->m_mutex);
+		return m_impl->proxy();
+	}
+
+#ifndef TORRENT_NO_DEPRECATE
 	void session::set_peer_proxy(proxy_settings const& s)
 	{
 		session_impl::mutex_t::scoped_lock l(m_impl->m_mutex);
@@ -748,6 +761,7 @@ namespace libtorrent
 		return m_impl->dht_proxy();
 	}
 #endif
+#endif // TORRENT_NO_DEPRECATE
 
 	int session::max_uploads() const
 	{

@@ -1111,15 +1111,18 @@ namespace libtorrent
 			TORRENT_ASSERT(p->storage == j.storage);
 		}
 
-		hasher ctx;
-
-		for (int i = 0; i < blocks_in_piece; ++i)
+		if (!m_settings.disable_hash_checks)
 		{
-			TORRENT_ASSERT(p->blocks[i].buf);
-			ctx.update((char const*)p->blocks[i].buf, (std::min)(piece_size, m_block_size));
-			piece_size -= m_block_size;
+			hasher ctx;
+
+			for (int i = 0; i < blocks_in_piece; ++i)
+			{
+				TORRENT_ASSERT(p->blocks[i].buf);
+				ctx.update((char const*)p->blocks[i].buf, (std::min)(piece_size, m_block_size));
+				piece_size -= m_block_size;
+			}
+			h = ctx.final();
 		}
-		h = ctx.final();
 
 		ret = copy_from_piece(p, hit, j, l);
 		TORRENT_ASSERT(ret > 0);
@@ -1158,7 +1161,7 @@ namespace libtorrent
 		int block = j.offset / m_block_size;
 		int block_offset = j.offset & (m_block_size-1);
 		int size = j.buffer_size;
-		int min_blocks_to_read = block_offset > 0 ? 2 : 1;
+		int min_blocks_to_read = block_offset > 0 && (size > m_block_size - block_offset) ? 2 : 1;
 		TORRENT_ASSERT(size <= m_block_size);
 		int start_block = block;
 		// if we have to read more than one block, and
@@ -1166,6 +1169,12 @@ namespace libtorrent
 		// for the second block
 		if (p->blocks[start_block].buf != 0 && min_blocks_to_read > 1)
 			++start_block;
+
+#ifdef TORRENT_DEBUG
+		int piece_size = j.storage->info()->piece_size(j.piece);
+		int blocks_in_piece = (piece_size + m_block_size - 1) / m_block_size;
+		TORRENT_ASSERT(start_block < blocks_in_piece);
+#endif
 
 		return p->blocks[start_block].buf != 0;
 	}
@@ -1185,18 +1194,21 @@ namespace libtorrent
 		int block_offset = j.offset & (m_block_size-1);
 		int buffer_offset = 0;
 		int size = j.buffer_size;
-		int min_blocks_to_read = block_offset > 0 ? 2 : 1;
+		int min_blocks_to_read = block_offset > 0 && (size > m_block_size - block_offset) ? 2 : 1;
 		TORRENT_ASSERT(size <= m_block_size);
 		int start_block = block;
 		if (p->blocks[start_block].buf != 0 && min_blocks_to_read > 1)
 			++start_block;
+
+		int piece_size = j.storage->info()->piece_size(j.piece);
+		int blocks_in_piece = (piece_size + m_block_size - 1) / m_block_size;
+		TORRENT_ASSERT(start_block < blocks_in_piece);
+
 		// if block_offset > 0, we need to read two blocks, and then
 		// copy parts of both, because it's not aligned to the block
 		// boundaries
 		if (p->blocks[start_block].buf == 0)
 		{
-			int piece_size = j.storage->info()->piece_size(j.piece);
-			int blocks_in_piece = (piece_size + m_block_size - 1) / m_block_size;
 			int end_block = start_block;
 			while (end_block < blocks_in_piece && p->blocks[end_block].buf == 0) ++end_block;
 
@@ -1834,7 +1846,10 @@ namespace libtorrent
 					INVARIANT_CHECK;
 
 					if (in_use() >= m_settings.cache_size)
+					{
 						flush_cache_blocks(l, in_use() - m_settings.cache_size + 1, m_read_pieces.end());
+						if (test_error(j)) break;
+					}
 
 					cache_t::iterator p
 						= find_cached_piece(m_pieces, j, l);
@@ -1861,6 +1876,7 @@ namespace libtorrent
 						// we might just have created a contiguous range
 						// that meets the requirement to be flushed. try it
 						flush_contiguous_blocks(p, l, m_settings.write_cache_line_size);
+						test_error(j);
 					}
 					else
 					{
@@ -1875,6 +1891,8 @@ namespace libtorrent
 								test_error(j);
 								break;
 							}
+							// we successfully wrote the block. Ignore previous errors
+							j.storage->clear_error();
 							break;
 						}
 					}
@@ -1884,7 +1902,10 @@ namespace libtorrent
 					holder.release();
 
 					if (in_use() > m_settings.cache_size)
+					{
 						flush_cache_blocks(l, in_use() - m_settings.cache_size, m_read_pieces.end());
+						test_error(j);
+					}
 
 					break;
 				}
@@ -2089,7 +2110,7 @@ namespace libtorrent
 						ret = piece_manager::fatal_disk_error;
 						break;
 					}
-					TORRENT_ASSERT(ret != -2 || !j.str.empty());
+					TORRENT_ASSERT(ret != -2 || j.error);
 					
 					// if the check is not done, add it at the end of the job queue
 					if (ret == piece_manager::need_full_check)
@@ -2143,7 +2164,7 @@ namespace libtorrent
 #ifndef BOOST_NO_EXCEPTIONS
 			try {
 #endif
-				TORRENT_ASSERT(ret != -2 || !j.str.empty()
+				TORRENT_ASSERT(ret != -2 || j.error
 					|| j.action == disk_io_job::hash);
 #if TORRENT_DISK_STATS
 				if ((j.action == disk_io_job::read || j.action == disk_io_job::read_and_hash)

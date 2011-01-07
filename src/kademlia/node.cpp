@@ -403,6 +403,22 @@ void node_impl::on_announce(msg const& m, msg& reply)
 	// the table get a chance to add it.
 	m_table.node_seen(m.id, m.addr);
 
+	if (!m_map.empty() && m_map.size() >= 3000)
+	{
+		// we need to remove some. Remove the ones with the
+		// fewest peers
+		int num_peers = m_map.begin()->second.peers.size();
+		table_t::iterator candidate = m_map.begin();
+		for (table_t::iterator i = m_map.begin()
+			, end(m_map.end()); i != end; ++i)
+		{
+			if (i->second.peers.size() > num_peers) continue;
+			if (i->first == m.info_hash) continue;
+			num_peers = i->second.peers.size();
+			candidate = i;
+		}
+		m_map.erase(candidate);
+	}
 	torrent_entry& v = m_map[m.info_hash];
 	peer_entry e;
 	e.addr = tcp::endpoint(m.addr.address(), m.port);
@@ -464,6 +480,22 @@ bool node_impl::on_find(msg const& m, std::vector<tcp::endpoint>& peers) const
 	return true;
 }
 
+std::string address_to_bytes(address const& a)
+{
+#if TORRENT_USE_IPV6
+	if (a.is_v6())
+	{
+		address_v6::bytes_type b = a.to_v6().to_bytes();
+		return std::string((char*)&b[0], b.size());
+	}
+	else
+#endif
+	{
+		address_v4::bytes_type b = a.to_v4().to_bytes();
+		return std::string((char*)&b[0], b.size());
+	}
+}
+
 void node_impl::incoming_request(msg const& m)
 {
 	msg reply;
@@ -518,7 +550,13 @@ void node_impl::incoming_request(msg const& m)
 		TORRENT_ASSERT(false);
 	};
 
+	// if this nodes ID doesn't match its IP, tell it what
+	// its IP is
+	if (!verify_id(m.id, m.addr.address()))
+		reply.ip = address_to_bytes(m.addr.address());
+
 	m_table.heard_about(m.id, m.addr);
+
 	m_rpc.reply(reply);
 }
 

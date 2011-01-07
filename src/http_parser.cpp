@@ -90,6 +90,9 @@ namespace libtorrent
 		}
 
 		char const* pos = recv_buffer.begin + m_recv_pos;
+
+restart_response:
+
 		if (m_state == read_status)
 		{
 			TORRENT_ASSERT(!m_finished);
@@ -159,13 +162,20 @@ namespace libtorrent
 				std::string::size_type separator = line.find(':');
 				if (separator == std::string::npos)
 				{
+					if (m_status_code == 100)
+					{
+						// for 100 Continue, we need to read another response header
+						// before reading the body
+						m_state = read_status;
+						goto restart_response;
+					}
 					// this means we got a blank line,
 					// the header is finished and the body
 					// starts.
 					m_state = read_body;
 					// if this is a request (not a response)
 					// we're done once we reach the end of the headers
-					if (!m_method.empty()) m_finished = true;
+//					if (!m_method.empty()) m_finished = true;
 					m_body_start_pos = m_recv_pos;
 					break;
 				}
@@ -255,6 +265,7 @@ namespace libtorrent
 	
 	void http_parser::reset()
 	{
+		m_method.clear();
 		m_recv_pos = 0;
 		m_body_start_pos = 0;
 		m_status_code = -1;

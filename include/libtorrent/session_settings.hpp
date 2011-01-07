@@ -121,7 +121,7 @@ namespace libtorrent
 			, upnp_ignore_nonrouters(false)
  			, send_buffer_watermark(100 * 1024)
 			, auto_upload_slots(true)
-			, auto_upload_slots_rate_based(true)
+			, auto_upload_slots_rate_based(false)
 			, use_parole_mode(true)
 			, cache_size(1024)
 			, cache_buffer_chunk_size(16)
@@ -142,8 +142,8 @@ namespace libtorrent
 			, share_ratio_limit(2.f)
 			, seed_time_ratio_limit(7.f)
 			, seed_time_limit(24 * 60 * 60) // 24 hours
-			, peer_turnover(1 / 100.f)
-			, peer_turnover_cutoff(1.1f) // disable until the crash is resolved
+			, peer_turnover(2 / 50.f)
+			, peer_turnover_cutoff(.9f)
 			, close_redundant_connections(true)
 			, auto_scrape_interval(1800)
 			, auto_scrape_min_interval(300)
@@ -157,7 +157,7 @@ namespace libtorrent
 			, announce_to_all_tiers(false)
 			, prefer_udp_trackers(true)
 			, strict_super_seeding(false)
-			, seeding_piece_quota(3)
+			, seeding_piece_quota(20)
 #ifdef TORRENT_WINDOWS
 			, max_sparse_regions(30000)
 #else

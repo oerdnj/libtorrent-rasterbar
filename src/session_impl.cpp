@@ -64,6 +64,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <libtorrent/kademlia/observer.hpp>
 
 #endif
+
+#include "libtorrent/http_tracker_connection.hpp"
+#include "libtorrent/udp_tracker_connection.hpp"
+
 #endif
 
 #include "libtorrent/peer_id.hpp"
@@ -538,6 +542,50 @@ namespace aux {
 #define PRINT_SIZEOF(x) (*m_logger) << "sizeof(" #x "): " << sizeof(x) << "\n";
 #define PRINT_OFFSETOF(x, y) (*m_logger) << "  offsetof(" #x "," #y "): " << offsetof(x, y) << "\n";
 
+		PRINT_SIZEOF(udp_socket)
+		PRINT_OFFSETOF(udp_socket, m_callback)
+		PRINT_OFFSETOF(udp_socket, m_mutex)
+		PRINT_OFFSETOF(udp_socket, m_ipv4_sock)
+		PRINT_OFFSETOF(udp_socket, m_v4_ep)
+		PRINT_OFFSETOF(udp_socket, m_v4_buf)
+#if TORRENT_USE_IPV6
+		PRINT_OFFSETOF(udp_socket, m_ipv6_sock)
+		PRINT_OFFSETOF(udp_socket, m_v6_ep)
+		PRINT_OFFSETOF(udp_socket, m_v6_buf)
+#endif
+		PRINT_OFFSETOF(udp_socket, m_bind_port)
+		PRINT_OFFSETOF(udp_socket, m_outstanding)
+		PRINT_OFFSETOF(udp_socket, m_socks5_sock)
+		PRINT_OFFSETOF(udp_socket, m_connection_ticket)
+		PRINT_OFFSETOF(udp_socket, m_proxy_settings)
+		PRINT_OFFSETOF(udp_socket, m_cc)
+		PRINT_OFFSETOF(udp_socket, m_resolver)
+		PRINT_OFFSETOF(udp_socket, m_tmp_buf)
+		PRINT_OFFSETOF(udp_socket, m_queue_packets)
+		PRINT_OFFSETOF(udp_socket, m_tunnel_packets)
+		PRINT_OFFSETOF(udp_socket, m_abort)
+		PRINT_OFFSETOF(udp_socket, m_proxy_addr)
+		PRINT_OFFSETOF(udp_socket, m_queue)
+#ifdef TORRENT_DEBUG
+		PRINT_OFFSETOF(udp_socket, m_started)
+		PRINT_OFFSETOF(udp_socket, m_magic)
+		PRINT_OFFSETOF(udp_socket, m_outstanding_when_aborted)
+#endif
+
+		PRINT_SIZEOF(tracker_connection)
+		PRINT_SIZEOF(http_tracker_connection)
+
+		PRINT_SIZEOF(udp_tracker_connection)
+		PRINT_OFFSETOF(udp_tracker_connection, m_man)
+		PRINT_OFFSETOF(udp_tracker_connection, m_name_lookup)
+		PRINT_OFFSETOF(udp_tracker_connection, m_socket)
+		PRINT_OFFSETOF(udp_tracker_connection, m_target)
+		PRINT_OFFSETOF(udp_tracker_connection, m_endpoints)
+		PRINT_OFFSETOF(udp_tracker_connection, m_transaction_id)
+		PRINT_OFFSETOF(udp_tracker_connection, m_ses)
+		PRINT_OFFSETOF(udp_tracker_connection, m_attempts)
+		PRINT_OFFSETOF(udp_tracker_connection, m_state)
+
 		PRINT_SIZEOF(torrent)
 		PRINT_SIZEOF(peer_connection)
 		PRINT_SIZEOF(bt_peer_connection)
@@ -547,7 +595,9 @@ namespace aux {
 		PRINT_SIZEOF(address_v4::bytes_type)
 		PRINT_SIZEOF(address_v6::bytes_type)
 		PRINT_SIZEOF(void*)
+#ifndef TORRENT_DISABLE_DHT
 		PRINT_SIZEOF(dht::node_entry)
+#endif
 
 		PRINT_SIZEOF(policy::peer)
 		PRINT_OFFSETOF(policy::peer, connection)
@@ -561,12 +611,15 @@ namespace aux {
 		PRINT_SIZEOF(policy::ipv6_peer)
 #endif
 
+#ifndef TORRENT_DISABLE_DHT
 		PRINT_SIZEOF(dht::closest_nodes_observer)
 		PRINT_SIZEOF(dht::find_data_observer)
 		PRINT_SIZEOF(dht::announce_observer)
 		PRINT_SIZEOF(dht::refresh_observer)
 		PRINT_SIZEOF(dht::ping_observer)
 		PRINT_SIZEOF(dht::null_observer)
+#endif
+
 #undef PRINT_OFFSETOF
 #undef PRINT_SIZEOF
 
@@ -634,8 +687,7 @@ namespace aux {
 			*i = printable[rand() % (sizeof(printable)-1)];
 		}
 
-		m_timer.expires_from_now(milliseconds(100), ec);
-		m_timer.async_wait(boost::bind(&session_impl::on_tick, this, _1));
+		m_io_service.post(boost::bind(&session_impl::on_tick, this, ec));
 
 		int delay = (std::max)(m_settings.local_service_announce_interval
 			/ (std::max)(int(m_torrents.size()), 1), 1);
@@ -643,6 +695,9 @@ namespace aux {
 		m_lsd_announce_timer.async_wait(
 			boost::bind(&session_impl::on_lsd_announce, this, _1));
 
+#if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_LOGGING || defined TORRENT_ERROR_LOGGING
+		(*m_logger) << time_now_string() << " spawning network thread\n";
+#endif
 		m_thread.reset(new boost::thread(boost::ref(*this)));
 	}
 
@@ -651,13 +706,14 @@ namespace aux {
 		if (flags & session::save_settings)
 		{
 			// TODO: move these to session_settings
-			e["upload_rate_limit"] = upload_rate_limit();
-			e["download_rate_limit"] = download_rate_limit();
-			e["local_upload_rate_limit"] = local_upload_rate_limit();
-			e["local_download_rate_limit"] = local_download_rate_limit();
-			e["max_uploads"] = max_uploads();
-			e["max_half_open_connections"] = max_half_open_connections();
-			e["max_connections"] = max_connections();
+			entry& s = e["settings"];
+			s["upload_rate_limit"] = upload_rate_limit();
+			s["download_rate_limit"] = download_rate_limit();
+			s["local_upload_rate_limit"] = local_upload_rate_limit();
+			s["local_download_rate_limit"] = local_download_rate_limit();
+			s["max_uploads"] = max_uploads();
+			s["max_half_open_connections"] = max_half_open_connections();
+			s["max_connections"] = max_connections();
 		}
 
 		if (flags & session::save_settings)
@@ -736,23 +792,42 @@ namespace aux {
 
 	}
 	
+	void session_impl::set_proxy(proxy_settings const& s)
+	{
+		m_peer_proxy = s;
+		// in case we just set a socks proxy, we might have to
+		// open the socks incoming connection
+		if (!m_socks_listen_socket) open_new_incoming_socks_connection();
+		m_web_seed_proxy = s;
+		m_tracker_proxy = s;
+#ifndef TORRENT_DISABLE_DHT
+		m_dht_proxy = s;
+		m_dht_socket.set_proxy_settings(s);
+#endif
+	}
+
 	void session_impl::load_state(lazy_entry const& e)
 	{
 		lazy_entry const* settings;
 	  
 		if (e.type() != lazy_entry::dict_t) return;
 
-		set_upload_rate_limit(e.dict_find_int_value("upload_rate_limit", 0));
-		set_download_rate_limit(e.dict_find_int_value("download_rate_limit", 0));
-		set_local_upload_rate_limit(e.dict_find_int_value("local_upload_rate_limit", 0));
-		set_local_download_rate_limit(e.dict_find_int_value("local_download_rate_limit", 0));
-		set_max_uploads(e.dict_find_int_value("max_uploads", 0));
-		set_max_half_open_connections(e.dict_find_int_value("max_half_open_connections", 0));
-		set_max_connections(e.dict_find_int_value("max_connections", 0));
-
 		settings = e.dict_find_dict("settings");
 		if (settings)
 		{
+			set_upload_rate_limit(settings->dict_find_int_value("upload_rate_limit"
+				, upload_rate_limit()));
+			set_download_rate_limit(settings->dict_find_int_value("download_rate_limit"
+				, download_rate_limit()));
+			set_local_upload_rate_limit(settings->dict_find_int_value("local_upload_rate_limit"
+				, local_upload_rate_limit()));
+			set_local_download_rate_limit(settings->dict_find_int_value("local_download_rate_limit"
+				, local_download_rate_limit()));
+			set_max_uploads(settings->dict_find_int_value("max_uploads", max_uploads()));
+			set_max_half_open_connections(settings->dict_find_int_value("max_half_open_connections"
+				, max_half_open_connections()));
+			set_max_connections(settings->dict_find_int_value("max_connections", max_connections()));
+
 			session_settings s;
 			load_struct(*settings, &s, session_settings_map
 				, sizeof(session_settings_map)/sizeof(session_settings_map[0]));
@@ -1010,7 +1085,11 @@ namespace aux {
 		if (m_upnp) m_upnp->close();
 		if (m_natpmp) m_natpmp->close();
 #ifndef TORRENT_DISABLE_DHT
-		if (m_dht) m_dht->stop();
+		if (m_dht)
+		{
+			m_dht->stop();
+			m_dht = 0;
+		}
 		m_dht_socket.close();
 #endif
 		error_code ec;
@@ -1225,7 +1304,7 @@ namespace aux {
 			char msg[200];
 			snprintf(msg, 200, "failed to bind to interface \"%s\": %s"
 				, print_endpoint(ep).c_str(), ec.message().c_str());
-			(*m_logger) << msg << "\n";
+			(*m_logger) << time_now_string() << " " << msg << "\n";
 #endif
 			ec = error_code();
 			TORRENT_ASSERT(!ec);
@@ -1250,7 +1329,7 @@ namespace aux {
 			char msg[200];
 			snprintf(msg, 200, "cannot bind to interface \"%s\": %s"
 				, print_endpoint(ep).c_str(), ec.message().c_str());
-			(*m_logger) << msg << "\n";
+			(*m_logger) << time_now_string() << msg << "\n";
 #endif
 			return listen_socket_t();
 		}
@@ -1264,7 +1343,7 @@ namespace aux {
 			char msg[200];
 			snprintf(msg, 200, "cannot listen on interface \"%s\": %s"
 				, print_endpoint(ep).c_str(), ec.message().c_str());
-			(*m_logger) << msg << "\n";
+			(*m_logger) << time_now_string() << msg << "\n";
 #endif
 			return listen_socket_t();
 		}
@@ -1730,7 +1809,7 @@ namespace aux {
 
 		if (e)
 		{
-#if defined TORRENT_LOGGING
+#if defined TORRENT_LOGGING || defined TORRENT_VERBOSE_LOGGING
 			(*m_logger) << "*** TICK TIMER FAILED " << e.message() << "\n";
 #endif
 			::abort();
@@ -2574,12 +2653,18 @@ namespace aux {
 	{
 		eh_initializer();
 
+#if defined TORRENT_LOGGING || defined TORRENT_VERBOSE_LOGGING
+		(*m_logger) << time_now_string() << " open listen port\n";
+#endif
 		if (m_listen_interface.port() != 0)
 		{
 			session_impl::mutex_t::scoped_lock l(m_mutex);
 			open_listen_port();
 		}
 
+#if defined TORRENT_LOGGING || defined TORRENT_VERBOSE_LOGGING
+		(*m_logger) << time_now_string() << " done starting session\n";
+#endif
 		bool stop_loop = false;
 		while (!stop_loop)
 		{
@@ -3193,8 +3278,7 @@ namespace aux {
 
 	void session_impl::add_dht_node(std::pair<std::string, int> const& node)
 	{
-		TORRENT_ASSERT(m_dht);
-		m_dht->add_node(node);
+		if (m_dht) m_dht->add_node(node);
 	}
 
 	void session_impl::add_dht_router(std::pair<std::string, int> const& node)

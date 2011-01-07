@@ -1,3 +1,28 @@
+0.15.5 release
+
+	* support DHT extension to report external IPs
+	* fixed rare crash in http_connection's error handling
+	* avoid connecting to peers listening on ports < 1024
+	* optimized piece picking to not cause busy loops in some end-game modes
+	* fixed python bindings for tcp::endpoint
+	* fixed edge case of pad file support
+	* limit number of torrents tracked by DHT
+	* fixed bug when allow_multiple_connections_per_ip was enabled
+	* potential WOW64 fix for unbuffered I/O (windows)
+	* expose set_alert_queue_size_limit to python binding
+	* support dht nodes in magnet links
+	* support 100 Continue HTTP responses
+	* changed default choker behavior to use 8 unchoke slots (instead of being rate based)
+	* fixed error reporting issue in disk I/O thread
+	* fixed file allocation issues on linux
+	* fixed filename encoding and decoding issue on platforms using iconv
+	* reports redundant downloads to tracker, fixed downloaded calculation to
+	  be more stable when not including redundant. Improved redundant data accounting
+	  to be more accurate
+	* fixed bugs in http seed connection and added unit test for it
+	* fixed error reporting when fallocate fails
+	* deprecate support for separate proxies for separate kinds of connections
+
 0.15.4 release
 
 	* fixed piece picker issue triggered by hash failure and timed out requests to the piece
