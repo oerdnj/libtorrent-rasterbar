@@ -124,14 +124,15 @@ namespace libtorrent
 			char str[1024];
 			const bool stats = tracker_req().send_stats;
 			snprintf(str, sizeof(str), "&peer_id=%s&port=%d&uploaded=%"PRId64
-				"&downloaded=%"PRId64"&left=%"PRId64"&corrupt=%"PRId64"&compact=1"
-				"&numwant=%d&key=%x&no_peer_id=1"
+				"&downloaded=%"PRId64"&left=%"PRId64"&corrupt=%"PRId64"&redundant=%"PRId64
+				"&compact=1&numwant=%d&key=%x&no_peer_id=1"
 				, escape_string((const char*)&tracker_req().pid[0], 20).c_str()
 				, tracker_req().listen_port
 				, stats ? tracker_req().uploaded : 0
 				, stats ? tracker_req().downloaded : 0
 				, stats ? tracker_req().left : 0
 				, stats ? tracker_req().corrupt : 0
+				, stats ? tracker_req().redundant: 0
 				, tracker_req().num_want
 				, tracker_req().key);
 			url += str;
@@ -474,6 +475,8 @@ namespace libtorrent
 		std::list<address> ip_list;
 		if (m_tracker_connection)
 		{
+			error_code ec;
+			ip_list.push_back(m_tracker_connection->socket().remote_endpoint(ec).address());
 			std::list<tcp::endpoint> const& epts = m_tracker_connection->endpoints();
 			for (std::list<tcp::endpoint>::const_iterator i = epts.begin()
 				, end(epts.end()); i != end; ++i)

@@ -63,6 +63,11 @@ using libtorrent::aux::session_impl;
 
 namespace libtorrent
 {
+	int round_up8(int v)
+	{
+		return ((v & 7) == 0) ? v : v + (8 - (v & 7));
+	}
+
 	// outbound connection
 	peer_connection::peer_connection(
 		session_impl& ses
@@ -144,6 +149,7 @@ namespace libtorrent
 		, m_snubbed(false)
 		, m_bitfield_received(false)
 		, m_no_download(false)
+		, m_endgame_mode(false)
 #ifdef TORRENT_DEBUG
 		, m_in_constructor(true)
 		, m_disconnect_started(false)
@@ -267,6 +273,7 @@ namespace libtorrent
 		, m_snubbed(false)
 		, m_bitfield_received(false)
 		, m_no_download(false)
+		, m_endgame_mode(false)
 #ifdef TORRENT_DEBUG
 		, m_in_constructor(true)
 		, m_disconnect_started(false)
@@ -2762,7 +2769,8 @@ namespace libtorrent
 	{
 		INVARIANT_CHECK;
 
-		TORRENT_ASSERT(!m_peer_info || !m_peer_info->optimistically_unchoked);
+		if (m_peer_info && m_peer_info->optimistically_unchoked)
+			m_peer_info->optimistically_unchoked = false;
 
 		if (m_choked) return false;
 		write_choke();
@@ -3078,6 +3086,15 @@ namespace libtorrent
 			// make sure we keep all the stats!
 			t->add_stats(statistics());
 
+			// report any partially received payload as redundant
+			boost::optional<piece_block_progress> pbp = downloading_piece_progress();
+			if (pbp
+				&& pbp->bytes_downloaded > 0
+				&& pbp->bytes_downloaded < pbp->full_block_bytes)
+			{
+				t->add_redundant_bytes(pbp->bytes_downloaded);
+			}
+
 			if (t->has_picker())
 			{
 				piece_picker& picker = t->picker();
@@ -3269,6 +3286,7 @@ namespace libtorrent
 		p.flags |= is_seed() ? peer_info::seed : 0;
 		p.flags |= m_snubbed ? peer_info::snubbed : 0;
 		p.flags |= m_upload_only ? peer_info::upload_only : 0;
+		p.flags |= m_endgame_mode ? peer_info::endgame_mode : 0;
 		if (peer_info_struct())
 		{
 			policy::peer* pi = peer_info_struct();
@@ -3489,6 +3507,23 @@ namespace libtorrent
 			return;
 		}
 
+		if (m_endgame_mode
+			&& m_interesting
+			&& m_download_queue.empty()
+			&& m_request_queue.empty()
+			&& total_seconds(now - m_last_request) > 5)
+		{
+			// this happens when we're in strict end-game
+			// mode and the peer could not request any blocks
+			// because they were all taken but there were still
+			// unrequested blocks. Now, 5 seconds later, there
+			// might not be any unrequested blocks anymore, so
+			// we should try to pick another block to see
+			// if we can pick a busy one
+			request_a_block(*t, *this);
+			if (m_disconnecting) return;
+		}
+
 		on_tick();
 
 #ifndef TORRENT_DISABLE_EXTENSIONS
@@ -3504,7 +3539,12 @@ namespace libtorrent
 		// time, it is considered to have timed out
 		time_duration d;
 		d = now - m_last_receive;
-		if (d > seconds(m_timeout) && !m_connecting)
+		// if we can't read, it means we're blocked on the rate-limiter
+		// or the disk, not the peer itself. In this case, don't blame
+		// the peer and disconnect it
+		bool may_timeout = can_read()
+;
+		if (may_timeout && d > seconds(m_timeout) && !m_connecting)
 		{
 #if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_ERROR_LOGGING
 			(*m_logger) << time_now_string() << " *** LAST ACTIVITY [ "
@@ -3515,7 +3555,8 @@ namespace libtorrent
 		}
 
 		// do not stall waiting for a handshake
-		if (!m_connecting
+		if (may_timeout
+			&& !m_connecting
 			&& in_handshake()
 			&& d > seconds(m_ses.settings().handshake_timeout))
 		{
@@ -3531,7 +3572,8 @@ namespace libtorrent
 		// they didn't send a request within 20 seconds.
 		// but only if we're a seed
 		d = now - (std::max)(m_last_unchoke, m_last_incoming_request);
-		if (!m_connecting
+		if (may_timeout
+			&& !m_connecting
 			&& m_requests.empty()
 			&& m_reading_bytes == 0
 			&& !m_choked
@@ -3560,7 +3602,8 @@ namespace libtorrent
 		// don't bother disconnect peers we haven't been interested
 		// in (and that hasn't been interested in us) for a while
 		// unless we have used up all our connection slots
-		if (!m_interesting
+		if (may_timeout
+			&& !m_interesting
 			&& !m_peer_interested
 			&& d1 > time_limit
 			&& d2 > time_limit
@@ -3576,7 +3619,8 @@ namespace libtorrent
 			return;
 		}
 
-		if (!m_download_queue.empty()
+		if (may_timeout
+			&& !m_download_queue.empty()
 			&& m_quota[download_channel] > 0
 			&& now > m_requested + seconds(m_ses.settings().request_timeout
 			+ m_timeout_extend))
@@ -4193,7 +4237,7 @@ namespace libtorrent
 		int regular_buffer_size = m_packet_size - m_disk_recv_buffer_size;
 
 		if (int(m_recv_buffer.size()) < regular_buffer_size)
-			m_recv_buffer.resize(regular_buffer_size);
+			m_recv_buffer.resize(round_up8(regular_buffer_size));
 
 		boost::array<asio::mutable_buffer, 2> vec;
 		int num_bufs = 0;
@@ -4493,7 +4537,8 @@ namespace libtorrent
 				&& m_recv_pos == 0
 				&& (m_recv_buffer.capacity() - m_packet_size) > 128)
 			{
-				buffer(m_packet_size).swap(m_recv_buffer);
+				// round up to an even 8 bytes since that's the RC4 blocksize
+				buffer(round_up8(m_packet_size)).swap(m_recv_buffer);
 			}
 
 			if (m_recv_pos >= m_soft_packet_size) m_soft_packet_size = 0;

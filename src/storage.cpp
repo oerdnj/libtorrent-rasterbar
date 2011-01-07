@@ -180,13 +180,19 @@ namespace libtorrent
 			remove(old_path);
 		}
 #ifndef BOOST_NO_EXCEPTIONS
-		} catch (std::exception& e) {}
+		} catch (std::exception&) {}
 #endif
 	}
 	std::vector<std::pair<size_type, std::time_t> > get_filesizes(
 		file_storage const& s, fs::path p)
 	{
+#ifndef BOOST_NO_EXCEPTIONS
+		try {
+#endif
 		p = complete(p);
+#ifndef BOOST_NO_EXCEPTIONS
+		} catch (std::exception&) {}
+#endif
 		std::vector<std::pair<size_type, std::time_t> > sizes;
 		for (file_storage::iterator i = s.begin()
 			, end(s.end());i != end; ++i)
@@ -392,7 +398,15 @@ namespace libtorrent
 			if (mapped) m_mapped_files.reset(new file_storage(*mapped));
 
 			TORRENT_ASSERT(m_files.begin() != m_files.end());
+#ifndef BOOST_NO_EXCEPTIONS
+			try {
+#endif
 			m_save_path = fs::complete(path);
+#ifndef BOOST_NO_EXCEPTIONS
+			} catch (std::exception&) {
+			m_save_path = path;
+			}
+#endif
 			TORRENT_ASSERT(m_save_path.is_complete());
 		}
 
@@ -1034,7 +1048,7 @@ namespace libtorrent
 					rename(old_path, new_path);
 #ifndef BOOST_NO_EXCEPTIONS
 			}
-			catch (std::exception& e)
+			catch (std::exception&)
 			{
 				error_code ec;
 				recursive_copy(old_path, new_path, ec);
@@ -1358,6 +1372,7 @@ ret:
 				}
 				advance_bufs(current_buf, file_bytes_left);
 				TORRENT_ASSERT(count_bufs(current_buf, bytes_left - file_bytes_left) <= num_bufs);
+				file_offset = 0;
 				continue;
 			}
 
@@ -2983,7 +2998,9 @@ ret:
 		boost::recursive_mutex::scoped_lock lock(m_mutex);
 		TORRENT_ASSERT(num_slots > 0);
 
+#ifdef TORRENT_EXPENSIVE_INVARIANT_CHECKS
 		INVARIANT_CHECK;
+#endif
 
 		TORRENT_ASSERT(!m_unallocated_slots.empty());
 		TORRENT_ASSERT(m_storage_mode == storage_mode_compact);
@@ -2992,8 +3009,6 @@ ret:
 
 		for (int i = 0; i < num_slots && !m_unallocated_slots.empty(); ++i)
 		{
-//			INVARIANT_CHECK;
-
 			int pos = m_unallocated_slots.front();
 			TORRENT_ASSERT(m_slot_to_piece[pos] == unallocated);
 			TORRENT_ASSERT(m_piece_to_slot[pos] != pos);

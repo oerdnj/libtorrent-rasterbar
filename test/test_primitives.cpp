@@ -92,6 +92,7 @@ tuple<int, int, bool> feed_bytes(http_parser& parser, char const* str)
 			TORRENT_ASSERT(payload + protocol == chunk_size);
 		}
 		TEST_CHECK(prev == make_tuple(0, 0, false) || ret == prev);
+		TEST_CHECK(ret.get<0>() + ret.get<1>() == strlen(str));
 		prev = ret;
 	}
 	return ret;
@@ -411,7 +412,7 @@ int test_main()
 	p.save_path = ".";
 	error_code ec;
 	const char* magnet_uri = "magnet:?xt=urn:btih:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
-		"&tr=http://1&tr=http://2&tr=http://3&dn=foo";
+		"&tr=http://1&tr=http://2&tr=http://3&dn=foo&dht=127.0.0.1:43";
 	torrent_handle t = add_magnet_uri(*s, magnet_uri, p, ec);
 	TEST_CHECK(!ec);
 	if (ec) fprintf(stderr, "%s\n", ec.message().c_str());
@@ -596,8 +597,8 @@ int test_main()
 	TEST_CHECK(parse_url_components("http://192.168.0.1/path/to/file", ec)
 		== make_tuple("http", "", "192.168.0.1", 80, "/path/to/file"));
 
-	TEST_CHECK(parse_url_components("http://[::1]/path/to/file", ec)
-		== make_tuple("http", "", "[::1]", 80, "/path/to/file"));
+	TEST_CHECK(parse_url_components("http://[2001:ff00::1]:42/path/to/file", ec)
+		== make_tuple("http", "", "[2001:ff00::1]", 42, "/path/to/file"));
 
 	// base64 test vectors from http://www.faqs.org/rfcs/rfc4648.html
 
@@ -799,6 +800,26 @@ int test_main()
 	TEST_CHECK(received == make_tuple(5, int(strlen(web_seed_response) - 5), false));
 	TEST_CHECK(parser.content_range() == (std::pair<size_type, size_type>(0, 4)));
 	TEST_CHECK(parser.content_length() == 5);
+
+	parser.reset();
+
+	// make sure we support content-range responses
+	// and that we're case insensitive
+	char const* one_hundred_response =
+		"HTTP/1.1 100 Continue\n"
+		"\r\n"
+		"HTTP/1.1 200 OK\n"
+		"Content-Length: 4\r\n"
+		"Content-Type: test/plain\r\n"
+		"\r\n"
+		"test";
+
+	received = feed_bytes(parser, one_hundred_response);
+
+	TEST_CHECK(received == make_tuple(4, int(strlen(one_hundred_response) - 4), false));
+	TEST_CHECK(parser.content_length() == 4);
+
+
 	// test xml parser
 
 	char xml1[] = "<a>foo<b/>bar</a>";
