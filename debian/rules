@@ -2,19 +2,17 @@
 
 PYVERSIONS=$(shell pyversions -v -r)
 
-CONFIGURE_ARGS = \
-  --with-zlib \
-  --with-libgeoip
+LDFLAGS = -Wl,--as-needed
+CONFIGURE_ARGS = --with-libgeoip
 
 %:
 	dh $@ --parallel
 
 override_dh_auto_configure-nopy:
-	dh_auto_configure --builddirectory build -- LDFLAGS="-Wl,--as-needed" \
-		$(CONFIGURE_ARGS)
+	dh_auto_configure --builddirectory build -- $(CONFIGURE_ARGS)
 
 override_dh_auto_configure-%:
-	dh_auto_configure --builddirectory build-py$* -- LDFLAGS="-Wl,--as-needed" \
+	dh_auto_configure --builddirectory build-py$* -- \
 		PYTHON=python$* --enable-python-binding --with-boost-python=boost_python-mt-py$(subst .,,$*) \
 		$(CONFIGURE_ARGS)
 	mv build-py$*/bindings/python build/bindings/python$*
