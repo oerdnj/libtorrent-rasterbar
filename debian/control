@@ -14,7 +14,6 @@ Build-Depends: debhelper (>= 7.4.10),
                pkg-config,
                python-all-dev (>= 2.3.5-11),
                python-docutils
-XS-Python-Version: all
 Standards-Version: 3.9.1
 Vcs-Git: git://git.debian.org/git/collab-maint/libtorrent-rasterbar.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/libtorrent-rasterbar.git

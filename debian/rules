@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-PYVERSIONS=$(shell pyversions -v -r)
+PYVERSIONS=$(shell pyversions -sv)
 
 LDFLAGS = -Wl,--as-needed
 CONFIGURE_ARGS = --with-libgeoip
