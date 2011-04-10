@@ -553,7 +553,7 @@ void add_torrent(libtorrent::session& ses
 	std::string filename = (save_path / (t->name() + ".resume")).string();
 
 	std::vector<char> buf;
-	if (load_file(filename.c_str(), buf) == 0)
+	if (load_file(filename.c_str(), buf, ec) == 0)
 		p.resume_data = &buf;
 
 	p.ti = t;
@@ -643,7 +643,7 @@ void scan_dir(path const& dir_path
 
 libtorrent::torrent_handle get_active_torrent(handles_t const& handles)
 {
-	if (active_torrent >= handles.size()
+	if (active_torrent >= int(handles.size())
 		|| active_torrent < 0) return libtorrent::torrent_handle();
 	handles_t::const_iterator i = handles.begin();
 	std::advance(i, active_torrent);
@@ -816,7 +816,8 @@ int main(int argc, char* argv[])
 			+ alert::stats_notification));
 
 	std::vector<char> in;
-	if (load_file(".ses_state", in) == 0)
+	error_code ec;
+	if (load_file(".ses_state", in, ec) == 0)
 	{
 		lazy_entry e;
 		if (lazy_bdecode(&in[0], &in[0] + in.size(), e) == 0)
@@ -973,12 +974,7 @@ int main(int argc, char* argv[])
 		++i; // skip the argument
 	}
 
-	ses.set_peer_proxy(ps);
-	ses.set_web_seed_proxy(ps);
-	ses.set_tracker_proxy(ps);
-#ifndef TORRENT_DISABLE_DHT
-	ses.set_dht_proxy(ps);
-#endif
+	ses.set_proxy(ps);
 
 	ses.listen_on(std::make_pair(listen_port, listen_port + 10)
 		, bind_to_interface.c_str());
@@ -1072,7 +1068,7 @@ int main(int argc, char* argv[])
 				{
 					// arrow down
 					++active_torrent;
-					if (active_torrent >= handles.size()) active_torrent = handles.size() - 1;
+					if (active_torrent >= int(handles.size())) active_torrent = handles.size() - 1;
 				}
 			}
 

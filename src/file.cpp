@@ -42,6 +42,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <boost/scoped_ptr.hpp>
 #ifdef TORRENT_WINDOWS
 // windows part
+
 #include "libtorrent/utf8.hpp"
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -49,6 +50,10 @@ POSSIBILITY OF SUCH DAMAGE.
 #endif
 #include <windows.h>
 #include <winioctl.h>
+
+#ifndef PtrToPtr64
+#define PtrToPtr64(x) (x)
+#endif
 
 #else
 // posix part
@@ -971,7 +976,10 @@ namespace libtorrent
 			}
 #endif // F_PREALLOCATE
 
+#if defined TORRENT_LINUX || TORRENT_HAS_FALLOCATE
 			int ret;
+#endif
+
 #if defined TORRENT_LINUX
 			ret = my_fallocate(m_fd, 0, 0, s);
 			// if we return 0, everything went fine

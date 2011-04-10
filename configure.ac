@@ -5,7 +5,7 @@
 
 AC_PREREQ([2.63])
 
-AC_INIT([libtorrent-rasterbar],[0.15.5],[arvid@cs.umu.se],
+AC_INIT([libtorrent-rasterbar],[0.15.6],[arvid@cs.umu.se],
         [libtorrent-rasterbar],[http://www.libtorrent.org])
 AC_CONFIG_SRCDIR([src/torrent.cpp])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -163,10 +163,6 @@ AC_CHECK_FUNCS([clock_gettime], [],
       [AC_CHECK_LIB([posix4], [clock_gettime], [],
       [AC_MSG_WARN([clock_gettime function not found.])])])]
 )
-
-
-dnl Pass some build options to setup.py and .pc file
-COMPILETIME_OPTIONS=""
 
 
 ###############################################################################
@@ -340,6 +336,7 @@ AS_CASE(["$ARG_ENABLE_DEPRECATED"],
   ["no"|"off"], [
       AC_MSG_RESULT([no])
       AC_DEFINE([TORRENT_NO_DEPRECATE],[1],[Define to exclude all deprecated functions from the API.])
+      COMPILETIME_OPTIONS+="-DTORRENT_NO_DEPRECATE "
     ],
   [AC_MSG_RESULT([$ARG_ENABLE_DEPRECATED])
    AC_MSG_ERROR([Unknown option "$ARG_ENABLE_DEPRECATED". Use either "yes" or "no".])]
@@ -631,6 +628,9 @@ COMPILETIME_OPTIONS+="-DBOOST_ASIO_HASH_MAP_BUCKETS=1021 "
 
 AC_DEFINE([BOOST_EXCEPTION_DISABLE],[1],[Define to disable the boost.exception features.])
 COMPILETIME_OPTIONS+="-DBOOST_EXCEPTION_DISABLE "
+
+AC_DEFINE([BOOST_FILESYSTEM_VERSION],[2],[Define to select the boost.filesystem library version 2.])
+COMPILETIME_OPTIONS+="-DBOOST_FILESYSTEM_VERSION=2 "
 
 dnl Use possibly specific python install params
 AC_ARG_VAR([PYTHON_INSTALL_PARAMS], [Set specific install parameters for python bindings.])
