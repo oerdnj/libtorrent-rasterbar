@@ -20,7 +20,7 @@ if $(BOOST_ROOT)
 	use-project /boost : $(BOOST_ROOT) ;
 }
 
-VERSION = 0.15.5 ;
+VERSION = 0.15.6 ;
 
 # rule for linking the correct libraries depending
 # on features and target-os
@@ -441,6 +441,7 @@ local usage-requirements =
 	<variant>debug:<define>TORRENT_DEBUG
 	<define>_FILE_OFFSET_BITS=64
 	<define>BOOST_EXCEPTION_DISABLE
+	<define>BOOST_FILESYSTEM_VERSION=2
 	<conditional>@linking
 	<zlib>system:<library>zlib-target
 # these compiler settings just makes the compiler standard conforming

@@ -462,6 +462,13 @@ namespace libtorrent
 		}
 		else
 		{
+			// reset last_connected, to force fast reconnect after leaving upload mode
+			for (policy::iterator i = m_policy.begin_peer()
+				, end(m_policy.end_peer()); i != end; ++i)
+			{
+				(*i)->last_connected = 0;
+			}
+
 			// send_block_requests on all peers
 			for (std::set<peer_connection*>::iterator i = m_connections.begin()
 				, end(m_connections.end()); i != end; ++i)
@@ -572,7 +579,7 @@ namespace libtorrent
 		int piece_size = m_torrent_file->piece_size(piece);
 		int blocks_in_piece = (piece_size + m_block_size - 1) / m_block_size;
 
-		// avoid crash trying to access the picker when there is nont
+		// avoid crash trying to access the picker when there is none
 		if (is_seed()) return;
 
 		if (picker().have_piece(piece)
@@ -819,8 +826,8 @@ namespace libtorrent
 			// ugly edge case where padfiles are not used they way they're
 			// supposed to be. i.e. added back-to back or at the end
 			if (pb.block_index == blocks_per_piece) { pb.block_index = 0; ++pb.piece_index; }
-			if (pr.length > 0 && (boost::next(i) != end && boost::next(i)->pad_file)
-				|| boost::next(i) == end)
+			if (pr.length > 0 && ((boost::next(i) != end && boost::next(i)->pad_file)
+				|| boost::next(i) == end))
 			{
 				m_picker->mark_as_finished(pb, 0);
 			}
@@ -2626,6 +2633,7 @@ namespace libtorrent
 		TORRENT_ASSERT(m_picker.get());
 		TORRENT_ASSERT(index >= 0);
 		TORRENT_ASSERT(index < m_torrent_file->num_pieces());
+		if (index < 0 || index >= m_torrent_file->num_pieces()) return;
 
 		bool was_finished = is_finished();
 		bool filter_updated = m_picker->set_piece_priority(index, priority);
@@ -2649,6 +2657,7 @@ namespace libtorrent
 		TORRENT_ASSERT(m_picker.get());
 		TORRENT_ASSERT(index >= 0);
 		TORRENT_ASSERT(index < m_torrent_file->num_pieces());
+		if (index < 0 || index >= m_torrent_file->num_pieces()) return 0;
 
 		return m_picker->piece_priority(index);
 	}
@@ -2732,6 +2741,7 @@ namespace libtorrent
 
 		TORRENT_ASSERT(index < m_torrent_file->num_files());
 		TORRENT_ASSERT(index >= 0);
+		if (index < 0 || index >= m_torrent_file->num_files()) return;
 		if (m_file_priority[index] == prio) return;
 		m_file_priority[index] = prio;
 		update_piece_priorities();
@@ -2744,6 +2754,7 @@ namespace libtorrent
 
 		TORRENT_ASSERT(index < m_torrent_file->num_files());
 		TORRENT_ASSERT(index >= 0);
+		if (index < 0 || index >= m_torrent_file->num_files()) return 0;
 		return m_file_priority[index];
 	}
 
@@ -2826,6 +2837,8 @@ namespace libtorrent
 		TORRENT_ASSERT(index >= 0);
 		TORRENT_ASSERT(index < m_torrent_file->num_pieces());
 
+		if (index < 0 || index >= m_torrent_file->num_pieces()) return;
+
 		bool was_finished = is_finished();
 		m_picker->set_piece_priority(index, filter ? 1 : 0);
 		update_peer_interest(was_finished);
@@ -2865,6 +2878,8 @@ namespace libtorrent
 		TORRENT_ASSERT(index >= 0);
 		TORRENT_ASSERT(index < m_torrent_file->num_pieces());
 
+		if (index < 0 || index >= m_torrent_file->num_pieces()) return true;
+
 		return m_picker->piece_priority(index) == 0;
 	}
 
@@ -2894,7 +2909,9 @@ namespace libtorrent
 
 		// the bitmask need to have exactly one bit for every file
 		// in the torrent
-		TORRENT_ASSERT((int)bitmask.size() == m_torrent_file->num_files());
+		TORRENT_ASSERT(int(bitmask.size()) == m_torrent_file->num_files());
+
+		if (int(bitmask.size()) != m_torrent_file->num_files()) return;
 		
 		size_type position = 0;
 
@@ -4341,7 +4358,7 @@ namespace libtorrent
 			int num_conns = m_connections.size();
 #endif
 			p->disconnect(errors::optimistic_disconnect);
-			TORRENT_ASSERT(m_connections.size() == num_conns - 1);
+			TORRENT_ASSERT(int(m_connections.size()) == num_conns - 1);
 		}
 
 		return ret;
@@ -5578,9 +5595,12 @@ namespace libtorrent
 				interesting_blocks.clear();
 				backup1.clear();
 				backup2.clear();
+				// specifically request blocks with no affinity towards fast or slow
+				// pieces. If we would, the picked block might end up in one of
+				// the backup lists
 				m_picker->add_blocks(i->piece, c.get_bitfield(), interesting_blocks
 					, backup1, backup2, 1, 0, c.peer_info_struct()
-					, ignore, piece_picker::fast, 0);
+					, ignore, piece_picker::none, 0);
 
 				std::vector<pending_block> const& rq = c.request_queue();
 

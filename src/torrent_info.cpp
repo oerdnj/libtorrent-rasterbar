@@ -207,7 +207,7 @@ namespace libtorrent
 		// TODO: Make this count Unicode characters instead of bytes on windows
 		const int max_path_len = NAME_MAX;
 #endif
-		if (path_element.size() > max_path_len)
+		if (int(path_element.size()) > max_path_len)
 		{
 			// truncate filenames that are too long. But keep extensions!
 			std::string ext = fs::extension(path_element);
@@ -368,14 +368,18 @@ namespace libtorrent
 		return 1 << i;
 	}
 
-	int load_file(fs::path const& filename, std::vector<char>& v)
+	int load_file(fs::path const& filename, std::vector<char>& v, error_code& ec)
 	{
+		ec.clear();
 		file f;
-		error_code ec;
 		if (!f.open(filename, file::read_only, ec)) return -1;
 		size_type s = f.get_size(ec);
 		if (ec) return -1;
-		if (s > 5000000) return -2;
+		if (s > 5000000)
+		{
+			ec = error_code(errors::metadata_too_large, get_libtorrent_category());
+			return -2;
+		}
 		v.resize(s);
 		if (s == 0) return 0;
 		file::iovec_t b = {&v[0], s};
@@ -427,6 +431,7 @@ namespace libtorrent
 			memcpy(m_info_section.get(), t.m_info_section.get(), m_info_section_size);
 			int ret = lazy_bdecode(m_info_section.get(), m_info_section.get()
 				+ m_info_section_size, m_info_dict);
+			(void)ret;
 
 			lazy_entry const* pieces = m_info_dict.dict_find_string("pieces");
 			if (pieces && pieces->string_length() == m_files.num_pieces() * 20)
@@ -447,6 +452,8 @@ namespace libtorrent
 		if (m_files.total_size() != f.total_size()) return;
 		copy_on_write();
 		m_files = f;
+		m_files.set_num_pieces(m_orig_files->num_pieces());
+		m_files.set_piece_length(m_orig_files->piece_length());
 	}
 
 #ifndef TORRENT_NO_DEPRECATE
@@ -518,15 +525,16 @@ namespace libtorrent
 		, m_private(false)
 		, m_info_section_size(0)
 		, m_piece_hashes(0)
+		, m_merkle_first_leaf(0)
 	{
 		std::vector<char> buf;
-		int ret = load_file(filename, buf);
-		if (ret < 0) return;
+		error_code ec;
+		int ret = load_file(filename, buf, ec);
+		if (ret < 0) throw invalid_torrent_file(ec);
 
 		lazy_entry e;
 		if (buf.size() == 0 || lazy_bdecode(&buf[0], &buf[0] + buf.size(), e) != 0)
 			throw invalid_torrent_file(errors::invalid_bencoding);
-		error_code ec;
 		if (!parse_torrent_file(e, ec))
 			throw invalid_torrent_file(ec);
 	}
@@ -543,14 +551,14 @@ namespace libtorrent
 		std::vector<char> buf;
 		std::string utf8;
 		wchar_utf8(filename.string(), utf8);
-		int ret = load_file(utf8, buf);
-		if (ret < 0) return;
+		error_code ec;
+		int ret = load_file(utf8, buf, ec);
+		if (ret < 0) throw invalid_torrent_file(ec);
 
 		lazy_entry e;
 		if (buf.size() == 0 || lazy_bdecode(&buf[0], &buf[0] + buf.size(), e) != 0)
 			throw invalid_torrent_file(errors::invalid_bencoding);
 
-		error_code ec;
 		if (!parse_torrent_file(e, ec))
 			throw invalid_torrent_file(ec);
 	}
@@ -563,6 +571,7 @@ namespace libtorrent
 		, m_private(false)
 		, m_info_section_size(0)
 		, m_piece_hashes(0)
+		, m_merkle_first_leaf(0)
 	{
 		parse_torrent_file(torrent_file, ec);
 	}
@@ -590,9 +599,10 @@ namespace libtorrent
 		, m_private(false)
 		, m_info_section_size(0)
 		, m_piece_hashes(0)
+		, m_merkle_first_leaf(0)
 	{
 		std::vector<char> buf;
-		int ret = load_file(filename, buf);
+		int ret = load_file(filename, buf, ec);
 		if (ret < 0) return;
 
 		lazy_entry e;
@@ -611,11 +621,12 @@ namespace libtorrent
 		, m_private(false)
 		, m_info_section_size(0)
 		, m_piece_hashes(0)
+		, m_merkle_first_leaf(0)
 	{
 		std::vector<char> buf;
 		std::string utf8;
 		wchar_utf8(filename.string(), utf8);
-		int ret = load_file(utf8, buf);
+		int ret = load_file(utf8, buf, ec);
 		if (ret < 0) return;
 
 		lazy_entry e;
@@ -639,6 +650,7 @@ namespace libtorrent
 		, m_private(false)
 		, m_info_section_size(0)
 		, m_piece_hashes(0)
+		, m_merkle_first_leaf(0)
 	{}
 
 	torrent_info::~torrent_info()
