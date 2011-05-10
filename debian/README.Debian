@@ -39,7 +39,7 @@ is 'python-libtorrent' (as requested by upstream).
 - Lintian Info tag 'no-symbols-control-file'
 Maintaining a symbols control file for that library is more a cost than a
 benefit. In fact, libtorrent-rasterbar exports a lot of symbols (quite big
-symbols files, ~600Kb) and the C++ ABI mangling requires to maintain a
+symbols files, ~600Kb) and the C++ ABI mangling requires one to maintain a
 different control file for each architecture.  Moreover this library has a few
 reverse dependencies (less than 10 clients, much of them not yet packaged for
 Debian), so it wouldn't be difficult to maintain them.
