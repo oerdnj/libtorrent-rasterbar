@@ -1,3 +1,18 @@
+libtorrent-rasterbar (0.15.6-1) unstable; urgency=low
+
+  * New upstream version.
+    - upload to unstable.
+  * Getting rid of the unneeded *.la file in -dev package
+    (Closes: #622461).
+  * debian/control: bump Standards-Version to 3.9.2.
+  * debian/README.Debian: fix a spelling error in an old entry
+    to make lintian happy.
+  * debian/rules: simplified a bit.
+  * debian/{control,rules}: drop "XS-Python-Version: all" and use
+    different pyversions options instead.
+
+ -- Cristian Greco <cristian@regolo.cc>  Tue, 10 May 2011 20:54:50 +0200
+
 libtorrent-rasterbar (0.15.5-1) experimental; urgency=low
 
   * New upstream version.
