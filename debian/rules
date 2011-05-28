@@ -1,19 +1,20 @@
 #!/usr/bin/make -f
 
-PYVERSIONS=$(shell pyversions -sv)
+PYVERSIONS=$(shell pyversions -vr)
 
 LDFLAGS = -Wl,--as-needed
 CONFIGURE_ARGS = --with-libgeoip
 
 %:
-	dh $@ --parallel
+	dh $@ --parallel --with python2
 
 override_dh_auto_configure-nopy:
 	dh_auto_configure --builddirectory build -- $(CONFIGURE_ARGS)
 
 override_dh_auto_configure-%:
 	dh_auto_configure --builddirectory build-py$* -- \
-		PYTHON=python$* --enable-python-binding --with-boost-python=boost_python-mt-py$(subst .,,$*) \
+		PYTHON=python$* PYTHON_INSTALL_PARAMS="--root=$(CURDIR)/debian/tmp --install-layout=deb" \
+		--enable-python-binding --with-boost-python=boost_python-mt-py$(subst .,,$*) \
 		$(CONFIGURE_ARGS)
 	mv build-py$*/bindings/python build/bindings/python$*
 	cp -r bindings/python/src build/bindings/python$*

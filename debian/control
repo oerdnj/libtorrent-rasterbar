@@ -12,12 +12,13 @@ Build-Depends: debhelper (>= 7.4.10),
                zlib1g-dev,
                libgeoip-dev,
                pkg-config,
-               python-all-dev (>= 2.3.5-11),
+               python-all-dev (>= 2.6.6-3~),
                python-docutils
 Standards-Version: 3.9.2
 Vcs-Git: git://git.debian.org/git/collab-maint/libtorrent-rasterbar.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/libtorrent-rasterbar.git
 Homepage: http://www.rasterbar.com/products/libtorrent/index.html
+X-Python-Version: >= 2.4
 DM-Upload-Allowed: yes
 
 Package: libtorrent-rasterbar6
@@ -100,7 +101,7 @@ Section: python
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, libtorrent-rasterbar6 (= ${binary:Version})
 Provides: ${python:Provides}
-XB-Python-Version: ${python:Versions}
+Breaks: ${python:Breaks}
 Description: Python bindings for libtorrent-rasterbar
  Bittorrent library by Rasterbar Software (Arvid Norberg).
  libtorrent-rasterbar is a C++ library that aims to be a good alternative to
