@@ -13,6 +13,7 @@ Build-Depends: debhelper (>= 7.4.10),
                libgeoip-dev,
                pkg-config,
                python-all-dev (>= 2.6.6-3~),
+               python-all-dbg,
                python-docutils
 Standards-Version: 3.9.2
 Vcs-Git: git://git.debian.org/git/collab-maint/libtorrent-rasterbar.git
@@ -113,3 +114,23 @@ Description: Python bindings for libtorrent-rasterbar
   * to be very easy to use
  .
  This package contains Python bindings for the libtorrent-rasterbar library.
+
+Package: python-libtorrent-dbg
+Section: debug
+Priority: extra
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-libtorrent (= ${binary:Version}), python-dbg
+Provides: ${python:Provides}
+Breaks: ${python:Breaks}
+Description: Python bindings for libtorrent-rasterbar (debug symbols)
+ Bittorrent library by Rasterbar Software (Arvid Norberg).
+ libtorrent-rasterbar is a C++ library that aims to be a good alternative to
+ all the other bittorrent implementations around.
+ .
+ The main goals of libtorrent-rasterbar are:
+  * to be cpu efficient
+  * to be memory efficient
+  * to be very easy to use
+ .
+ This package contains Python bindings for the libtorrent-rasterbar library
+ (debug symbols).

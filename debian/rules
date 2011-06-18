@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 PYVERSIONS=$(shell pyversions -vr)
+ALLPY=$(PYVERSIONS) $(PYVERSIONS:%=%-dbg)
 
 LDFLAGS = -Wl,--as-needed
 CONFIGURE_ARGS = --with-libgeoip
@@ -13,13 +14,13 @@ override_dh_auto_configure-nopy:
 
 override_dh_auto_configure-%:
 	dh_auto_configure --builddirectory build-py$* -- \
-		PYTHON=python$* PYTHON_INSTALL_PARAMS="--root=$(CURDIR)/debian/tmp --install-layout=deb" \
-		--enable-python-binding --with-boost-python=boost_python-mt-py$(subst .,,$*) \
+		PYTHON=/usr/bin/python$* PYTHON_INSTALL_PARAMS="--root=$(CURDIR)/debian/tmp --install-layout=deb" \
+		--enable-python-binding --with-boost-python=boost_python-mt-py$(subst .,,$(subst -dbg,,$*)) \
 		$(CONFIGURE_ARGS)
 	mv build-py$*/bindings/python build/bindings/python$*
 	cp -r bindings/python/src build/bindings/python$*
 
-override_dh_auto_configure: override_dh_auto_configure-nopy $(PYVERSIONS:%=override_dh_auto_configure-%)
+override_dh_auto_configure: override_dh_auto_configure-nopy $(ALLPY:%=override_dh_auto_configure-%)
 
 
 override_dh_auto_build-nopy:
@@ -29,7 +30,7 @@ override_dh_auto_build-nopy:
 override_dh_auto_build-%:
 	dh_auto_build --builddirectory build/bindings/python$*
 
-override_dh_auto_build: override_dh_auto_build-nopy $(PYVERSIONS:%=override_dh_auto_build-%)
+override_dh_auto_build: override_dh_auto_build-nopy $(ALLPY:%=override_dh_auto_build-%)
 
 
 override_dh_auto_install-nopy:
@@ -38,7 +39,7 @@ override_dh_auto_install-nopy:
 override_dh_auto_install-%:
 	dh_auto_install --builddirectory build/bindings/python$*
 
-override_dh_auto_install: override_dh_auto_install-nopy $(PYVERSIONS:%=override_dh_auto_install-%)
+override_dh_auto_install: override_dh_auto_install-nopy $(ALLPY:%=override_dh_auto_install-%)
 
 
 override_dh_auto_clean:
