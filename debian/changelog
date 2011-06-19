@@ -1,3 +1,16 @@
+libtorrent-rasterbar (0.15.6-2) unstable; urgency=low
+
+  * debian/control: switch to dh_python2 for the python bindings.
+  * debian/rules: no need to pass -a to dh_strip and dh_makeshlibs.
+  * debian/patches:
+    - fix-html-docs.patch: renamed, added dep3 tags.
+    - fix-python-dbg-build.patch: new patch, fix wrong configure check
+      when building with pythonX-dbg.
+  * debian/{control,rules}: introducing a new python-libtorrent-dbg
+    package (Closes: #628041).
+
+ -- Cristian Greco <cristian@regolo.cc>  Mon, 20 Jun 2011 01:30:51 +0200
+
 libtorrent-rasterbar (0.15.6-1) unstable; urgency=low
 
   * New upstream version.
