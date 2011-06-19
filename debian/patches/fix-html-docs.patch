@@ -1,7 +1,9 @@
+Description: Fix html documentation for offline browsing
+ The patch also includes the makefile and template.txt needed to rebuild
+ html docs from rst files.
+Forwarded: not-needed
+Origin: vendor
 Author: Cristian Greco <cristian@regolo.cc>
-Description: Fix html documentation for offline browsing. The patch also
-includes the makefile and template.txt needed to rebuild html docs from
-rst files.
 
 --- /dev/null
 +++ b/docs/template.txt
