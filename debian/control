@@ -1,7 +1,7 @@
 Source: libtorrent-rasterbar
 Section: libs
 Priority: optional
-Maintainer: Cristian Greco <cristian@regolo.cc>
+Maintainer: Cristian Greco <cristian@debian.org>
 Build-Depends: debhelper (>= 7.4.10),
                libboost-dev,
                libboost-system-dev,
