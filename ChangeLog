@@ -1,3 +1,19 @@
+0.15.7 release
+
+	* exposed set_peer_id to python binding
+	* improve support for merkle tree torrent creation
+	* exposed comparison operators on torrent_handle to python
+	* exposed alert error_codes to python
+	* fixed bug in announce_entry::next_announce_in and min_announce_in
+	* fixed sign issue in set_alert_mask signature
+	* fixed unaligned disk access for unbuffered I/O in windows
+	* support torrents whose name is empty
+	* fixed connection limit to take web seeds into account as well
+	* fixed bug when receiving a have message before having the metadata
+	* fixed python bindings build with disabled DHT support
+	* fixed BSD file allocation issue
+	* fixed bug in session::delete_files option to remove_torrent
+
 0.15.6 release
 
 	* fixed crash in udp trackers when using SOCKS5 proxy

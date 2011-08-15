@@ -879,7 +879,7 @@ namespace libtorrent
 		return m_impl->wait_for_alert(max_wait);
 	}
 
-	void session::set_alert_mask(int m)
+	void session::set_alert_mask(boost::uint32_t m)
 	{
 		session_impl::mutex_t::scoped_lock l(m_impl->m_mutex);
 		m_impl->set_alert_mask(m);
@@ -892,6 +892,9 @@ namespace libtorrent
 	}
 
 #ifndef TORRENT_NO_DEPRECATE
+	void session::set_alert_mask(int m)
+	{ set_alert_mask(boost::uint32_t(m)); }
+
 	void session::set_severity_level(alert::severity_t s)
 	{
 		session_impl::mutex_t::scoped_lock l(m_impl->m_mutex);

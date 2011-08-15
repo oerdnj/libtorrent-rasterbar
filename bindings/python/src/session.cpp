@@ -238,6 +238,7 @@ void bind_session()
 #endif
         ;
 
+#ifndef TORRENT_DISABLE_DHT
     class_<dht_lookup>("dht_lookup")
         .def_readonly("type", &dht_lookup::type)
         .def_readonly("outstanding_requests", &dht_lookup::outstanding_requests)
@@ -245,6 +246,7 @@ void bind_session()
         .def_readonly("response", &dht_lookup::responses)
         .def_readonly("branch_factor", &dht_lookup::branch_factor)
     ;
+#endif
 
     enum_<storage_mode_t>("storage_mode_t")
         .value("storage_mode_allocate", storage_mode_allocate)
@@ -272,6 +274,8 @@ void bind_session()
         .def_readonly("read_cache_size", &cache_status::read_cache_size)
         .def_readonly("total_used_buffers", &cache_status::total_used_buffers)
     ;
+
+    typedef void (session::*set_alert_mask_t)(boost::uint32_t);
 
     class_<session, boost::noncopyable>("session", no_init)
         .def(
@@ -354,7 +358,7 @@ void bind_session()
         .def("tracker_proxy", allow_threads(&session::tracker_proxy), return_value_policy<copy_const_reference>())
         .def("web_seed_proxy", allow_threads(&session::web_seed_proxy), return_value_policy<copy_const_reference>())
 #endif
-        .def("set_alert_mask", allow_threads(&session::set_alert_mask))
+        .def("set_alert_mask", allow_threads((set_alert_mask_t)&session::set_alert_mask))
         .def("set_alert_queue_size_limit", allow_threads(&session::set_alert_queue_size_limit))
         .def("pop_alert", allow_threads(&session::pop_alert))
         .def("wait_for_alert", &wait_for_alert, return_internal_reference<>())
@@ -374,6 +378,7 @@ void bind_session()
         .def("is_paused", allow_threads(&session::is_paused))
         .def("id", allow_threads(&session::id))
         .def("get_cache_status", allow_threads(&session::get_cache_status))
+		  .def("set_peer_id", allow_threads(&session::set_peer_id))
         ;
 
     enum_<session::save_state_flags_t>("save_state_flags_t")

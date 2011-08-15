@@ -43,7 +43,7 @@ if platform.system() == 'Windows':
 	except: pass
 	shutil.copyfile(r'bin\msvc-9.0\release\boost-source\geoip-static\link-static\optimization-space\threading-multi\libtorrent.pyd', r'.\build\lib\libtorrent.pyd')
 	setup( name='python-libtorrent',
-		version='0.15.6',
+		version='0.15.7',
 		author = 'Arvid Norberg',
 		author_email='arvid@cs.umu.se',
 		description = 'Python bindings for libtorrent-rasterbar',
@@ -67,7 +67,7 @@ source_list = [os.path.join("src", s) for s in source_list if s.endswith(".cpp")
 extra_cmd = '-DTORRENT_USE_OPENSSL -DWITH_SHIPPED_GEOIP_H -DBOOST_ASIO_HASH_MAP_BUCKETS=1021 -DBOOST_EXCEPTION_DISABLE -DBOOST_FILESYSTEM_VERSION=2 -DTORRENT_LINKING_SHARED  -I/opt/local/include    -lboost_system-mt -lboost_filesystem-mt -lboost_thread-mt -lboost_python-mt  -lssl -lcrypto -lz   -L/opt/local/lib   -I/opt/local/include  '
 
 setup( name='python-libtorrent',
-	version='0.15.6',
+	version='0.15.7',
 	author = 'Arvid Norberg',
 	author_email='arvid@cs.umu.se',
 	description = 'Python bindings for libtorrent-rasterbar',
