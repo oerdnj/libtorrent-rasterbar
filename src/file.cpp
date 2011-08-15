@@ -496,7 +496,7 @@ namespace libtorrent
 		if (ReadFileScatter(m_file_handle, segment_array, size, 0, &ol) == 0)
 		{
 			DWORD last_error = GetLastError();
-			if (last_error != ERROR_IO_PENDING)
+			if (last_error != ERROR_IO_PENDING && last_error != ERROR_HANDLE_EOF)
 			{
 				TORRENT_ASSERT(GetLastError() != ERROR_BAD_ARGUMENTS);
 				ec = error_code(GetLastError(), get_system_category());
@@ -505,9 +505,12 @@ namespace libtorrent
 			}
 			if (GetOverlappedResult(m_file_handle, &ol, &ret, true) == 0)
 			{
-				ec = error_code(GetLastError(), get_system_category());
-				CloseHandle(ol.hEvent);
-				return -1;
+				if (GetLastError() != ERROR_HANDLE_EOF)
+				{
+					ec = error_code(GetLastError(), get_system_category());
+					CloseHandle(ol.hEvent);
+					return -1;
+				}
 			}
 		}
 		CloseHandle(ol.hEvent);
@@ -971,8 +974,18 @@ namespace libtorrent
 			fstore_t f = {F_ALLOCATECONTIG, F_PEOFPOSMODE, 0, s, 0};
 			if (fcntl(m_fd, F_PREALLOCATE, &f) < 0)
 			{
-				ec = error_code(errno, get_posix_category());
-				return false;
+				if (errno != ENOSPC)
+				{
+					ec.assign(errno, get_posix_category());
+					return false;
+				}
+				// ok, let's try to allocate non contiguous space then
+				fstore_t f = {F_ALLOCATEALL, F_PEOFPOSMODE, 0, s, 0};
+				if (fcntl(m_fd, F_PREALLOCATE, &f) < 0)
+				{
+					ec.assign(errno, get_posix_category());
+					return false;
+				}
 			}
 #endif // F_PREALLOCATE
 

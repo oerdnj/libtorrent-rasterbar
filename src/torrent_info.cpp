@@ -390,10 +390,10 @@ namespace libtorrent
 	}
 
 	int announce_entry::next_announce_in() const
-	{ return total_seconds(time_now() - next_announce); }
+	{ return total_seconds(next_announce - time_now()); }
 
 	int announce_entry::min_announce_in() const
-	{ return total_seconds(time_now() - min_announce); }
+	{ return total_seconds(min_announce - time_now()); }
 
 	bool announce_entry::can_announce(ptime now, bool is_seed) const
 	{
@@ -715,14 +715,16 @@ namespace libtorrent
 		m_files.set_piece_length(piece_length);
 
 		// extract file name (or the directory name if it's a multifile libtorrent)
-		std::string name = info.dict_find_string_value("name.utf-8");
-		if (name.empty()) name = info.dict_find_string_value("name");
-		if (name.empty())
+		lazy_entry const* name_ent = info.dict_find_string("name.utf-8");
+		if (name_ent == 0) name_ent = info.dict_find_string("name");
+		if (name_ent == 0)
 		{
 			ec = errors::torrent_missing_name;
 			return false;
 		}
 
+		std::string name = name_ent->string_value();
+		if (name.empty()) name = to_hex(m_info_hash.to_string());
 		name = sanitize_path(name).string();
 	
 		if (!valid_path_element(name))

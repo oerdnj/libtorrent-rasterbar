@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2003, Arvid Norberg
+Copyright (c) 2011, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,14 +30,19 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#ifndef TORRENT_VERSION_HPP_INCLUDED
-#define TORRENT_VERSION_HPP_INCLUDED
+#include <boost/python.hpp>
+#include <libtorrent/error_code.hpp>
 
-#define LIBTORRENT_VERSION_MAJOR 0
-#define LIBTORRENT_VERSION_MINOR 15
-#define LIBTORRENT_VERSION_TINY 7
+using namespace boost::python;
+using namespace libtorrent;
 
-#define LIBTORRENT_VERSION "0.15.7.0"
-#define LIBTORRENT_REVISION "$Rev: 5839 $" 
+void bind_error_code()
+{
+    class_<error_code>("error_code")
+        .def(init<>())
+        .def("message", &error_code::message)
+        .def("value", &error_code::value)
+        .def("clear", &error_code::clear)
+        ;
+}
 
-#endif

@@ -3,7 +3,7 @@ libtorrent manual
 =================
 
 :Author: Arvid Norberg, arvid@rasterbar.com
-:Version: 0.15.6
+:Version: 0.15.7
 
 .. contents:: Table of contents
   :depth: 2
@@ -42,22 +42,11 @@ building from svn
 -----------------
 
 To build libtorrent from svn you need to check out the libtorrent sources from
-sourceforge and also check out the asio sources from its sourceforge cvs.
-If you downloaded a release tarball, you can skip this section.
+sourceforge. If you downloaded a release tarball, you can skip this section.
 
-To prepare the directory structure for building, follow these steps:
-
-* Check out libtorrent (instructions__).
-* Check out asio (instructions__).
-* Copy the ``asio/include/asio/`` directory into the ``libtorrent/include/libtorrent/``
-  directory. Alternatively you can make a symbolic link.
-* Copy ``asio/include/asio.hpp`` into ``libtorrent/include/libtorrent``.
+To check out libtorrent follow these instructions__.
 
 __ http://sourceforge.net/svn/?group_id=79942
-__ http://sourceforge.net/cvs/?group_id=122478
-
-Now the libtorrent directory is ready for building. Follow the steps in one
-of the following sections depending on which build system you prefer to use.
 
 building with BBv2
 ------------------
@@ -193,7 +182,7 @@ the runtime, but on windows you can do both. Example::
   and in the client application. It will result in crashes and possibly link
   errors.
 
-.. warning::
+.. note::
 
   With boost-build V2 (Milestone 11), the darwin toolset uses the ``-s`` linker
   option to strip debug symbols. This option is buggy in Apple's GCC, and
@@ -201,7 +190,7 @@ the runtime, but on windows you can do both. Example::
   your release executables with the ``debug-symbols=on`` option, and
   later strip your executable with ``strip``.
 
-.. warning::
+.. note::
 
   Some linux systems requires linking against ``librt`` in order to access
   the POSIX clock functions. If you get an error complaining about a missing
@@ -227,6 +216,11 @@ Also, make sure the paths are correct in the different environments. In cygwin, 
 (``BOOST_BUILD_PATH`` and ``BOOST_ROOT``) should be in the typical unix-format (e.g.
 ``/cygdrive/c/boost_1_34_0``). In the windows environment, they should have the typical
 windows format (``c:/boost_1_34_0``).
+
+.. note::
+	In Jamfiles, spaces are separators. It's typically easiest to avoid spaces
+	in path names. If you want spaces in your paths, make sure to quote them
+	with double quotes (").
 
 The ``Jamfile`` will define ``NDEBUG`` when it's building a release build.
 For more build configuration flags see `Build configurations`_.
