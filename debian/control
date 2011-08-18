@@ -20,7 +20,6 @@ Vcs-Git: git://git.debian.org/git/collab-maint/libtorrent-rasterbar.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/libtorrent-rasterbar.git
 Homepage: http://www.rasterbar.com/products/libtorrent/index.html
 X-Python-Version: >= 2.4
-DM-Upload-Allowed: yes
 
 Package: libtorrent-rasterbar6
 Architecture: any
