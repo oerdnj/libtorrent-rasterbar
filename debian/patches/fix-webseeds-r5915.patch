@@ -1,0 +1,17 @@
+Description: Fix a bug about web seeds caused by a wrong merge
+ This patch will be included in 0.15.8.
+Forwarded: not-needed
+Origin: upstream, commit: r5915
+Author: Arvid Norberg
+
+--- a/src/torrent.cpp
++++ b/src/torrent.cpp
+@@ -5498,8 +5498,6 @@
+ 		if (!is_finished() && !m_web_seeds.empty() && m_files_checked
+ 			&& int(m_connections.size()) < m_max_connections
+ 			&& int(m_ses.m_connections.size()) < m_ses.max_connections())
+-			return;
+-
+ 		{
+ 			// keep trying web-seeds if there are any
+ 			// first find out which web seeds we are connected to
