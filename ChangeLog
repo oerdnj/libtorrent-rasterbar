@@ -1,3 +1,20 @@
+0.15.8 release
+
+	* allow NULL to be passed to create_torrent::set_comment and create_torrent::set_creator
+	* fix UPnP issue for routers with multiple PPPoE connections
+	* fix issue where event=stopped announces wouldn't be sent when closing session
+	* fix possible hang in file::readv() on windows
+	* fix crash when using broken SOCKS5 proxies
+	* fix CPU busy loop issue in tracker announce logic
+	* honor IOV_MAX when using writev and readv
+	* don't post 'operation aborted' UDP errors when changing listen port
+	* fix tracker retry logic, where in some configurations the next tier would not be tried
+	* fixed bug in http seeding logic (introduced in 0.15.7)
+	* add support for dont-have extension message
+	* fix for set_piece_deadline
+	* add reset_piece_deadline function
+	* fix merkle tree torrent assert
+
 0.15.7 release
 
 	* exposed set_peer_id to python binding

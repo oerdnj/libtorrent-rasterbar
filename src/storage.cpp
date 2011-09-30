@@ -566,10 +566,13 @@ namespace libtorrent
 		{
 			fs::path dir = (m_save_path / file_iter->path).branch_path();
 
+#ifndef BOOST_NO_EXCEPTIONS
+			try {
+#endif
+
 			if (dir != last_path)
 			{
 				last_path = dir;
-
 #if TORRENT_USE_WPATH
 				fs::wpath wp = convert_to_wstring(last_path.string());
 				if (!exists(wp))
@@ -589,10 +592,6 @@ namespace libtorrent
 
 			// ignore pad files
 			if (file_iter->pad_file) continue;
-
-#ifndef BOOST_NO_EXCEPTIONS
-			try {
-#endif
 
 #if TORRENT_USE_WPATH
 			fs::wpath file_path = convert_to_wstring((m_save_path / file_iter->path).string());
@@ -639,6 +638,11 @@ namespace libtorrent
 				return true;
 			}
 #endif // BOOST_VERSION
+			catch (std::exception& e)
+			{
+				set_error(e.what(), error_code(errors::torrent_paused, get_libtorrent_category()));
+				return true;
+			}
 #endif // BOOST_NO_EXCEPTIONS
 		}
 		std::vector<boost::uint8_t>().swap(m_file_priority);
@@ -680,6 +684,11 @@ namespace libtorrent
 				return false;
 			}
 #endif // BOOST_VERSION
+			catch (std::exception& e)
+			{
+				set_error(e.what(), error_code(errors::torrent_paused, get_libtorrent_category()));
+				return false;
+			}
 #endif // BOOST_NO_EXCEPTIONS
 			if (file_exists && i->size > 0)
 				return true;
@@ -738,6 +747,11 @@ namespace libtorrent
 			return true;
 		}
 #endif // BOOST_VERSION
+		catch (std::exception& e)
+		{
+			set_error(e.what(), error_code(errors::torrent_paused, get_libtorrent_category()));
+			return true;
+		}
 #endif
 		return false;
 	}
@@ -1240,10 +1254,18 @@ ret:
 		fs::path p(m_save_path / file_iter->path);
 		error_code ec;
 	
+		int mode = file::read_only;
+		if (m_settings
+			&& (settings().disk_io_read_mode == session_settings::disable_os_cache
+			|| (settings().disk_io_read_mode == session_settings::disable_os_cache_for_aligned_files
+			&& ((file_iter->offset + file_iter->file_base) & (m_page_size-1)) == 0)))
+			mode |= file::no_buffer;
+		if (!m_allocate_files) mode |= file::sparse;
+
 		// open the file read only to avoid re-opening
 		// it in case it's already opened in read-only mode
 		boost::shared_ptr<file> f = m_pool.open_file(
-			this, p, file::read_only, ec);
+			this, p, mode, ec);
 
 		size_type ret = 0;
 		if (f && !ec) ret = f->phys_offset(file_offset);
