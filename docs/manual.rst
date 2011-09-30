@@ -3,7 +3,7 @@ libtorrent API Documentation
 ============================
 
 :Author: Arvid Norberg, arvid@rasterbar.com
-:Version: 0.15.7
+:Version: 0.15.8
 
 .. contents:: Table of contents
   :depth: 2
@@ -1959,6 +1959,7 @@ Its declaration looks like this::
 
 		enum deadline_flags { alert_when_available = 1 };
 		void set_piece_deadline(int index, int deadline, int flags = 0) const;
+		void reset_piece_deadline(int index) const;
 
 		void piece_availability(std::vector<int>& avail) const;
 		void piece_priority(int index, int priority) const;
@@ -2009,13 +2010,14 @@ it will throw ``invalid_handle``.
 	Since the torrents are processed by a background thread, there is no
 	guarantee that a handle will remain valid between two calls.
 
-set_piece_deadline()
---------------------
+set_piece_deadline() reset_piece_deadline()
+-------------------------------------------
 
 	::
 
 		enum deadline_flags { alert_when_available = 1 };
 		void set_piece_deadline(int index, int deadline, int flags = 0) const;
+		void reset_piece_deadline(int index) const;
 
 This function sets or resets the deadline associated with a specific piece
 index (``index``). libtorrent will attempt to download this entire piece before
@@ -2034,6 +2036,8 @@ as calling `read_piece()`_ for ``index``.
 
 ``deadline`` is the number of milliseconds until this piece should be completed.
 
+``reset_piece_deadline`` removes the deadline from the piece. If it hasn't already
+been downloaded, it will no longer be considered a priority.
 
 piece_availability()
 --------------------
@@ -2260,6 +2264,10 @@ force_reannounce() force_dht_announce()
 ``force_reannounce()`` will force this torrent to do another tracker request, to receive new
 peers. The second overload of ``force_reannounce`` that takes a ``time_duration`` as
 argument will schedule a reannounce in that amount of time from now.
+
+If the tracker's ``min_interval`` has not passed since the last announce, the forced
+announce will be scheduled to happen immediately as the ``min_interval`` expires. This is
+to honor trackers minimum re-announce interval settings.
 
 ``force_dht_announce`` will announce the torrent to the DHT immediately.
 
@@ -3189,8 +3197,8 @@ across sessions.
 ``active_time``, ``finished_time`` and ``seeding_time`` are second counters.
 They keep track of the number of seconds this torrent has been active (not
 paused) and the number of seconds it has been active while being finished and
-active while being a seed. ``seeding_time`` should be >= ``finished_time`` which
-should be >= ``active_time``. They are all saved in and restored from resume data,
+active while being a seed. ``seeding_time`` should be <= ``finished_time`` which
+should be <= ``active_time``. They are all saved in and restored from resume data,
 to keep totals across sessions.
 
 ``seed_rank`` is a rank of how important it is to seed the torrent, it is used
@@ -3910,7 +3918,7 @@ should ignore any broadcast response from a device whose address is not the
 configured router for this machine. i.e. it's a way to not talk to other
 people's routers by mistake.
 
-``send_buffer_waterbark`` is the upper limit of the send buffer low-watermark.
+``send_buffer_watermark`` is the upper limit of the send buffer low-watermark.
 if the send buffer has fewer bytes than this, we'll read another 16kB block
 onto it. If set too small, upload rate capacity will suffer. If set too high,
 memory will be wasted. The actual watermark may be lower than this in case
