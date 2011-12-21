@@ -1,9 +1,13 @@
 #!/usr/bin/make -f
 
+DPKG_EXPORT_BUILDFLAGS = 1
+include /usr/share/dpkg/buildflags.mk
+
+export DEB_LDFLAGS_MAINT_APPEND  = -Wl,--as-needed
+
 PYVERSIONS=$(shell pyversions -vr)
 ALLPY=$(PYVERSIONS) $(PYVERSIONS:%=%-dbg)
 
-LDFLAGS = -Wl,--as-needed
 CONFIGURE_ARGS = --with-libgeoip
 
 %:
