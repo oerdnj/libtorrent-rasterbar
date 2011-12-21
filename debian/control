@@ -23,6 +23,7 @@ X-Python-Version: >= 2.4
 
 Package: libtorrent-rasterbar6
 Architecture: any
+Pre-Depends: dpkg (>= 1.15.6~)
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Suggests: libtorrent-rasterbar-dbg
 Description: C++ bittorrent library by Rasterbar Software
@@ -40,6 +41,7 @@ Description: C++ bittorrent library by Rasterbar Software
 Package: libtorrent-rasterbar-dev
 Section: libdevel
 Architecture: any
+Pre-Depends: dpkg (>= 1.15.6~)
 Depends: ${misc:Depends},
          libtorrent-rasterbar6 (= ${binary:Version}),
          libboost-dev,
@@ -67,6 +69,7 @@ Package: libtorrent-rasterbar-dbg
 Section: debug
 Priority: extra
 Architecture: any
+Pre-Depends: dpkg (>= 1.15.6~)
 Depends: ${misc:Depends}, libtorrent-rasterbar6 (= ${binary:Version})
 Description: Debug symbols for libtorrent-rasterbar
  Bittorrent library by Rasterbar Software (Arvid Norberg).
@@ -83,6 +86,7 @@ Description: Debug symbols for libtorrent-rasterbar
 Package: libtorrent-rasterbar-doc
 Section: doc
 Architecture: all
+Pre-Depends: dpkg (>= 1.15.6~)
 Depends: ${misc:Depends}
 Description: Documentation for libtorrent-rasterbar
  Bittorrent library by Rasterbar Software (Arvid Norberg).
@@ -99,6 +103,7 @@ Description: Documentation for libtorrent-rasterbar
 Package: python-libtorrent
 Section: python
 Architecture: any
+Pre-Depends: dpkg (>= 1.15.6~)
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, libtorrent-rasterbar6 (= ${binary:Version})
 Provides: ${python:Provides}
 Breaks: ${python:Breaks}
@@ -118,6 +123,7 @@ Package: python-libtorrent-dbg
 Section: debug
 Priority: extra
 Architecture: any
+Pre-Depends: dpkg (>= 1.15.6~)
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-libtorrent (= ${binary:Version}), python-dbg
 Provides: ${python:Provides}
 Breaks: ${python:Breaks}
