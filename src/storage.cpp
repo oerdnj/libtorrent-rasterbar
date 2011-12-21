@@ -1441,8 +1441,8 @@ ret:
 				bytes_transferred = (this->*op.unaligned_op)(file_handle, file_iter->file_base
 					+ file_offset, tmp_bufs, num_tmp_bufs, ec);
 				if (op.mode == file::read_write
-					&& file_iter->file_base + file_offset + bytes_transferred == file_iter->size
-					&& file_handle->pos_alignment() > 0)
+					&& file_iter->file_base + file_offset + bytes_transferred >= file_iter->size
+					&& (file_handle->pos_alignment() > 0 || file_handle->size_alignment() > 0))
 				{
 					// we were writing, and we just wrote the last block of the file
 					// we likely wrote a bit too much, since we're restricted to
@@ -1457,6 +1457,7 @@ ret:
 			{
 				bytes_transferred = (int)((*file_handle).*op.regular_op)(file_iter->file_base
 					+ file_offset, tmp_bufs, num_tmp_bufs, ec);
+				TORRENT_ASSERT(bytes_transferred <= bufs_size(tmp_bufs, num_tmp_bufs));
 			}
 			file_offset = 0;
 
@@ -1536,16 +1537,26 @@ ret:
 		const int num_blocks = (aligned_size + block_size - 1) / block_size;
 		TORRENT_ASSERT((aligned_size & size_align) == 0);
 
+		size_type actual_file_size = file_handle->get_size(ec);
+		if (ec && ec != make_error_code(boost::system::errc::no_such_file_or_directory)) return -1;
+		ec.clear();
+
 		// allocate a temporary, aligned, buffer
 		disk_buffer_holder aligned_buf(*disk_pool(), disk_pool()->allocate_buffers(
 			num_blocks, "write scratch"), num_blocks);
 		file::iovec_t b = {aligned_buf.get(), aligned_size};
-		size_type ret = file_handle->readv(aligned_start, &b, 1, ec);
-		if (ret < 0)
+		if (aligned_start < actual_file_size && !ec) // we have something to read
 		{
-			TORRENT_ASSERT(ec);
-			return ret;
+			size_type ret = file_handle->readv(aligned_start, &b, 1, ec);
+			if (ec
+#ifdef TORRENT_WINDOWS
+				&& ec != error_code(ERROR_HANDLE_EOF, get_system_category())
+#endif
+				)
+				return ret;
 		}
+
+		ec.clear();
 
 		// OK, we read the portion of the file. Now, overlay the buffer we're writing 
 
@@ -1557,7 +1568,7 @@ ret:
 		}
 
 		// write the buffer back to disk
-		ret = file_handle->writev(aligned_start, &b, 1, ec);
+		size_type ret = file_handle->writev(aligned_start, &b, 1, ec);
 
 		if (ret < 0)
 		{
@@ -1992,6 +2003,8 @@ ret:
 #if defined TORRENT_PARTIAL_HASH_LOG && TORRENT_USE_IOSTREAM
 		std::ofstream out("partial_hash.log", std::ios::app);
 #endif
+
+		if (m_storage->settings().disable_hash_checks) return ret;
 
 		if (offset == 0)
 		{
