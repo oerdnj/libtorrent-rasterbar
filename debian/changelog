@@ -1,3 +1,12 @@
+libtorrent-rasterbar (0.15.9-1) unstable; urgency=low
+
+  * New upstream version.
+  * debian/{control,rules}: compress binary packages with xz and add
+    Pre-Depends on dpkg (>= 1.15.6~).
+  * debian/rules: enable default hardening options from dpkg-buildflags.
+
+ -- Cristian Greco <cristian@debian.org>  Wed, 21 Dec 2011 13:08:22 +0100
+
 libtorrent-rasterbar (0.15.8-1) unstable; urgency=low
 
   * New upstream version.
