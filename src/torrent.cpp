@@ -4876,6 +4876,7 @@ namespace libtorrent
 			{
 				torrent* t = i->second.get();
 				if (t->m_sequence_number > max_seq) max_seq = t->m_sequence_number;
+				if (t->m_sequence_number >= p) ++t->m_sequence_number;
 			}
 			m_sequence_number = (std::min)(max_seq + 1, p);
 		}
@@ -6058,7 +6059,7 @@ namespace libtorrent
 		st.all_time_upload = m_total_uploaded;
 		st.all_time_download = m_total_downloaded;
 
-		st.active_time = total_seconds(m_active_time);
+		st.finished_time = total_seconds(m_finished_time);
 		st.active_time = total_seconds(m_active_time);
 		st.seeding_time = total_seconds(m_seeding_time);
 

@@ -561,7 +561,9 @@ namespace aux {
 		PRINT_OFFSETOF(udp_socket, m_socks5_sock)
 		PRINT_OFFSETOF(udp_socket, m_connection_ticket)
 		PRINT_OFFSETOF(udp_socket, m_proxy_settings)
+#ifdef _MSC_VER
 		PRINT_OFFSETOF(udp_socket, m_cc)
+#endif
 		PRINT_OFFSETOF(udp_socket, m_resolver)
 		PRINT_OFFSETOF(udp_socket, m_tmp_buf)
 		PRINT_OFFSETOF(udp_socket, m_queue_packets)
@@ -633,10 +635,26 @@ namespace aux {
 		m_stats_logger <<
 			"second:upload rate:download rate:downloading torrents:seeding torrents"
 			":peers:connecting peers:disk block buffers:unchoked peers:num list peers"
-			":peer allocations:peer storage bytes\n\n";
+			":peer allocations:peer storage bytes"
+			":read_counter"
+			":write_counter"
+			":tick_counter"
+			":lsd_counter"
+			":lsd_peer_counter"
+			":udp_counter"
+			":accept_counter"
+			":disk_queue_counter"
+			":disk_read_counter"
+			":disk_write_counter"
+			":up 8:up 16:up 32:up 64:up 128:up 256:up 512:up 1024:up 2048:up 4096:up 8192:up 16384:up 32768:up 65536:up 131072:up 262144:up 524288:up 1048576"
+			":down 8:down 16:down 32:down 64:down 128:down 256:down 512:down 1024:down 2048:down 4096:down 8192:down 16384:down 32768:down 65536:down 131072:down 262144:down 524288:down 1048576"
+			"\n\n";
 		m_buffer_usage_logger.open("buffer_stats.log", std::ios::trunc);
 		m_second_counter = 0;
 		m_buffer_allocations = 0;
+		memset(m_num_messages, 0, sizeof(m_num_messages));
+		memset(m_send_buffer_sizes, 0, sizeof(m_send_buffer_sizes));
+		memset(m_recv_buffer_sizes, 0, sizeof(m_recv_buffer_sizes));
 #endif
 
 #if defined TORRENT_BSD || defined TORRENT_LINUX
@@ -1507,6 +1525,9 @@ namespace aux {
 	void session_impl::on_receive_udp(error_code const& e
 		, udp::endpoint const& ep, char const* buf, int len)
 	{
+#ifdef TORRENT_STATS
+		++m_num_messages[on_udp_counter];
+#endif
 		if (e)
 		{
 			if (e == asio::error::connection_refused
@@ -1545,6 +1566,10 @@ namespace aux {
 		, weak_ptr<socket_acceptor> listen_socket, error_code const& e)
 	{
 		boost::shared_ptr<socket_acceptor> listener = listen_socket.lock();
+
+#ifdef TORRENT_STATS
+		++m_num_messages[on_accept_counter];
+#endif
 		if (!listener) return;
 		
 		if (e == asio::error::operation_aborted) return;
@@ -1799,6 +1824,9 @@ namespace aux {
 	{
 		session_impl::mutex_t::scoped_lock l(m_mutex);
 		
+#ifdef TORRENT_STATS
+		++m_num_messages[on_disk_queue_counter];
+#endif
 		for (connection_map::iterator i = m_connections.begin();
 			i != m_connections.end();)
 		{
@@ -1821,6 +1849,10 @@ namespace aux {
 	void session_impl::on_tick(error_code const& e)
 	{
 		session_impl::mutex_t::scoped_lock l(m_mutex);
+
+#ifdef TORRENT_STATS
+		++m_num_messages[on_tick_counter];
+#endif
 
 		ptime now = time_now_hires();
 		aux::g_current_time = now;
@@ -1936,8 +1968,22 @@ namespace aux {
 			<< unchoked_peers << "\t"
 			<< num_peers << "\t"
 			<< logging_allocator::allocations << "\t"
-			<< logging_allocator::allocated_bytes << "\t"
-			<< std::endl;
+			<< logging_allocator::allocated_bytes << "\t";
+
+		for (int i = 0; i < max_messages; ++i)
+			m_stats_logger << m_num_messages[i] << "\t";
+		int num_max = sizeof(m_send_buffer_sizes)/sizeof(m_send_buffer_sizes[0]);
+		for (int i = 0; i < num_max; ++i)
+			m_stats_logger << m_send_buffer_sizes[i] << "\t";
+		num_max = sizeof(m_recv_buffer_sizes)/sizeof(m_recv_buffer_sizes[0]);
+		for (int i = 0; i < num_max; ++i)
+			m_stats_logger << m_recv_buffer_sizes[i] << "\t";
+
+		m_stats_logger << std::endl;
+
+		memset(m_num_messages, 0, sizeof(m_num_messages));
+		memset(m_send_buffer_sizes, 0, sizeof(m_send_buffer_sizes));
+		memset(m_recv_buffer_sizes, 0, sizeof(m_recv_buffer_sizes));
 #endif
 
 		// --------------------------------------------------------------
@@ -2270,6 +2316,10 @@ namespace aux {
 		if (e) return;
 
 		session_impl::mutex_t::scoped_lock l(m_mutex);
+
+#ifdef TORRENT_STATS
+		++m_num_messages[on_lsd_counter];
+#endif
 		if (m_abort) return;
 
 		// announce on local network every 5 minutes
@@ -3016,6 +3066,9 @@ namespace aux {
 	{
 		mutex_t::scoped_lock l(m_mutex);
 
+#ifdef TORRENT_STATS
+		++m_num_messages[on_lsd_peer_counter];
+#endif
 		INVARIANT_CHECK;
 
 		boost::shared_ptr<torrent> t = find_torrent(ih).lock();
