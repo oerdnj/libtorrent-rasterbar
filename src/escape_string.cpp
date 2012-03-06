@@ -80,7 +80,7 @@ namespace libtorrent
 			un /= 10;
 		} while (un);
 		if (n < 0) *--p = '-';
-		std::memmove(&ret.front(), p, sizeof(ret.elems));
+		std::memmove(&ret[0], p, &ret.back() - p + 1);
 		return ret;
 	}
 
@@ -246,6 +246,13 @@ namespace libtorrent
 		return false;
 	}
 	
+	void convert_path_to_posix(std::string& path)
+	{
+		for (std::string::iterator i = path.begin()
+			, end(path.end()); i != end; ++i)
+			if (*i == '\\') *i = '/';
+	}
+
 	std::string read_until(char const*& str, char delim, char const* end)
 	{
 		TORRENT_ASSERT(str <= end);
