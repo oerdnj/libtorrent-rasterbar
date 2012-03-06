@@ -1,3 +1,9 @@
+libtorrent-rasterbar (0.15.10-1) unstable; urgency=low
+
+  * New upstream version.
+
+ -- Cristian Greco <cristian@debian.org>  Tue, 06 Mar 2012 21:27:49 +0100
+
 libtorrent-rasterbar (0.15.9-1) unstable; urgency=low
 
   * New upstream version.
