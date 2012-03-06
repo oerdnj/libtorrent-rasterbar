@@ -1,3 +1,19 @@
+0.15.10 release
+
+	* fix 'parameter incorrect' issue when using unbuffered IO on windows
+	* fixed UDP socket error handling on windows
+	* fixed peer_tos (type of service) setting
+	* fixed crash when loading resume file with more files than the torrent in it
+	* fix invalid-parameter error on windows when disabling filesystem disk cache
+	* fix connection queue issue causing shutdown delays
+	* fixed mingw build
+	* fix overflow bug in progress_ppm field
+	* don't filter local peers received from a non-local tracker
+	* fix python deadlock when using python extensions
+	* fixed small memory leak in DHT
+
+0.15.9 release
+
 	* fixed https crash
 	* added some functions missing from the python binding
 	* fixed rare piece picker bug

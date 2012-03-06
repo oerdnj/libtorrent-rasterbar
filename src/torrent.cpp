@@ -1566,7 +1566,14 @@ namespace libtorrent
 			else
 			{
 				// ignore local addresses from the tracker (unless the tracker is local too)
-				if (is_local(a.address()) && !is_local(tracker_ip)) continue;
+				// there are 2 reasons to allow this:
+				// 1. retrackers are popular in russia, where an ISP runs a tracker within
+				//    the AS (but not on the local network) giving out peers only from the
+				//    local network
+				// 2. it might make sense to have a tracker extension in the future where
+				//    trackers records a peer's internal and external IP, and match up
+				//    peers on the same local network
+//				if (is_local(a.address()) && !is_local(tracker_ip)) continue;
 				m_policy.add_peer(a, i->pid, peer_info::tracker, 0);
 			}
 		}
@@ -2093,16 +2100,11 @@ namespace libtorrent
 		// increase the trust point of all peers that sent
 		// parts of this piece.
 		std::set<void*> peers;
+
+		// these policy::peer pointers are owned by m_policy and they may be
+		// invalidated if a peer disconnects. We cannot keep them across any
+		// significant operations, but we should use them right away
 		std::copy(downloaders.begin(), downloaders.end(), std::inserter(peers, peers.begin()));
-
-		we_have(index);
-
-		for (peer_iterator i = m_connections.begin(); i != m_connections.end();)
-		{
-			intrusive_ptr<peer_connection> p = *i;
-			++i;
-			p->announce_piece(index);
-		}
 
 		for (std::set<void*>::iterator i = peers.begin()
 			, end(peers.end()); i != end; ++i)
@@ -2115,6 +2117,20 @@ namespace libtorrent
 			if (trust_points > 8) trust_points = 8;
 			p->trust_points = trust_points;
 			if (p->connection) p->connection->received_valid_data(index);
+		}
+
+		// announcing a piece may invalidate the policy::peer pointers
+		// so we can't use them anymore
+		downloaders.clear();
+		peers.clear();
+
+		we_have(index);
+
+		for (peer_iterator i = m_connections.begin(); i != m_connections.end();)
+		{
+			intrusive_ptr<peer_connection> p = *i;
+			++i;
+			p->announce_piece(index);
 		}
 
 		if (settings().max_sparse_regions > 0
@@ -2808,6 +2824,7 @@ namespace libtorrent
 		std::vector<int> pieces(m_torrent_file->num_pieces(), 0);
 		for (int i = 0; i < int(m_file_priority.size()); ++i)
 		{
+			if (i >= m_torrent_file->num_files()) break;
 			size_type start = position;
 			size_type size = m_torrent_file->files().at(i).size;
 			if (size == 0) continue;
