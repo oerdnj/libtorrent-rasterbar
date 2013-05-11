@@ -4,13 +4,9 @@ Priority: optional
 Maintainer: Cristian Greco <cristian@debian.org>
 Build-Depends: debhelper (>= 7.4.10),
                dpkg-dev (>= 1.16.1~),
-               libboost-dev,
                libboost-system-dev,
-               libboost-filesystem-dev,
-               libboost-thread-dev,
                libboost-python-dev,
                libssl-dev,
-               zlib1g-dev,
                libgeoip-dev,
                pkg-config,
                python-all-dev (>= 2.6.6-3~),
@@ -50,7 +46,6 @@ Depends: ${misc:Depends},
          libboost-filesystem-dev,
          libboost-thread-dev,
          libssl-dev,
-         zlib1g-dev,
          libgeoip-dev,
          pkg-config
 Suggests: libtorrent-rasterbar-doc
