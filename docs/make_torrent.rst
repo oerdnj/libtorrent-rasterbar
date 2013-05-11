@@ -3,7 +3,7 @@ creating torrents
 =================
 
 :Author: Arvid Norberg, arvid@rasterbar.com
-:Version: 0.15.10
+:Version: 0.16.9
 
 .. contents:: Table of contents
   :depth: 2
@@ -59,15 +59,15 @@ add_files
 	::
 	
 		template <class Pred>
-		void add_files(file_storage& fs, boost::filesystem::path const& path, Pred p
+		void add_files(file_storage& fs, std::string const& path, Pred p
 			, boost::uint32_t flags = 0);
 		template <class Pred>
-		void add_files(file_storage& fs, boost::filesystem::wpath const& path, Pred p
+		void add_files(file_storage& fs, std::wstring const& path, Pred p
 			, boost::uint32_t flags = 0);
 
-		void add_files(file_storage& fs, boost::filesystem::path const& path
+		void add_files(file_storage& fs, std::string const& path
 			, boost::uint32_t flags = 0);
-		void add_files(file_storage& fs, boost::filesystem::wpath const& path
+		void add_files(file_storage& fs, std::wstring const& path
 			, boost::uint32_t flags = 0);
 
 Adds the file specified by ``path`` to the ``file_storage`` object. In case ``path``
@@ -77,11 +77,11 @@ If specified, the predicate ``p`` is called once for every file and directory th
 is encountered. files for which ``p`` returns true are added, and directories for
 which ``p`` returns true are traversed. ``p`` must have the following signature::
 
-	bool Pred(boost::filesystem::path const& p);
+	bool Pred(std::string const& p);
 
-and for the wpath version::
+and for the wide string version::
 
-	bool Pred(boost::filesystem::wpath const& p);
+	bool Pred(std::wstring const& p);
 
 The path that is passed in to the predicate is the full path of the file or
 directory. If no predicate is specified, all files are added, and all directories
@@ -98,21 +98,21 @@ set_piece_hashes()
 	::
 
 		template <class Fun>
-		void set_piece_hashes(create_torrent& t, boost::filesystem::path const& p, Fun f);
+		void set_piece_hashes(create_torrent& t, std::string const& p, Fun f);
 		template <class Fun>
-		void set_piece_hashes(create_torrent& t, boost::filesystem::wpath const& p, Fun f);
+		void set_piece_hashes(create_torrent& t, std::wstring const& p, Fun f);
 		template <class Fun>
-		void set_piece_hashes(create_torrent& t, boost::filesystem::path const& p, Fun f
+		void set_piece_hashes(create_torrent& t, std::string const& p, Fun f
 			, error_code& ec);
 		template <class Fun>
-		void set_piece_hashes(create_torrent& t, boost::filesystem::wpath const& p, Fun f
+		void set_piece_hashes(create_torrent& t, std::wstring const& p, Fun f
 			, error_code& ec);
 
-		void set_piece_hashes(create_torrent& t, boost::filesystem::path const& p);
-		void set_piece_hashes(create_torrent& t, boost::filesystem::wpath const& p);
-		void set_piece_hashes(create_torrent& t, boost::filesystem::path const& p
+		void set_piece_hashes(create_torrent& t, std::string const& p);
+		void set_piece_hashes(create_torrent& t, std::wstring const& p);
+		void set_piece_hashes(create_torrent& t, std::string const& p
 			, error_code& ec);
-		void set_piece_hashes(create_torrent& t, boost::filesystem::wpath const& p
+		void set_piece_hashes(create_torrent& t, std::wstring const& p
 			, error_code& ec);
 
 This function will assume that the files added to the torrent file exists at path
@@ -146,8 +146,8 @@ file structure. Its synopsis::
 		};
 
 		void add_file(file_entry const& e);
-		void add_file(fs::path const& p, size_type size, int flags = 0);
-		void add_file(fs::wpath const& p, size_type size, int flags = 0);
+		void add_file(std::string const& p, size_type size, int flags = 0);
+		void add_file(std::wstring const& p, size_type size, int flags = 0);
 		void rename_file(int index, std::string const& new_filename);
 		void rename_file(int index, std::wstring const& new_filename);
 
@@ -155,8 +155,8 @@ file structure. Its synopsis::
 			, int size) const;
 		peer_request map_file(int file, size_type offset, int size) const;
 		
-		typedef std::vector<file_entry>::const_iterator iterator;
-		typedef std::vector<file_entry>::const_reverse_iterator reverse_iterator;
+		typedef std::vector<internal_file_entry>::const_iterator iterator;
+		typedef std::vector<internal_file_entry>::const_reverse_iterator reverse_iterator;
 
 		iterator begin() const;
 		iterator end() const;
@@ -164,7 +164,7 @@ file structure. Its synopsis::
 		reverse_iterator rend() const;
 		int num_files() const;
 
-		file_entry const& at(int index) const;
+		file_entry at(int index) const;
 		
 		size_type total_size() const;
 		void set_num_pieces(int n);
@@ -172,6 +172,13 @@ file structure. Its synopsis::
 		void set_piece_length(int l);
 		int piece_length() const;
 		int piece_size(int index) const;
+
+		sha1_hash const& hash(int index) const;
+		std::string const& symlink(int index) const;
+		time_t mtime(int index) const;
+		int file_index(int index) const;
+		size_type file_base(int index) const;
+		void set_file_base(int index, size_type off);
 
 		void set_name(std::string const& n);
 		void set_name(std::wstring const& n);
@@ -186,8 +193,8 @@ add_file()
 	::
 
 		void add_file(file_entry const& e);
-		void add_file(fs::path const& p, size_type size, int flags = 0);
-		void add_file(fs::wpath const& p, size_type size, int flags = 0);
+		void add_file(std::string const& p, size_type size, int flags = 0);
+		void add_file(std::wstring const& p, size_type size, int flags = 0);
 
 Adds a file to the file storage. The ``flags`` argument sets attributes on the file.
 The file attributes is an extension and may not work in all bittorrent clients.
@@ -197,17 +204,8 @@ The possible arreibutes are::
 	attribute_hidden
 	attribute_executable
 
-add_file
---------
-
-	::
-
-		void add_file(file_entry const& e);
-		void add_file(fs::path const& p, size_type size);
-
-Adds a file to the file storage. If more files than one are added,
-certain restrictions to their paths apply. In a multi-file file
-storage (torrent), all files must share the same root directory.
+If more files than one are added, certain restrictions to their paths apply.
+In a multi-file file storage (torrent), all files must share the same root directory.
 
 That is, the first path element of all files must be the same.
 This shared path element is also set to the name of the torrent. It
@@ -216,6 +214,43 @@ can be changed by calling ``set_name``.
 The built in functions to traverse a directory to add files will
 make sure this requirement is fulfilled.
 
+hash() symlink() mtime() file_index()
+-------------------------------------
+
+	::
+
+		sha1_hash hash(int index) const;
+		std::string const& symlink(int index) const;
+		time_t mtime(int index) const;
+		int file_index(int index) const;
+
+These functions are used to query the symlink, file hash,
+modification time and the file-index from a file index.
+
+The file hash is a sha-1 hash of the file, or 0 if none was
+provided in the torrent file. This can potentially be used to
+join a bittorrent network with other file sharing networks.
+
+The modification time is the posix time when a file was last
+modified when the torrent was created, or 0 if it was not provided.
+
+The file index of a file is simply a 0 based index of the
+file as they are ordered in the torrent file.
+
+file_base() set_file_base()
+---------------------------
+
+	::
+
+		size_type file_base(int index) const;
+		void set_file_base(int index, size_type off);
+
+The file base of a file is the offset within the file on the filsystem
+where it starts to write. For the most part, this is always 0. It's
+possible to map several files (in the torrent) into a single file on
+the filesystem by making them all point to the same filename, but with
+different file bases, so that they don't overlap.
+``torrent_info::remap_files`` can be used to use a new file layout.
 
 create_torrent
 ==============
@@ -229,7 +264,8 @@ The ``create_torrent`` class has the following synopsis::
 			optimize = 1
 			, merkle = 2
 			, modification_time = 4
-			, symlink = 8
+			, symlinks = 8
+			, calculate_file_hashes = 16
 		};
 		create_torrent(file_storage& fs, int piece_size = 0, int pad_size_limit = -1
 			, int flags = optimize);
@@ -242,10 +278,12 @@ The ``create_torrent`` class has the following synopsis::
 		void set_comment(char const* str);
 		void set_creator(char const* str);
 		void set_hash(int index, sha1_hash const& h);
+		void set_file_hash(int index, sha1_hash const& h);
 		void add_url_seed(std::string const& url);
 		void add_http_seed(std::string const& url);
 		void add_node(std::pair<std::string, int> const& node);
 		void add_tracker(std::string const& url, int tier = 0);
+		void set_root_cert(std::string const& pem);
 		void set_priv(bool p);
 
 		int num_pieces() const;
@@ -263,7 +301,8 @@ create_torrent()
 			optimize = 1
 			, merkle = 2
 			, modification_time = 4
-			, symlink = 8
+			, symlinks = 8
+			, calculate_file_hashes = 16
 		};
 		create_torrent(file_storage& fs, int piece_size = 0, int pad_size_limit = -1
 			, int flags = optimize);
@@ -316,6 +355,12 @@ symlink
 	set on them and their data will not be included in the torrent. This
 	is useful if you need to reconstruct a file hierarchy which contains
 	symlinks.
+
+calculate_file_hashes
+	If this is set, the `set_piece_hashes()`_ function will, as it calculates
+	the piece hashes, also calculate the file hashes and add those associated
+	with each file. Note that unless you use the `set_piece_hashes()`_ function,
+	this flag will have no effect.
 
 generate()
 ----------
@@ -380,6 +425,17 @@ to set the hash for every piece in the torrent before generating it. If you have
 the files on disk, you can use the high level convenience function to do this.
 See `set_piece_hashes()`_.
 
+set_file_hash()
+---------------
+
+	::
+
+		void set_file_hash(int index, sha1_hash const& h);
+
+This sets the sha1 hash for this file. This hash will end up under the key ``sha1``
+associated with this file (for multi-file torrents) or in the root info dictionary
+for single-file torrents.
+
 add_url_seed() add_http_seed()
 ------------------------------
 
@@ -421,6 +477,23 @@ url to a machine running a bittorrent tracker that accepts announces for this to
 info-hash. The tier is the fallback priority of the tracker. All trackers with tier 0 are
 tried first (in any order). If all fail, trackers with tier 1 are tried. If all of those
 fail, trackers with tier 2 are tried, and so on.
+
+set_root_cert()
+---------------
+
+	::
+
+		void set_root_cert(std::string const& pem);
+
+This function sets an X.509 certificate in PEM format to the torrent. This makes the
+torrent an *SSL torrent*. An SSL torrent requires that each peer has a valid certificate
+signed by this root certificate. For SSL torrents, all peers are connecting over SSL
+connections. For more information on SSL torrents, see the manual_.
+
+The string is not the path to the cert, it's the actual content of the certificate,
+loaded into a std::string.
+
+.. _manual: manual.html#ssl-torrents
 
 set_priv() priv()
 -----------------

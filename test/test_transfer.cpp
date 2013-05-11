@@ -35,48 +35,50 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/hasher.hpp"
 #include "libtorrent/alert_types.hpp"
 #include "libtorrent/bencode.hpp"
-#include <boost/thread.hpp>
+#include "libtorrent/thread.hpp"
+#include "libtorrent/time.hpp"
+#include "libtorrent/file.hpp"
 #include <boost/tuple/tuple.hpp>
-#include <boost/filesystem/operations.hpp>
+#include <boost/bind.hpp>
 
 #include "test.hpp"
 #include "setup_transfer.hpp"
+#include <fstream>
+#include <iostream>
 
-using boost::filesystem::remove_all;
-using boost::filesystem::exists;
-using boost::filesystem::create_directory;
 using namespace libtorrent;
 using boost::tuples::ignore;
+
+int const alert_mask = alert::all_categories
+& ~alert::progress_notification
+& ~alert::stats_notification;
 
 // test the maximum transfer rate
 void test_rate()
 {
 	// in case the previous run was terminated
-	try { remove_all("./tmp1_transfer"); } catch (std::exception&) {}
-	try { remove_all("./tmp2_transfer"); } catch (std::exception&) {}
-	try { remove_all("./tmp1_transfer_moved"); } catch (std::exception&) {}
-	try { remove_all("./tmp2_transfer_moved"); } catch (std::exception&) {}
+	error_code ec;
+	remove_all("tmp1_transfer", ec);
+	remove_all("tmp2_transfer", ec);
+	remove_all("tmp1_transfer_moved", ec);
+	remove_all("tmp2_transfer_moved", ec);
 
-	session ses1(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48575, 49000), "0.0.0.0", 0);
-	session ses2(fingerprint("LT", 0, 1, 0, 0), std::make_pair(49575, 50000), "0.0.0.0", 0);
+	session ses1(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48575, 49000), "0.0.0.0", 0, alert_mask);
+	session ses2(fingerprint("LT", 0, 1, 0, 0), std::make_pair(49575, 50000), "0.0.0.0", 0, alert_mask);
 
 	torrent_handle tor1;
 	torrent_handle tor2;
 
-	create_directory("./tmp1_transfer");
-	std::ofstream file("./tmp1_transfer/temporary");
+	create_directory("tmp1_transfer", ec);
+	std::ofstream file("tmp1_transfer/temporary");
 	boost::intrusive_ptr<torrent_info> t = ::create_torrent(&file, 4 * 1024 * 1024, 7);
 	file.close();
 
+	wait_for_listen(ses1, "ses1");
+	wait_for_listen(ses2, "ses1");
+
 	boost::tie(tor1, tor2, ignore) = setup_transfer(&ses1, &ses2, 0
 		, true, false, true, "_transfer", 0, &t);
-
-	ses1.set_alert_mask(alert::all_categories
-		& ~alert::progress_notification
-		& ~alert::stats_notification);
-	ses2.set_alert_mask(alert::all_categories
-		& ~alert::progress_notification
-		& ~alert::stats_notification);
 
 	ptime start = time_now();
 
@@ -88,17 +90,20 @@ void test_rate()
 		torrent_status st1 = tor1.status();
 		torrent_status st2 = tor2.status();
 
-		std::cerr
-			<< "up: \033[33m" << st1.upload_payload_rate / 1000000.f << "MB/s "
-			<< " down: \033[32m" << st2.download_payload_rate / 1000000.f << "MB/s "
-			<< "\033[0m" << int(st2.progress * 100) << "% "
-			<< std::endl;
+		if (i % 10 == 0)
+		{
+			std::cerr
+				<< "up: \033[33m" << st1.upload_payload_rate / 1000000.f << "MB/s "
+				<< " down: \033[32m" << st2.download_payload_rate / 1000000.f << "MB/s "
+				<< "\033[0m" << int(st2.progress * 100) << "% "
+				<< std::endl;
+		}
 
-		if (tor2.is_seed()) break;
-		test_sleep(1000);
+		if (st2.is_seeding) break;
+		test_sleep(100);
 	}
 
-	TEST_CHECK(tor2.is_seed());
+	TEST_CHECK(tor2.status().is_seeding);
 
 	time_duration dt = time_now() - start;
 
@@ -110,16 +115,16 @@ void test_rate()
 
 }
 
-void print_alert(alert const& a)
+void print_alert(std::auto_ptr<alert>)
 {
-	std::cout << "ses1 (alert dispatch function): " << a.message() << std::endl;
+	std::cout << "ses1 (alert dispatch function): "/* << a.message() */ << std::endl;
 }
 
 // simulate a full disk
 struct test_storage : storage_interface
 {
-	test_storage(file_storage const& fs, fs::path const& p, file_pool& fp)
-		: m_lower_layer(default_storage_constructor(fs, 0, p, fp))
+	test_storage(file_storage const& fs, std::string const& p, file_pool& fp)
+		: m_lower_layer(default_storage_constructor(fs, 0, p, fp, std::vector<boost::uint8_t>()))
   		, m_written(0)
 		, m_limit(16 * 1024 * 2)
 	{}
@@ -130,12 +135,12 @@ struct test_storage : storage_interface
 	virtual bool has_any_file()
 	{ return m_lower_layer->has_any_file(); }
 
-	virtual int readv(file::iovec_t const* bufs, int slot, int offset, int num_bufs)
-	{ return m_lower_layer->readv(bufs, slot, offset, num_bufs); }
+	virtual int readv(file::iovec_t const* bufs, int slot, int offset, int num_bufs, int flags)
+	{ return m_lower_layer->readv(bufs, slot, offset, num_bufs, flags); }
 
-	virtual int writev(file::iovec_t const* bufs, int slot, int offset, int num_bufs)
+	virtual int writev(file::iovec_t const* bufs, int slot, int offset, int num_bufs, int flags)
 	{
-		int ret = m_lower_layer->writev(bufs, slot, offset, num_bufs);
+		int ret = m_lower_layer->writev(bufs, slot, offset, num_bufs, flags);
 		if (ret > 0) m_written += ret;
 		if (m_written > m_limit)
 		{
@@ -178,7 +183,7 @@ struct test_storage : storage_interface
 	virtual int sparse_end(int start) const
 	{ return m_lower_layer->sparse_end(start); }
 
-	virtual bool move_storage(fs::path save_path)
+	virtual bool move_storage(std::string const& save_path)
 	{ return m_lower_layer->move_storage(save_path); }
 
 	virtual bool verify_resume_data(lazy_entry const& rd, error_code& error)
@@ -211,29 +216,87 @@ struct test_storage : storage_interface
 };
 
 storage_interface* test_storage_constructor(file_storage const& fs
-	, file_storage const*, fs::path const& path, file_pool& fp)
+	, file_storage const*, std::string const& path, file_pool& fp, std::vector<boost::uint8_t> const&)
 {
 	return new test_storage(fs, path, fp);
 }
 
-void test_transfer(bool test_disk_full = false, bool test_allowed_fast = false)
-{
-	// in case the previous run was terminated
-	try { remove_all("./tmp1_transfer"); } catch (std::exception&) {}
-	try { remove_all("./tmp2_transfer"); } catch (std::exception&) {}
-	try { remove_all("./tmp1_transfer_moved"); } catch (std::exception&) {}
-	try { remove_all("./tmp2_transfer_moved"); } catch (std::exception&) {}
+int tracker_responses = 0;
 
-	session ses1(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48075, 49000), "0.0.0.0", 0);
-	session ses2(fingerprint("LT", 0, 1, 0, 0), std::make_pair(49075, 50000), "0.0.0.0", 0);
+bool on_alert(alert* a)
+{
+	if (alert_cast<tracker_reply_alert>(a))
+		++tracker_responses;
+	return false;
+}
+
+void test_transfer(int proxy_type, bool test_disk_full = false, bool test_allowed_fast = false, bool test_priorities = false)
+{
+
+	char const* test_name[] = {"no", "SOCKS4", "SOCKS5", "SOCKS5 password", "HTTP", "HTTP password"};
+
+	fprintf(stderr, "\n\n  ==== TESTING %s proxy ====\n\n\n", test_name[proxy_type]);
+	
+	// in case the previous run was terminated
+	error_code ec;
+	remove_all("tmp1_transfer", ec);
+	remove_all("tmp2_transfer", ec);
+	remove_all("tmp1_transfer_moved", ec);
+	remove_all("tmp2_transfer_moved", ec);
+
+	session ses1(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48075, 49000), "0.0.0.0", 0, alert_mask);
+	session ses2(fingerprint("LT", 0, 1, 0, 0), std::make_pair(49075, 50000), "0.0.0.0", 0, alert_mask);
+
+	int proxy_port = (rand() % 30000) + 10000;
+	if (proxy_type)
+	{
+		start_proxy(proxy_port, proxy_type);
+		proxy_settings ps;
+		ps.hostname = "127.0.0.1";
+		ps.port = proxy_port;
+		ps.username = "testuser";
+		ps.password = "testpass";
+		ps.type = (proxy_settings::proxy_type)proxy_type;
+		ses1.set_proxy(ps);
+		ses2.set_proxy(ps);
+	}
+
+	session_settings sett;
+	sett.allow_multiple_connections_per_ip = false;
+	sett.ignore_limits_on_local_network = false;
 
 	if (test_allowed_fast)
 	{
-		session_settings sett;
 		sett.allowed_fast_set_size = 2000;
-		ses1.set_max_uploads(0);
-		ses1.set_settings(sett);
+		sett.unchoke_slots_limit = 0;
 	}
+
+	sett.unchoke_slots_limit = 0;
+	ses1.set_settings(sett);
+	TEST_CHECK(ses1.settings().unchoke_slots_limit == 0);
+	sett.unchoke_slots_limit = -1;
+	ses1.set_settings(sett);
+	TEST_CHECK(ses1.settings().unchoke_slots_limit == -1);
+	sett.unchoke_slots_limit = 8;
+	ses1.set_settings(sett);
+	TEST_CHECK(ses1.settings().unchoke_slots_limit == 8);
+
+	// we need a short reconnect time since we
+	// finish the torrent and then restart it
+	// immediately to complete the second half.
+	// using a reconnect time > 0 will just add
+	// to the time it will take to complete the test
+	sett.min_reconnect_time = 0;
+	sett.stop_tracker_timeout = 1;
+	sett.announce_to_all_trackers = true;
+	sett.announce_to_all_tiers = true;
+	// make sure we announce to both http and udp trackers
+	sett.prefer_udp_trackers = false;
+	sett.enable_outgoing_utp = false;
+	sett.enable_incoming_utp = false;
+
+	ses1.set_settings(sett);
+	ses2.set_settings(sett);
 
 #ifndef TORRENT_DISABLE_ENCRYPTION
 	pe_settings pes;
@@ -246,71 +309,88 @@ void test_transfer(bool test_disk_full = false, bool test_allowed_fast = false)
 	torrent_handle tor1;
 	torrent_handle tor2;
 
-	create_directory("./tmp1_transfer");
-	std::ofstream file("./tmp1_transfer/temporary");
-	boost::intrusive_ptr<torrent_info> t = ::create_torrent(&file, 16 * 1024);
+	create_directory("tmp1_transfer", ec);
+	std::ofstream file("tmp1_transfer/temporary");
+	boost::intrusive_ptr<torrent_info> t = ::create_torrent(&file, 16 * 1024, 13, false);
 	file.close();
 
+	if (test_priorities)
+	{
+		int udp_tracker_port = start_tracker();
+		int tracker_port = start_web_server();
+
+		char tracker_url[200];
+		snprintf(tracker_url, sizeof(tracker_url), "http://127.0.0.1:%d/announce", tracker_port);
+		t->add_tracker(tracker_url);
+
+		snprintf(tracker_url, sizeof(tracker_url), "udp://127.0.0.1:%d/announce", udp_tracker_port);
+		t->add_tracker(tracker_url);
+	}
+
 	add_torrent_params addp(&test_storage_constructor);
+	addp.flags &= ~add_torrent_params::flag_paused;
+	addp.flags &= ~add_torrent_params::flag_auto_managed;
+
+	wait_for_listen(ses1, "ses1");
+	wait_for_listen(ses2, "ses1");
 
 	// test using piece sizes smaller than 16kB
 	boost::tie(tor1, tor2, ignore) = setup_transfer(&ses1, &ses2, 0
 		, true, false, true, "_transfer", 8 * 1024, &t, false, test_disk_full?&addp:0);
 
-	session_settings settings = ses1.settings();
-	settings.min_reconnect_time = 1;
-	ses1.set_settings(settings);
-	ses2.set_settings(settings);
-
-	// set half of the pieces to priority 0
 	int num_pieces = tor2.get_torrent_info().num_pieces();
 	std::vector<int> priorities(num_pieces, 1);
-	std::fill(priorities.begin(), priorities.begin() + (num_pieces / 2), 0);
-	tor2.prioritize_pieces(priorities);
-	std::cerr << "setting priorities: ";
-	std::copy(priorities.begin(), priorities.end(), std::ostream_iterator<int>(std::cerr, ", "));
-	std::cerr << std::endl;
+	if (test_priorities)
+	{
+		// set half of the pieces to priority 0
+		std::fill(priorities.begin(), priorities.begin() + (num_pieces / 2), 0);
+		tor2.prioritize_pieces(priorities);
+		std::cerr << "setting priorities: ";
+		std::copy(priorities.begin(), priorities.end(), std::ostream_iterator<int>(std::cerr, ", "));
+		std::cerr << std::endl;
+	}
 
-	ses1.set_alert_mask(alert::all_categories
-		& ~alert::progress_notification
-		& ~alert::stats_notification);
-	ses2.set_alert_mask(alert::all_categories
-		& ~alert::progress_notification
-		& ~alert::stats_notification);
 //	ses1.set_alert_dispatch(&print_alert);
 
-	ses2.set_download_rate_limit(tor2.get_torrent_info().piece_length() / 2);
+//	sett = ses2.settings();
+//	sett.download_rate_limit = tor2.get_torrent_info().piece_length() * 5;
+//	ses2.set_settings(sett);
 
 	// also test to move the storage of the downloader and the uploader
 	// to make sure it can handle switching paths
 	bool test_move_storage = false;
 
-	for (int i = 0; i < 30; ++i)
+	tracker_responses = 0;
+
+	for (int i = 0; i < 50; ++i)
 	{
-		print_alerts(ses1, "ses1");
-		print_alerts(ses2, "ses2");
+		print_alerts(ses1, "ses1", true, true, true, on_alert);
+		print_alerts(ses2, "ses2", true, true, true, on_alert);
 
 		torrent_status st1 = tor1.status();
 		torrent_status st2 = tor2.status();
 
-		std::cerr
-			<< "\033[32m" << int(st1.download_payload_rate / 1000.f) << "kB/s "
-			<< "\033[33m" << int(st1.upload_payload_rate / 1000.f) << "kB/s "
-			<< "\033[0m" << int(st1.progress * 100) << "% "
-			<< st1.num_peers
-			<< ": "
-			<< "\033[32m" << int(st2.download_payload_rate / 1000.f) << "kB/s "
-			<< "\033[31m" << int(st2.upload_payload_rate / 1000.f) << "kB/s "
-			<< "\033[0m" << int(st2.progress * 100) << "% "
-			<< st2.num_peers
-			<< " cc: " << st2.connect_candidates
-			<< std::endl;
+		if (i % 10 == 0)
+		{
+			std::cerr
+				<< "\033[32m" << int(st1.download_payload_rate / 1000.f) << "kB/s "
+				<< "\033[33m" << int(st1.upload_payload_rate / 1000.f) << "kB/s "
+				<< "\033[0m" << int(st1.progress * 100) << "% "
+				<< st1.num_peers
+				<< ": "
+				<< "\033[32m" << int(st2.download_payload_rate / 1000.f) << "kB/s "
+				<< "\033[31m" << int(st2.upload_payload_rate / 1000.f) << "kB/s "
+				<< "\033[0m" << int(st2.progress * 100) << "% "
+				<< st2.num_peers
+				<< " cc: " << st2.connect_candidates
+				<< std::endl;
+		}
 
 		if (!test_move_storage && st2.progress > 0.25f)
 		{
 			test_move_storage = true;
-			tor1.move_storage("./tmp1_transfer_moved");
-			tor2.move_storage("./tmp2_transfer_moved");
+			tor1.move_storage("tmp1_transfer_moved");
+			tor2.move_storage("tmp2_transfer_moved");
 			std::cerr << "moving storage" << std::endl;
 		}
 
@@ -322,185 +402,216 @@ void test_transfer(bool test_disk_full = false, bool test_allowed_fast = false)
 			continue;
 		}
 
-		if (!test_disk_full && tor2.is_finished()) break;
+		if (!test_disk_full && st2.is_finished) break;
+
+		if (st2.state != torrent_status::downloading)
+		{
+			static char const* state_str[] =	
+				{"checking (q)", "checking", "dl metadata"
+				, "downloading", "finished", "seeding", "allocating", "checking (r)"};
+			std::cerr << "st2 state: " << state_str[st2.state] << std::endl;
+		}
 
 		TEST_CHECK(st1.state == torrent_status::seeding
 			|| st1.state == torrent_status::checking_files);
 		TEST_CHECK(st2.state == torrent_status::downloading
 			|| (test_disk_full && !st2.error.empty()));
 
-		test_sleep(1000);
+		test_sleep(100);
 	}
 
-	TEST_CHECK(!tor2.is_seed());
-	TEST_CHECK(tor2.is_finished());
-	if (tor2.is_finished())
-		std::cerr << "torrent is finished (50% complete)" << std::endl;
+	if (test_priorities)
+	{
+		// 1 announce per tracker to start
+		TEST_CHECK(tracker_responses >= 2);
 
-	std::cerr << "force recheck" << std::endl;
-	tor2.force_recheck();
+		TEST_CHECK(!tor2.status().is_seeding);
+		TEST_CHECK(tor2.status().is_finished);
+
+		if (tor2.status().is_finished)
+			std::cerr << "torrent is finished (50% complete)" << std::endl;
+		else return;
+
+		std::cerr << "force recheck" << std::endl;
+		tor2.force_recheck();
 	
-	for (int i = 0; i < 10; ++i)
-	{
-		test_sleep(1000);
-		print_alerts(ses2, "ses2");
-		torrent_status st2 = tor2.status();
-		std::cerr << "\033[0m" << int(st2.progress * 100) << "% " << std::endl;
-		if (st2.state != torrent_status::checking_files) break;
-	}
-
-	std::vector<int> priorities2 = tor2.piece_priorities();
-	TEST_CHECK(std::equal(priorities.begin(), priorities.end(), priorities2.begin()));
-
-	for (int i = 0; i < 5; ++i)
-	{
-		print_alerts(ses2, "ses2");
-		torrent_status st2 = tor2.status();
-		std::cerr << "\033[0m" << int(st2.progress * 100) << "% " << std::endl;
-		TEST_CHECK(st2.state == torrent_status::finished);
-		test_sleep(100);
-	}
-
-	tor2.pause();
-	alert const* a = ses2.wait_for_alert(seconds(10));
-	bool got_paused_alert = false;
-	while (a)
-	{
-		std::auto_ptr<alert> holder = ses2.pop_alert();
-		std::cerr << "ses2: " << a->message() << std::endl;
-		if (alert_cast<torrent_paused_alert>(a))
+		for (int i = 0; i < 50; ++i)
 		{
-			got_paused_alert = true;
-			break;	
+			test_sleep(100);
+			print_alerts(ses2, "ses2");
+			torrent_status st2 = tor2.status();
+			if (i % 10 == 0)
+				std::cerr << "\033[0m" << int(st2.progress * 100) << "% " << std::endl;
+			if (st2.state != torrent_status::checking_files) break;
 		}
-		a = ses2.wait_for_alert(seconds(10));
-	}
-	TEST_CHECK(got_paused_alert);	
 
-	std::vector<announce_entry> tr;
-	tr.push_back(announce_entry("http://test.com/announce"));
-	tor2.replace_trackers(tr);
-	tr.clear();
+		std::vector<int> priorities2 = tor2.piece_priorities();
+		TEST_CHECK(std::equal(priorities.begin(), priorities.end(), priorities2.begin()));
 
-	tor2.save_resume_data();
-
-	std::vector<char> resume_data;
-	a = ses2.wait_for_alert(seconds(10));
-	while (a)
-	{
-		std::auto_ptr<alert> holder = ses2.pop_alert();
-		std::cerr << "ses2: " << a->message() << std::endl;
-		if (alert_cast<save_resume_data_alert>(a))
+		for (int i = 0; i < 5; ++i)
 		{
-			bencode(std::back_inserter(resume_data)
-				, *alert_cast<save_resume_data_alert>(a)->resume_data);
-			break;
+			print_alerts(ses2, "ses2");
+			torrent_status st2 = tor2.status();
+			//		std::cerr << "\033[0m" << int(st2.progress * 100) << "% " << std::endl;
+			TEST_CHECK(st2.state == torrent_status::finished);
+			test_sleep(100);
 		}
+
+		tor2.pause();
+		alert const* a = ses2.wait_for_alert(seconds(10));
+		bool got_paused_alert = false;
+		while (a)
+		{
+			std::auto_ptr<alert> holder = ses2.pop_alert();
+			std::cerr << "ses2: " << a->message() << std::endl;
+			if (alert_cast<torrent_paused_alert>(a))
+			{
+				got_paused_alert = true;
+				break;	
+			}
+			a = ses2.wait_for_alert(seconds(10));
+		}
+		TEST_CHECK(got_paused_alert);	
+
+		std::vector<announce_entry> tr = tor2.trackers();
+		tr.push_back(announce_entry("http://test.com/announce"));
+		tor2.replace_trackers(tr);
+		tr.clear();
+
+		tor2.save_resume_data();
+
+		std::vector<char> resume_data;
 		a = ses2.wait_for_alert(seconds(10));
-	}
-	TEST_CHECK(resume_data.size());	
+		while (a)
+		{
+			std::auto_ptr<alert> holder = ses2.pop_alert();
+			std::cerr << "ses2: " << a->message() << std::endl;
+			if (alert_cast<save_resume_data_alert>(a))
+			{
+				bencode(std::back_inserter(resume_data)
+						, *alert_cast<save_resume_data_alert>(a)->resume_data);
+				break;
+			}
+			a = ses2.wait_for_alert(seconds(10));
+		}
+		TEST_CHECK(resume_data.size());	
 
-	std::cerr << "saved resume data" << std::endl;
+		std::cerr << "saved resume data" << std::endl;
 
-	ses2.remove_torrent(tor2);
+		ses2.remove_torrent(tor2);
 
-	std::cerr << "removed" << std::endl;
-
-	test_sleep(100);
-
-	std::cout << "re-adding" << std::endl;
-	add_torrent_params p;
-	p.ti = t;
-	p.save_path = "./tmp2_transfer_moved";
-	p.resume_data = &resume_data;
-	tor2 = ses2.add_torrent(p);
-	ses2.set_alert_mask(alert::all_categories
-		& ~alert::progress_notification
-		& ~alert::stats_notification);
-	tor2.prioritize_pieces(priorities);
-	std::cout << "resetting priorities" << std::endl;
-	tor2.resume();
-
-	tr = tor2.trackers();
-	TEST_CHECK(std::find_if(tr.begin(), tr.end()
-		, boost::bind(&announce_entry::url, _1) == "http://test.com/announce") != tr.end());
-
-	test_sleep(100);
-
-	for (int i = 0; i < 5; ++i)
-	{
-		print_alerts(ses1, "ses1");
-		print_alerts(ses2, "ses2");
-
-		torrent_status st1 = tor1.status();
-		torrent_status st2 = tor2.status();
-
-		TEST_CHECK(st1.state == torrent_status::seeding);
-		TEST_CHECK(st2.state == torrent_status::finished);
+		std::cerr << "removed" << std::endl;
 
 		test_sleep(100);
+
+		std::cout << "re-adding" << std::endl;
+		add_torrent_params p;
+		p.flags &= ~add_torrent_params::flag_paused;
+		p.flags &= ~add_torrent_params::flag_auto_managed;
+		p.ti = t;
+		p.save_path = "tmp2_transfer_moved";
+		p.resume_data = &resume_data;
+		tor2 = ses2.add_torrent(p, ec);
+		ses2.set_alert_mask(alert::all_categories
+			& ~alert::progress_notification
+			& ~alert::stats_notification);
+		tor2.prioritize_pieces(priorities);
+		std::cout << "resetting priorities" << std::endl;
+		tor2.resume();
+
+		tr = tor2.trackers();
+		TEST_CHECK(std::find_if(tr.begin(), tr.end()
+			, boost::bind(&announce_entry::url, _1) == "http://test.com/announce") != tr.end());
+
+		test_sleep(100);
+
+		for (int i = 0; i < 5; ++i)
+		{
+			print_alerts(ses1, "ses1");
+			print_alerts(ses2, "ses2");
+
+			torrent_status st1 = tor1.status();
+			torrent_status st2 = tor2.status();
+
+			TEST_CHECK(st1.state == torrent_status::seeding);
+			TEST_CHECK(st2.state == torrent_status::finished);
+
+			test_sleep(100);
+		}
+
+		TEST_CHECK(!tor2.status().is_seeding);
+
+		std::fill(priorities.begin(), priorities.end(), 1);
+		tor2.prioritize_pieces(priorities);
+		std::cout << "setting priorities to 1" << std::endl;
+
+		for (int i = 0; i < 130; ++i)
+		{
+			print_alerts(ses1, "ses1");
+			print_alerts(ses2, "ses2");
+
+			torrent_status st1 = tor1.status();
+			torrent_status st2 = tor2.status();
+
+			if (i % 10 == 0)
+			{
+				std::cerr
+					<< "\033[32m" << int(st1.download_payload_rate / 1000.f) << "kB/s "
+					<< "\033[33m" << int(st1.upload_payload_rate / 1000.f) << "kB/s "
+					<< "\033[0m" << int(st1.progress * 100) << "% "
+					<< st1.num_peers
+					<< ": "
+					<< "\033[32m" << int(st2.download_payload_rate / 1000.f) << "kB/s "
+					<< "\033[31m" << int(st2.upload_payload_rate / 1000.f) << "kB/s "
+					<< "\033[0m" << int(st2.progress * 100) << "% "
+					<< st2.num_peers
+					<< " cc: " << st2.connect_candidates
+					<< std::endl;
+			}
+
+			if (tor2.status().is_finished) break;
+
+			TEST_CHECK(st1.state == torrent_status::seeding);
+			TEST_CHECK(st2.state == torrent_status::downloading);
+
+			test_sleep(100);
+		}
 	}
 
-	TEST_CHECK(!tor2.is_seed());
+	TEST_CHECK(tor2.status().is_seeding);
 
-	std::fill(priorities.begin(), priorities.end(), 1);
-	tor2.prioritize_pieces(priorities);
-	std::cout << "setting priorities to 1" << std::endl;
-
-	for (int i = 0; i < 130; ++i)
+	if (test_priorities)
 	{
-		print_alerts(ses1, "ses1");
-		print_alerts(ses2, "ses2");
-
-		torrent_status st1 = tor1.status();
-		torrent_status st2 = tor2.status();
-
-		std::cerr
-			<< "\033[32m" << int(st1.download_payload_rate / 1000.f) << "kB/s "
-			<< "\033[33m" << int(st1.upload_payload_rate / 1000.f) << "kB/s "
-			<< "\033[0m" << int(st1.progress * 100) << "% "
-			<< st1.num_peers
-			<< ": "
-			<< "\033[32m" << int(st2.download_payload_rate / 1000.f) << "kB/s "
-			<< "\033[31m" << int(st2.upload_payload_rate / 1000.f) << "kB/s "
-			<< "\033[0m" << int(st2.progress * 100) << "% "
-			<< st2.num_peers
-			<< " cc: " << st2.connect_candidates
-			<< std::endl;
-
-		if (tor2.is_finished()) break;
-
-		TEST_CHECK(st1.state == torrent_status::seeding);
-		TEST_CHECK(st2.state == torrent_status::downloading);
-
-		test_sleep(1000);
+		stop_tracker();
+		stop_web_server();
 	}
-
-	TEST_CHECK(tor2.is_seed());
+	if (proxy_type) stop_proxy(proxy_port);
 }
 
 int test_main()
 {
 	using namespace libtorrent;
-	using namespace boost::filesystem;
 
 #ifdef NDEBUG
 	// test rate only makes sense in release mode
 	test_rate();
 #endif
 
-	test_transfer();
+	// test with all kinds of proxies
+	for (int i = 0; i < 6; ++i)
+		test_transfer(i);
 	
 	// test with a (simulated) full disk
-	test_transfer(true);
+	test_transfer(0, true, true);
 	
 	// test allowed fast
-	test_transfer(false, true);
+	test_transfer(0, false, true, true);
 	
-	try { remove_all("./tmp1_transfer"); } catch (std::exception&) {}
-	try { remove_all("./tmp2_transfer"); } catch (std::exception&) {}
-	try { remove_all("./tmp1_transfer_moved"); } catch (std::exception&) {}
-	try { remove_all("./tmp2_transfer_moved"); } catch (std::exception&) {}
+	error_code ec;
+	remove_all("tmp1_transfer", ec);
+	remove_all("tmp2_transfer", ec);
+	remove_all("tmp1_transfer_moved", ec);
+	remove_all("tmp2_transfer_moved", ec);
 
 	return 0;
 }

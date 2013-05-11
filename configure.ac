@@ -1,11 +1,11 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-# $Id: configure.ac 3872 2009-09-18 18:47:57Z cristiangreco $
+# $Id: configure.ac 8144 2013-03-10 23:59:46Z arvidn $
 
 AC_PREREQ([2.63])
 
-AC_INIT([libtorrent-rasterbar],[0.15.10],[arvid@cs.umu.se],
+AC_INIT([libtorrent-rasterbar],[0.16.9],[arvid@rasterbar.com],
         [libtorrent-rasterbar],[http://www.libtorrent.org])
 AC_CONFIG_SRCDIR([src/torrent.cpp])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -41,7 +41,7 @@ dnl  increment AGE, Otherwise AGE is reset to 0. If CURRENT has changed,
 dnl  REVISION is set to 0, otherwise REVISION is incremented.
 dnl ---------------------------------------------------------------------------
 
-m4_define([VERSION_INFO_CURRENT],[6])
+m4_define([VERSION_INFO_CURRENT],[7])
 m4_define([VERSION_INFO_REVISION],[0])
 m4_define([VERSION_INFO_AGE],[0])
 INTERFACE_VERSION_INFO=VERSION_INFO_CURRENT:VERSION_INFO_REVISION:VERSION_INFO_AGE
@@ -100,6 +100,21 @@ LIBS="$PTHREAD_LIBS $LIBS"
 CFLAGS="$PTHREAD_CFLAGS $CFLAGS"
 CC="$PTHREAD_CC"
 
+AS_ECHO "Checking for visibility support:"
+AC_CACHE_CHECK([for __attribute__((visibility("hidden")))],
+    ac_cv_hidden_visibility_attribute, [
+    echo 'int __attribute__ ((visibility ("hidden"))) foo (void) { return 1; }' > visibility_conftest.c
+    ac_cv_hidden_visibility_attribute=no
+    if AC_TRY_COMMAND(${CC-cc} -fvisibility=hidden -S visibility_conftest.c -o visibility_conftest.s 1>&AS_MESSAGE_LOG_FD);
+    then
+        AS_ECHO "found"
+        ac_cv_hidden_visibility_attribute=yes
+        CXXFLAGS="$CXXFLAGS -fvisibility-inlines-hidden"
+        CFLAGS="$CFLAGS -fvisibility=hidden"
+    fi
+    rm -f visibility_conftest.*
+])
+
 AS_ECHO
 AS_ECHO "Checking for boost libraries:"
 
@@ -108,14 +123,6 @@ AX_BOOST_BASE([1.36])
 AX_BOOST_SYSTEM()
 AS_IF([test -z "$BOOST_SYSTEM_LIB"],
       [AC_MSG_ERROR(Boost.System library not found. Try using --with-boost-system=lib)])
-
-AX_BOOST_FILESYSTEM()
-AS_IF([test -z "$BOOST_FILESYSTEM_LIB"],
-      [AC_MSG_ERROR(Boost.Filesystem library not found. Try using --with-boost-filesystem=lib)])
-
-AX_BOOST_THREAD()
-AS_IF([test -z "$BOOST_THREAD_LIB"],
-      [AC_MSG_ERROR(Boost.Thread library not found. Try using --with-boost-thread=lib)])
 
 CPPFLAGS="$BOOST_CPPFLAGS $CPPFLAGS"
 LDFLAGS="$BOOST_LDFLAGS $LDFLAGS"
@@ -165,6 +172,10 @@ AC_CHECK_FUNCS([clock_gettime], [],
 )
 
 
+dnl Pass some build options to setup.py and .pc file
+COMPILETIME_OPTIONS=""
+
+
 ###############################################################################
 # Setting configure options
 ###############################################################################
@@ -196,8 +207,8 @@ AC_ARG_ENABLE(
 AC_ARG_ENABLE(
   [dht],
   [AS_HELP_STRING(
-    [--disable-dht],
-    [disable dht support (use value "logging" to add extra logging) [default=yes]])],
+    [--enable-dht],
+    [enable dht support (use value "logging" to add extra logging) [default=yes]])],
   [[ARG_ENABLE_DHT=$enableval]],
   [[ARG_ENABLE_DHT=yes]]
 )
@@ -205,8 +216,8 @@ AC_ARG_ENABLE(
 AC_ARG_ENABLE(
   [encryption],
   [AS_HELP_STRING(
-    [--disable-encryption],
-    [disable encryption support (requires OpenSSL to be installed on your system, you can use --with-openssl to set the path) [default=yes]])],
+    [--enable-encryption],
+    [enable encryption support (requires OpenSSL to be installed on your system, you can use --with-openssl to set the path) [default=yes]])],
   [[ARG_ENABLE_ENCRYPTION=$enableval]],
   [[ARG_ENABLE_ENCRYPTION=yes]]
 )
@@ -214,8 +225,8 @@ AC_ARG_ENABLE(
 AC_ARG_ENABLE(
   [pool-allocators],
   [AS_HELP_STRING(
-    [--disable-pool-allocators],
-    [disable pool allocators for send buffers [default=yes]])],
+    [--enable-pool-allocators],
+    [enable pool allocators for send buffers [default=yes]])],
   [[ARG_ENABLE_POOL_ALLOC=$enableval]],
   [[ARG_ENABLE_POOL_ALLOC=yes]]
 )
@@ -236,8 +247,8 @@ AC_ARG_ENABLE(
 AC_ARG_ENABLE(
   [deprecated-functions],
   [AS_HELP_STRING(
-    [--disable-deprecated-functions],
-    [disable deprecated functions from the API [default=yes]])],
+    [--enable-deprecated-functions],
+    [enable deprecated functions in the API [default=yes]])],
   [[ARG_ENABLE_DEPRECATED=$enableval]],
   [[ARG_ENABLE_DEPRECATED=yes]]
 )
@@ -263,8 +274,8 @@ AC_ARG_ENABLE(
 AC_ARG_ENABLE(
   [geoip],
   [AS_HELP_STRING(
-    [--disable-geoip],
-    [disable geoip support (if enabled, you can use --with-libgeoip to choose whether to link against shipped or system library) [default=yes]])],
+    [--enable-geoip],
+    [enable geoip support (if enabled, you can use --with-libgeoip to choose whether to link against shipped or system library) [default=yes]])],
   [
    ARG_ENABLE_GEOIP=$enableval
    ac_arg_enable_geoip=$enableval
@@ -303,15 +314,6 @@ AC_ARG_ENABLE(
 )
 
 AC_ARG_WITH(
-  [zlib],
-  [AS_HELP_STRING(
-    [--without-zlib],
-    [disable linking against system zlib [default=system]])],
-  [[ARG_WITH_ZLIB=$withval]],
-  [[ARG_WITH_ZLIB=yes]]
-)
-
-AC_ARG_WITH(
   [libgeoip],
   [AS_HELP_STRING(
     [--with-libgeoip],
@@ -320,6 +322,14 @@ AC_ARG_WITH(
   [[ARG_WITH_LIBGEOIP=no]]
 )
 
+AC_ARG_WITH(
+  [libiconv],
+  [AS_HELP_STRING(
+    [--with-libiconv],
+    [enable linking against system libiconv [default=no]])],
+  [[ARG_WITH_LIBICONV=$withval]],
+  [[ARG_WITH_LIBICONV=no]]
+)
 
 ###############################################################################
 # Checking configure options
@@ -544,27 +554,6 @@ AS_CASE(["$ARG_ENABLE_PYTHON_BINDING"],
 AS_ECHO
 AS_ECHO "Checking for external libraries:"
 
-AC_MSG_CHECKING([whether to link against system zlib])
-AS_CASE(["$ARG_WITH_ZLIB"],
-  ["yes"|"system"], [
-      AC_MSG_RESULT([yes])
-      AC_CHECK_HEADER([zlib.h], [
-        AC_CHECK_LIB([z], [main], [],
-          [AC_MSG_ERROR([zlib library not found. Try using --without-zlib to link against the shipped copy.])])],
-          [AC_MSG_ERROR([zlib header not found. Try using --without-zlib to link against the shipped copy.])])
-   ],
-  ["no"|"shipped"], [
-      AC_MSG_RESULT([no])
-      AC_MSG_NOTICE([zlib: linking against shipped zlib.])
-      #AC_SUBST([ZLIB], ["\$(top_builddir)/zlib/libzlib.la"])
-      #AC_SUBST([ZLIBINCL], ["-I\$(top_srcdir)/zlib"])
-      #AC_MSG_NOTICE([zlib= $ZLIB zlibincl= $ZLIBINCL])
-      ARG_WITH_ZLIB="no"
-   ],
-  [AC_MSG_RESULT([$ARG_WITH_ZLIB])
-   AC_MSG_ERROR([Unknown option "$ARG_WITH_ZLIB". Use either "yes" or "no".])]
-)
-
 AC_MSG_CHECKING([for FIEMAP support])
 AC_CHECK_HEADERS([linux/fiemap.h])
 
@@ -603,6 +592,25 @@ AS_CASE(["$ARG_WITH_LIBGEOIP"],
    AC_MSG_ERROR([Unknown option "$ARG_WITH_LIBGEOIP". Use either "yes" or "no".])]
 )
 
+AC_MSG_CHECKING([whether to link against system libiconv])
+AS_CASE(["$ARG_WITH_LIBICONV"],
+  ["yes"], [
+      AC_MSG_RESULT([yes])
+      AM_ICONV()
+      AS_IF([test "x$am_cv_func_iconv" = "xyes"], [
+           ICONV_LIBS=$LTLIBICONV
+           AC_SUBST([ICONV_LIBS])
+           LIBS="$ICONV_LIBS $LIBS"
+      ], [
+           AC_MSG_ERROR([Iconv library not found.])
+      ])
+   ],
+  ["no"], [
+        ARG_WITH_LIBICONV="no"
+   ],
+  [AC_MSG_RESULT([$ARG_WITH_LIBICONV])
+   AC_MSG_ERROR([Unknown option "$ARG_WITH_LIBICONV". Use either "yes" or "no".])]
+)
 
 ###############################################################################
 # Setting conditional variables for Makefiles
@@ -613,8 +621,8 @@ AM_CONDITIONAL([ENABLE_EXAMPLES], [test "x$ARG_ENABLE_EXAMPLES" = "xyes"])
 AM_CONDITIONAL([ENABLE_TESTS], [test "x$ARG_ENABLE_TESTS" = "xyes"])
 AM_CONDITIONAL([ENABLE_PYTHON_BINDING], [test "x$ARG_ENABLE_PYTHON_BINDING" = "xyes"])
 
-AM_CONDITIONAL([WITH_SHIPPED_ZLIB], [test "x$ARG_WITH_ZLIB" = "xno" ])
 AM_CONDITIONAL([WITH_SHIPPED_GEOIP], [test "x$ARG_WITH_LIBGEOIP" = "xno" ])
+AM_CONDITIONAL([WITH_OPENSSL], [test "x$ARG_ENABLE_ENCRYPTION" = "xyes" -o "x$ARG_ENABLE_ENCRYPTION" = "xon" ])
 
 
 ###############################################################################
@@ -629,8 +637,11 @@ COMPILETIME_OPTIONS="$COMPILETIME_OPTIONS -DBOOST_ASIO_HASH_MAP_BUCKETS=1021 "
 AC_DEFINE([BOOST_EXCEPTION_DISABLE],[1],[Define to disable the boost.exception features.])
 COMPILETIME_OPTIONS="$COMPILETIME_OPTIONS -DBOOST_EXCEPTION_DISABLE "
 
-AC_DEFINE([BOOST_FILESYSTEM_VERSION],[2],[Define to select the boost.filesystem library version 2.])
-COMPILETIME_OPTIONS="$COMPILETIME_OPTIONS -DBOOST_FILESYSTEM_VERSION=2 "
+AC_DEFINE([BOOST_ASIO_ENABLE_CANCELIO],[1],[Define to enable cancel support in asio on windows XP and older.])
+COMPILETIME_OPTIONS="$COMPILETIME_OPTIONS -DBOOST_ASIO_ENABLE_CANCELIO "
+
+AC_DEFINE([BOOST_ASIO_DYN_LINK],[1],[make asio export its symbols])
+COMPILETIME_OPTIONS="$COMPILETIME_OPTIONS -DBOOST_ASIO_DYN_LINK"
 
 dnl Use possibly specific python install params
 AC_ARG_VAR([PYTHON_INSTALL_PARAMS], [Set specific install parameters for python bindings.])
@@ -666,7 +677,7 @@ AC_CONFIG_FILES(
   [include/libtorrent/Makefile]
   [examples/Makefile]
   [test/Makefile]
-  [zlib/Makefile]
+  [tools/Makefile]
   [bindings/Makefile]
   [bindings/python/Makefile]
   [bindings/python/setup.py]
@@ -735,8 +746,6 @@ Boost libraries:
   CPPFlags:             ${BOOST_CPPFLAGS}
   LDFlags:              ${BOOST_LDFLAGS}
   boost.system:         ${BOOST_SYSTEM_LIB}
-  boost.filesystem:     ${BOOST_FILESYSTEM_LIB}
-  boost.thread:         ${BOOST_THREAD_LIB}
 END
 
 AS_IF([test "x$ARG_ENABLE_PYTHON_BINDING" = "xyes"], [
@@ -767,8 +776,8 @@ END
 cat >> config.report << END
 
 External libraries:
-  system zlib:          ${ARG_WITH_ZLIB:-yes}
   system libgeoip:      ${ARG_WITH_LIBGEOIP:-no}
+  system libiconv:      ${ARG_WITH_LIBICONV:-no}
 END
 
 AS_IF([test "x$ARG_WITH_LIBGEOIP" = "xyes"], [
@@ -777,6 +786,14 @@ cat >> config.report << END
 GeoIP library:
   GeoIP CFlags:         ${GEOIP_CFLAGS}
   GeoIP Libs:           ${GEOIP_LIBS}
+END
+])
+
+AS_IF([test "x$ARG_WITH_LIBICONV" = "xyes"], [
+cat >> config.report << END
+
+Iconv library:
+  Iconv Libs:           ${ICONV_LIBS}
 END
 ])
 

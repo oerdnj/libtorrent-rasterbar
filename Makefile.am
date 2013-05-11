@@ -2,7 +2,7 @@ ACLOCAL_AMFLAGS = -I m4
 
 #DISTCHECK_CONFIGURE_FLAGS = --enable-tests
 
-SUBDIRS = include/libtorrent zlib src examples test bindings
+SUBDIRS = include/libtorrent src examples test bindings tools
 
 DOCS_IMAGES = \
   docs/arctic_thumb.png           \
@@ -14,6 +14,10 @@ DOCS_IMAGES = \
   docs/btg_thumb.jpg              \
   docs/bubba.png                  \
   docs/client_test.png            \
+  docs/cwnd.png                   \
+  docs/cwnd_thumb.png             \
+  docs/delays.png                 \
+  docs/delays_thumb.png           \
   docs/deluge.png                 \
   docs/disk_access.png            \
   docs/disk_buffer_before_optimization.png  \
@@ -26,6 +30,7 @@ DOCS_IMAGES = \
   docs/firetorrent.png            \
   docs/flush.jpg                  \
   docs/halite_thumb.png           \
+  docs/hacking.html               \
   docs/im_thumb.jpg               \
   docs/leechcraft.png             \
   docs/libtorrent_screen.png      \
@@ -36,6 +41,8 @@ DOCS_IMAGES = \
   docs/merkle_tree.png            \
   docs/miro.jpg                   \
   docs/moopolice_thumb.gif        \
+  docs/our_delay_base.png         \
+  docs/our_delay_base_thumb.png   \
   docs/pump.png                   \
   docs/qbittorrent_thumb.jpg      \
   docs/read_disk_buffers.dot      \
@@ -45,21 +52,29 @@ DOCS_IMAGES = \
   docs/storage.graffle            \
   docs/storage.png                \
   docs/style.css                  \
+  docs/t2e.jpg                    \
   docs/tvblob.jpg                 \
   docs/tvitty.jpg                 \
   docs/unicode_support.png        \
   docs/write_disk_buffers.dot     \
   docs/write_disk_buffers.graffle \
   docs/write_disk_buffers.png     \
-  docs/ziptorrent_thumb.gif
+  docs/ziptorrent_thumb.gif       \
+  docs/zyxel.png
 
 DOCS_PAGES = \
   docs/building.html              \
   docs/building.rst               \
   docs/client_test.html           \
   docs/client_test.rst            \
+  docs/contributing.html          \
+  docs/contributing.rst           \
   docs/dht_extensions.html        \
   docs/dht_extensions.rst         \
+  docs/dht_rss.html               \
+  docs/dht_rss.rst                \
+  docs/dht_sec.html               \
+  docs/dht_sec.rst                \
   docs/examples.html              \
   docs/examples.rst               \
   docs/extension_protocol.html    \
@@ -78,19 +93,26 @@ DOCS_PAGES = \
   docs/projects.rst               \
   docs/python_binding.html        \
   docs/python_binding.rst         \
+  docs/dht_rss.html               \
+  docs/dht_rss.rst                \
   docs/running_tests.html         \
   docs/running_tests.rst          \
   docs/tuning.html                \
   docs/tuning.rst                 \
   docs/udp_tracker_protocol.html  \
-  docs/udp_tracker_protocol.rst
+  docs/udp_tracker_protocol.rst   \
+  docs/utp.html                   \
+  docs/utp.rst
 
 EXTRA_DIST = \
   Jamfile \
-  project-root.jam \
+  Jamroot.jam \
   CMakeLists.txt \
+  LICENSE \
   libtorrent-rasterbar.pc  \
   libtorrent-rasterbar-cmake.pc  \
+  parse_dht_log.py \
+  parse_session_stats.py \
   $(DOCS_PAGES) \
   $(DOCS_IMAGES)
 

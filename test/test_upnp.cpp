@@ -32,6 +32,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "libtorrent/upnp.hpp"
 #include "libtorrent/socket.hpp"
+#include "libtorrent/socket_io.hpp" // print_endpoint
 #include "libtorrent/connection_queue.hpp"
 #include "test.hpp"
 #include "setup_transfer.hpp"
@@ -39,6 +40,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <boost/bind.hpp>
 #include <boost/ref.hpp>
 #include <boost/intrusive_ptr.hpp>
+#include <iostream>
 
 using namespace libtorrent;
 
@@ -146,7 +148,8 @@ void incoming_msearch(udp::endpoint const& from, char* buffer
 	p.incoming(buffer::const_interval(buffer, buffer + size), error);
 	if (error || !p.header_finished())
 	{
-		std::cerr << "*** malformed HTTP from " << from << std::endl;
+		std::cerr << "*** malformed HTTP from "
+			<< print_endpoint(from) << std::endl;
 		return;
 	}
 
@@ -190,11 +193,11 @@ struct callback_info
 
 std::list<callback_info> callbacks;
 
-void callback(int mapping, int port, error_code const& err)
+void callback(int mapping, address const& ip, int port, error_code const& err)
 {
 	callback_info info = {mapping, port, err};
 	callbacks.push_back(info);
-	std::cerr << "mapping: " << mapping << ", port: " << port
+	std::cerr << "mapping: " << mapping << ", port: " << port << ", IP: " << ip
 		<< ", error: \"" << err.message() << "\"\n";
 	//TODO: store the callbacks and verify that the ports were successful
 }
@@ -212,8 +215,11 @@ int test_main()
 	xml.write(soap_add_response, sizeof(soap_add_response)-1);
 	xml.close();
 
-	sock = new broadcast_socket(ios, udp::endpoint(address_v4::from_string("239.255.255.250"), 1900)
+	sock = new broadcast_socket(udp::endpoint(address_v4::from_string("239.255.255.250"), 1900)
 		, &incoming_msearch);
+
+	error_code ec;
+	sock->open(ios, ec);
 
 	std::string user_agent = "test agent";
 
@@ -223,7 +229,6 @@ int test_main()
 	upnp_handler->discover_device();
 
 	libtorrent::deadline_timer timer(ios);
-	error_code ec;
 	timer.expires_from_now(seconds(10), ec);
 	timer.async_wait(boost::bind(&libtorrent::io_service::stop, boost::ref(ios)));
 
