@@ -2,15 +2,12 @@
 #include "libtorrent/session_settings.hpp"
 #include "libtorrent/hasher.hpp"
 #include "libtorrent/alert_types.hpp"
-#include <boost/thread.hpp>
+#include "libtorrent/thread.hpp"
 #include <boost/tuple/tuple.hpp>
-#include <boost/filesystem/operations.hpp>
+#include <iostream>
 
 #include "test.hpp"
 #include "setup_transfer.hpp"
-
-using boost::filesystem::remove_all;
-using boost::filesystem::exists;
 
 void test_swarm()
 {
@@ -23,24 +20,23 @@ void test_swarm()
 	ses1.set_alert_mask(alert::all_categories);
 	ses2.set_alert_mask(alert::all_categories);
 	ses3.set_alert_mask(alert::all_categories);
-	
+
 	// this is to avoid everything finish from a single peer
 	// immediately. To make the swarm actually connect all
 	// three peers before finishing.
 	float rate_limit = 100000;
-	ses1.set_upload_rate_limit(int(rate_limit));
-	ses1.set_max_uploads(1);
-	ses2.set_download_rate_limit(int(rate_limit / 5));
-	ses3.set_download_rate_limit(int(rate_limit / 5));
-	ses2.set_upload_rate_limit(int(rate_limit / 10));
-	ses3.set_upload_rate_limit(int(rate_limit / 10));
 
 	session_settings settings;
 	settings.allow_multiple_connections_per_ip = true;
 	settings.ignore_limits_on_local_network = false;
-	settings.auto_upload_slots = true;
-	settings.auto_upload_slots_rate_based = false;
+	settings.choking_algorithm = session_settings::auto_expand_choker;
+	settings.upload_rate_limit = rate_limit;
+	settings.unchoke_slots_limit = 1;
 	ses1.set_settings(settings);
+
+	settings.upload_rate_limit = rate_limit / 10;
+	settings.download_rate_limit = rate_limit / 5;
+	settings.unchoke_slots_limit = 0;
 	ses2.set_settings(settings);
 	ses3.set_settings(settings);
 
@@ -102,12 +98,12 @@ void test_swarm()
 int test_main()
 {
 	using namespace libtorrent;
-	using namespace boost::filesystem;
 
-	// in case the previous run was terminated
-	try { remove_all("./tmp1_unchoke"); } catch (std::exception&) {}
-	try { remove_all("./tmp2_unchoke"); } catch (std::exception&) {}
-	try { remove_all("./tmp3_unchoke"); } catch (std::exception&) {}
+	// in case the previous run was t r catch (std::exception&) {}erminated
+	error_code ec;
+	remove_all("./tmp1_unchoke", ec);
+	remove_all("./tmp2_unchoke", ec);
+	remove_all("./tmp3_unchoke", ec);
 
 	test_swarm();
 	
@@ -116,9 +112,9 @@ int test_main()
 	TEST_CHECK(!exists("./tmp2_unchoke/temporary"));
 	TEST_CHECK(!exists("./tmp3_unchoke/temporary"));
 
-	remove_all("./tmp1_unchoke");
-	remove_all("./tmp2_unchoke");
-	remove_all("./tmp3_unchoke");
+	remove_all("./tmp1_unchoke", ec);
+	remove_all("./tmp2_unchoke", ec);
+	remove_all("./tmp3_unchoke", ec);
 
 	return 0;
 }

@@ -32,11 +32,13 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "libtorrent/session.hpp"
 #include "libtorrent/session_settings.hpp"
+#include "libtorrent/time.hpp"
 #include "libtorrent/hasher.hpp"
 #include "libtorrent/create_torrent.hpp"
 #include "libtorrent/alert_types.hpp"
-#include <boost/thread.hpp>
+#include "libtorrent/thread.hpp"
 #include <boost/tuple/tuple.hpp>
+#include <iostream>
 
 #include "test.hpp"
 #include "setup_transfer.hpp"
@@ -48,10 +50,21 @@ void test_running_torrent(boost::intrusive_ptr<torrent_info> info, size_type fil
 	session ses(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48130, 48140), "0.0.0.0", 0);
 	ses.set_alert_mask(alert::storage_notification);
 
+	std::vector<boost::uint8_t> zeroes;
+	zeroes.resize(1000, 0);
 	add_torrent_params p;
 	p.ti = info;
 	p.save_path = ".";
-	torrent_handle h = ses.add_torrent(p);
+
+	// make sure we correctly handle the case where we pass in
+	// more values than there are files
+	p.file_priorities = &zeroes;
+
+	error_code ec;
+	torrent_handle h = ses.add_torrent(p, ec);
+
+	std::vector<int> ones(info->num_files(), 1);
+	h.prioritize_files(ones);
 
 	test_sleep(500);
 	torrent_status st = h.status();
@@ -64,6 +77,9 @@ void test_running_torrent(boost::intrusive_ptr<torrent_info> info, size_type fil
 	std::vector<int> prio(3, 1);
 	prio[0] = 0;
 	h.prioritize_files(prio);
+	std::cout << "prio: " << prio.size() << std::endl;
+	std::cout << "ret prio: " << h.file_priorities().size() << std::endl;
+	TEST_CHECK(h.file_priorities().size() == info->num_files());
 
 	test_sleep(500);
 	st = h.status();
@@ -88,14 +104,14 @@ void test_running_torrent(boost::intrusive_ptr<torrent_info> info, size_type fil
 	{
 		h.piece_priority(0, 1);
 		st = h.status();
-		TEST_CHECK(st.pieces[0] == false);
+		TEST_CHECK(st.pieces.size() > 0 && st.pieces[0] == false);
 		std::vector<char> piece(info->piece_length());
 		for (int i = 0; i < int(piece.size()); ++i)
 			piece[i] = (i % 26) + 'A';
 		h.add_piece(0, &piece[0]);
 		test_sleep(10000);
 		st = h.status();
-		TEST_CHECK(st.pieces[0] == true);
+		TEST_CHECK(st.pieces.size() > 0 && st.pieces[0] == true);
 
 		std::cout << "reading piece 0" << std::endl;
 		h.read_piece(0);
@@ -150,7 +166,8 @@ int test_main()
 		std::vector<char> tmp;
 		std::back_insert_iterator<std::vector<char> > out(tmp);
 		bencode(out, t.generate());
-		boost::intrusive_ptr<torrent_info> info(new torrent_info(&tmp[0], tmp.size()));
+		error_code ec;
+		boost::intrusive_ptr<torrent_info> info(new torrent_info(&tmp[0], tmp.size(), ec));
 		TEST_CHECK(info->num_pieces() > 0);
 
 		test_running_torrent(info, file_size);
@@ -166,7 +183,8 @@ int test_main()
 		std::vector<char> tmp;
 		std::back_insert_iterator<std::vector<char> > out(tmp);
 		bencode(out, t.generate());
-		boost::intrusive_ptr<torrent_info> info(new torrent_info(&tmp[0], tmp.size()));
+		error_code ec;
+		boost::intrusive_ptr<torrent_info> info(new torrent_info(&tmp[0], tmp.size(), ec));
 		test_running_torrent(info, 0);
 	}
 

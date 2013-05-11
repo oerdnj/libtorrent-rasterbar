@@ -11,47 +11,62 @@
 using namespace boost::python;
 using namespace libtorrent;
 
+extern void dict_to_add_torrent_params(dict params
+    , add_torrent_params& p, std::vector<char>& rd);
+
 namespace {
-    
+
+#ifndef TORRENT_NO_DEPRECATE
     torrent_handle _add_magnet_uri(session& s, std::string uri, dict params)
     {
         add_torrent_params p;
 
-        std::string url;
-        if (params.has_key("tracker_url"))
-        {
-            url = extract<std::string>(params["tracker_url"]);
-            p.tracker_url = url.c_str();
-        }
-        std::string name;
-        if (params.has_key("name"))
-        {
-            name = extract<std::string>(params["name"]);
-            p.name = name.c_str();
-        }
-        p.save_path = fs::path(extract<std::string>(params["save_path"]));
-
         std::vector<char> resume_buf;
-        if (params.has_key("resume_data"))
-        {
-            std::string resume = extract<std::string>(params["resume_data"]);
-            resume_buf.resize(resume.size());
-            std::memcpy(&resume_buf[0], &resume[0], resume.size());
-            p.resume_data = &resume_buf;
-        }
-        if (params.has_key("storage_mode"))
-            p.storage_mode = extract<storage_mode_t>(params["storage_mode"]);
-        if (params.has_key("paused"))
-            p.paused = params["paused"];
-        if (params.has_key("auto_managed"))
-            p.auto_managed = params["auto_managed"];
-        if (params.has_key("duplicate_is_error"))
-            p.duplicate_is_error = params["duplicate_is_error"];
+        dict_to_add_torrent_params(params, p, resume_buf);
 
         allow_threading_guard guard;
 
+#ifndef BOOST_NO_EXCEPTIONS
         return add_magnet_uri(s, uri, p);
+#else
+        error_code ec;
+        return add_magnet_uri(s, uri, p, ec);
+#endif
     }
+#endif
+
+	dict parse_magnet_uri_wrap(std::string const& uri)
+	{
+		add_torrent_params p;
+		error_code ec;
+		parse_magnet_uri(uri, p, ec);
+
+		if (ec) throw libtorrent_exception(ec);
+
+		dict ret;
+
+		ret["ti"] = p.ti;
+		list tracker_list;
+		for (std::vector<std::string>::const_iterator i = p.trackers.begin()
+			, end(p.trackers.end()); i != end; ++i)
+			tracker_list.append(*i);
+		ret["trackers"] = tracker_list;
+
+		list nodes_list;
+		for (std::vector<std::pair<std::string, int> >::const_iterator i = p.dht_nodes.begin()
+			, end(p.dht_nodes.end()); i != end; ++i)
+			tracker_list.append(make_tuple(i->first, i->second));
+		ret["dht_nodes"] =  nodes_list;
+		ret["info_hash"] = p.info_hash;
+		ret["name"] = p.name;
+		ret["save_path"] = p.save_path;
+		ret["storage_mode"] = p.storage_mode;
+		ret["url"] = p.url;
+		ret["uuid"] = p.uuid;
+		ret["source_feed_url"] = p.source_feed_url;
+		ret["flags"] = p.flags;
+		return ret;
+	}
 
 	std::string (*make_magnet_uri0)(torrent_handle const&) = make_magnet_uri;
 	std::string (*make_magnet_uri1)(torrent_info const&) = make_magnet_uri;
@@ -59,8 +74,11 @@ namespace {
 
 void bind_magnet_uri()
 {
+#ifndef TORRENT_NO_DEPRECATE
     def("add_magnet_uri", &_add_magnet_uri);
+#endif
     def("make_magnet_uri", make_magnet_uri0);
     def("make_magnet_uri", make_magnet_uri1);
+    def("parse_magnet_uri", parse_magnet_uri_wrap);
 }
 

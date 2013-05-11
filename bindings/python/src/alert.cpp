@@ -37,6 +37,11 @@ std::string dht_announce_alert_ip(dht_announce_alert const& pa)
     return pa.ip.to_string(ec);
 }
 
+tuple incoming_connection_alert_ip(incoming_connection_alert const& ica)
+{
+    return endpoint_to_tuple(ica.ip);
+}
+
 list stats_alert_transferred(stats_alert const& alert)
 {
    list result;
@@ -45,6 +50,43 @@ list stats_alert_transferred(stats_alert const& alert)
    }
    return result;
 }
+
+list get_status_from_update_alert(state_update_alert const& alert)
+{
+   list result;
+
+   for (std::vector<torrent_status>::const_iterator i = alert.status.begin(); i != alert.status.end(); ++i)
+   {
+      result.append(*i);
+   }
+   return result;
+}
+
+dict get_params(add_torrent_alert const& alert)
+{
+    add_torrent_params const& p = alert.params;
+    dict ret;
+    ret["ti"] = p.ti;
+    ret["info_hash"] = p.info_hash;
+    ret["name"] = p.name;
+    ret["save_path"] = p.save_path;
+    ret["storage_mode"] = p.storage_mode;
+    list trackers;
+    for (std::vector<std::string>::const_iterator i = p.trackers.begin();
+       i != p.trackers.end(); ++i)
+    {
+        trackers.append(*i);
+    }
+    ret["trackers"] = trackers;
+    // TODO: dht_nodes
+    ret["flags"] = p.flags;
+    ret["trackerid"] = p.trackerid;
+    ret["url"] = p.url;
+    ret["source_feed_url"] = p.source_feed_url;
+    ret["uuid"] = p.uuid;
+    return ret;
+}
+
 
 void bind_alert()
 {
@@ -99,6 +141,15 @@ void bind_alert()
         .def_readonly("url", &tracker_alert::url)
         ;
 
+    class_<torrent_added_alert, bases<torrent_alert>, noncopyable>(
+        "torrent_added_alert", no_init)
+        ;
+
+    class_<torrent_removed_alert, bases<torrent_alert>, noncopyable>(
+        "torrent_removed_alert", no_init)
+        .def_readonly("info_hash", &torrent_removed_alert::info_hash) 
+        ;
+
     class_<read_piece_alert, bases<torrent_alert>, noncopyable>(
         "read_piece_alert", 0, no_init)
         .add_property("buffer", get_buffer)
@@ -116,6 +167,7 @@ void bind_alert()
         .def_readonly("msg", &tracker_error_alert::msg)
         .def_readonly("times_in_row", &tracker_error_alert::times_in_row)
         .def_readonly("status_code", &tracker_error_alert::status_code)
+        .def_readonly("error", &tracker_error_alert::error)
         ;
 
     class_<tracker_warning_alert, bases<tracker_alert>, noncopyable>(
@@ -233,9 +285,10 @@ void bind_alert()
     class_<portmap_error_alert, bases<alert>, noncopyable>(
         "portmap_error_alert", no_init)
         .def_readonly("mapping", &portmap_error_alert::mapping)
-        .def_readonly("type", &portmap_error_alert::type)
+        .def_readonly("map_type", &portmap_error_alert::map_type)
         .def_readonly("error", &portmap_error_alert::error)
 #ifndef TORRENT_NO_DEPRECATE
+        .def_readonly("type", &portmap_error_alert::map_type)
         .def_readonly("msg", &portmap_error_alert::msg)
 #endif
         ;
@@ -244,13 +297,17 @@ void bind_alert()
         "portmap_alert", no_init)
         .def_readonly("mapping", &portmap_alert::mapping)
         .def_readonly("external_port", &portmap_alert::external_port)
-        .def_readonly("type", &portmap_alert::type)
+#ifndef TORRENT_NO_DEPRECATE
+        .def_readonly("type", &portmap_alert::map_type)
+#endif
+        .def_readonly("map_type", &portmap_alert::map_type)
         ;
 
     class_<portmap_log_alert, bases<alert>, noncopyable>(
         "portmap_log_alert", no_init)
-        .def_readonly("type", &portmap_log_alert::type)
+        .def_readonly("map_type", &portmap_log_alert::map_type)
 #ifndef TORRENT_NO_DEPRECATE
+        .def_readonly("type", &portmap_log_alert::map_type)
         .def_readonly("msg", &portmap_log_alert::msg)
 #endif
         ;
@@ -275,7 +332,8 @@ void bind_alert()
         ;
 
     class_<scrape_failed_alert, bases<tracker_alert>, noncopyable>(
-        "scrape_failed_alert", no_init);
+        "scrape_failed_alert", no_init)
+        ;
 
     class_<udp_error_alert, bases<alert>, noncopyable>(
         "udp_error_alert", no_init)
@@ -311,12 +369,18 @@ void bind_alert()
         ;
 
     class_<torrent_resumed_alert, bases<torrent_alert>, noncopyable>(
-        "torrent_resumed_alert", no_init);
+        "torrent_resumed_alert", no_init
+    );
 
     class_<state_changed_alert, bases<torrent_alert>, noncopyable>(
         "state_changed_alert", no_init)
         .def_readonly("state", &state_changed_alert::state)
         .def_readonly("prev_state", &state_changed_alert::prev_state)
+        ;
+
+    class_<state_update_alert, bases<alert>, noncopyable>(
+        "state_update_alert", no_init)
+        .add_property("status", &get_status_from_update_alert)
         ;
 
     class_<dht_reply_alert, bases<tracker_alert>, noncopyable>(
@@ -332,18 +396,22 @@ void bind_alert()
     ;
 
     class_<dht_get_peers_alert, bases<alert>, noncopyable>(
-        "dht_get_peers_alert", no_init)
+        "dht_get_peers_alert", no_init
+    )
         .def_readonly("info_hash", &dht_get_peers_alert::info_hash)
     ;
 
     class_<peer_unsnubbed_alert, bases<peer_alert>, noncopyable>(
-        "peer_unsnubbed_alert", no_init);
+        "peer_unsnubbed_alert", no_init
+    );
 
     class_<peer_snubbed_alert, bases<peer_alert>, noncopyable>(
-        "peer_snubbed_alert", no_init);
+        "peer_snubbed_alert", no_init
+    );
 
     class_<peer_connect_alert, bases<peer_alert>, noncopyable>(
-        "peer_connect_alert", no_init);
+        "peer_connect_alert", no_init
+    );
 
     class_<peer_disconnected_alert, bases<peer_alert>, noncopyable>(
         "peer_disconnected_alert", no_init)
@@ -402,7 +470,7 @@ void bind_alert()
         "stats_alert", no_init)
         	.add_property("transferred", &stats_alert_transferred)
         .def_readonly("interval", &stats_alert::interval)
-        ;
+    ;
 
     enum_<stats_alert::stats_channel>("stats_channel")
         .value("upload_payload", stats_alert::upload_payload)
@@ -417,4 +485,29 @@ void bind_alert()
         .value("download_tracker_protocol", stats_alert::download_tracker_protocol)
     ;
 
+    class_<anonymous_mode_alert, bases<torrent_alert>, noncopyable>(
+        "anonymous_mode_alert", no_init)
+        .def_readonly("kind", &anonymous_mode_alert::kind)
+        .def_readonly("str", &anonymous_mode_alert::str)
+    ;
+
+    enum_<anonymous_mode_alert::kind_t>("kind")
+        .value("tracker_no_anonymous", anonymous_mode_alert::tracker_not_anonymous)
+    ;
+
+    class_<incoming_connection_alert, bases<alert>, noncopyable>(
+        "incoming_connection_alert", no_init)
+        .def_readonly("socket_type", &incoming_connection_alert::socket_type)
+        .add_property("ip", &incoming_connection_alert_ip)
+        ;
+    class_<torrent_need_cert_alert, bases<torrent_alert>, noncopyable>(
+        "torrent_need_cert_alert", no_init)
+        .def_readonly("error", &torrent_need_cert_alert::error) 
+        ;
+
+    class_<add_torrent_alert, bases<torrent_alert>, noncopyable>(
+       "add_torrent_alert", no_init)
+       .def_readonly("error", &add_torrent_alert::error)
+       .add_property("params", &get_params)
+       ;
 }

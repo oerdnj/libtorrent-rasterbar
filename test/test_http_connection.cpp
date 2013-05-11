@@ -32,11 +32,13 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #include "test.hpp"
 #include "libtorrent/socket.hpp"
+#include "libtorrent/socket_io.hpp" // print_endpoint
 #include "libtorrent/connection_queue.hpp"
 #include "libtorrent/http_connection.hpp"
 #include "setup_transfer.hpp"
 
 #include <fstream>
+#include <iostream>
 #include <boost/optional.hpp>
 
 using namespace libtorrent;
@@ -55,7 +57,7 @@ void print_http_header(http_parser const& p)
 {
 	std::cerr << " < " << p.status_code() << " " << p.message() << std::endl;
 
-	for (std::map<std::string, std::string>::const_iterator i
+	for (std::multimap<std::string, std::string>::const_iterator i
 		= p.headers().begin(), end(p.headers().end()); i != end; ++i)
 	{
 		std::cerr << " < " << i->first << ": " << i->second << std::endl;
@@ -67,8 +69,10 @@ void http_connect_handler(http_connection& c)
 	++connect_handler_called;
 	TEST_CHECK(c.socket().is_open());
 	error_code ec;
-	std::cerr << "connected to: " << c.socket().remote_endpoint(ec) << std::endl;
-	TEST_CHECK(c.socket().remote_endpoint(ec).address() == address::from_string("127.0.0.1", ec));
+	std::cerr << "connected to: " << print_endpoint(c.socket().remote_endpoint(ec))
+		<< std::endl;
+// this is not necessarily true when using a proxy and proxying hostnames
+//	TEST_CHECK(c.socket().remote_endpoint(ec).address() == address::from_string("127.0.0.1", ec));
 }
 
 void http_handler(error_code const& ec, http_parser const& parser
@@ -77,6 +81,7 @@ void http_handler(error_code const& ec, http_parser const& parser
 	++handler_called;
 	data_size = size;
 	g_error_code = ec;
+	TORRENT_ASSERT(size == 0 || parser.finished());
 
 	if (parser.header_finished())
 	{
@@ -176,9 +181,14 @@ int test_main()
 {
 	std::srand(std::time(0));
 	std::generate(data_buffer, data_buffer + sizeof(data_buffer), &std::rand);
-	std::ofstream test_file("test_file", std::ios::trunc);
-	test_file.write(data_buffer, 3216);
-	TEST_CHECK(test_file.good());
+	error_code ec;
+	file test_file("test_file", file::write_only, ec);
+	TEST_CHECK(!ec);
+	if (ec) fprintf(stderr, "file error: %s\n", ec.message().c_str());
+	file::iovec_t b = { data_buffer, 3216};
+	test_file.writev(0, &b, 1, ec);
+	TEST_CHECK(!ec);
+	if (ec) fprintf(stderr, "file error: %s\n", ec.message().c_str());
 	test_file.close();
 	std::system("gzip -9 -c test_file > test_file.gz");
 	
@@ -187,8 +197,9 @@ int test_main()
 	ps.port = 8034;
 	ps.username = "testuser";
 	ps.password = "testpass";
+	int port = 0;
 	
-	int port = start_web_server();
+	port = start_web_server();
 	for (int i = 0; i < 5; ++i)
 	{
 		ps.type = (proxy_settings::proxy_type)i;
@@ -196,9 +207,6 @@ int test_main()
 	}
 	stop_web_server();
 
-/*
-// This test is disabled because the test web
-// server doesn't support SSL
 #ifdef TORRENT_USE_OPENSSL
 	port = start_web_server(true);
 	for (int i = 0; i < 5; ++i)
@@ -208,7 +216,13 @@ int test_main()
 	}
 	stop_web_server();
 #endif
-*/
+
+	// test chunked encoding
+	port = start_web_server(false, true);
+	ps.type = proxy_settings::none;
+	run_suite("http", ps, port);
+
+	stop_web_server();
 
 	std::remove("test_file");
 	return 0;

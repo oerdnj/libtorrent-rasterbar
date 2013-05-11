@@ -33,14 +33,12 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/session.hpp"
 #include "libtorrent/session_settings.hpp"
 #include "libtorrent/hasher.hpp"
-#include <boost/thread.hpp>
+#include "libtorrent/thread.hpp"
 #include <boost/tuple/tuple.hpp>
-#include <boost/filesystem/operations.hpp>
 
 #include "test.hpp"
 #include "setup_transfer.hpp"
-
-using boost::filesystem::remove_all;
+#include <iostream>
 
 void test_lsd()
 {
@@ -60,7 +58,8 @@ void test_lsd()
 	torrent_handle tor2;
 
 	using boost::tuples::ignore;
-	boost::tie(tor1, tor2, ignore) = setup_transfer(&ses1, &ses2, 0, true, false, false, "_lsd");
+	boost::tie(tor1, tor2, ignore) = setup_transfer(&ses1, &ses2, 0, true, false, false, "_lsd"
+		, 16 * 1024, 0, false, 0, false);
 
 	for (int i = 0; i < 30; ++i)
 	{
@@ -77,30 +76,30 @@ void test_lsd()
 			<< "\033[0m" << int(st2.progress * 100) << "% "
 			<< std::endl;
 
-		if (tor2.is_seed() /*&& tor3.is_seed()*/) break;
+		if (st2.is_seeding /*&& st3.is_seeding*/) break;
 		test_sleep(1000);
 	}
 
-	TEST_CHECK(tor2.is_seed());
+	TEST_CHECK(tor2.status().is_seeding);
 
-	if (tor2.is_seed()) std::cerr << "done\n";
+	if (tor2.status().is_seeding) std::cerr << "done\n";
 }
 
 int test_main()
 {
 	using namespace libtorrent;
-	using namespace boost::filesystem;
 
 	// in case the previous run was terminated
-	try { remove_all("./tmp1_lsd"); } catch (std::exception&) {}
-	try { remove_all("./tmp2_lsd"); } catch (std::exception&) {}
-	try { remove_all("./tmp3_lsd"); } catch (std::exception&) {}
+	error_code ec;
+	remove_all("./tmp1_lsd", ec);
+	remove_all("./tmp2_lsd", ec);
+	remove_all("./tmp3_lsd", ec);
 
 	test_lsd();
 	
-	remove_all("./tmp1_lsd");
-	remove_all("./tmp2_lsd");
-	remove_all("./tmp3_lsd");
+	remove_all("./tmp1_lsd", ec);
+	remove_all("./tmp2_lsd", ec);
+	remove_all("./tmp3_lsd", ec);
 
 	return 0;
 }

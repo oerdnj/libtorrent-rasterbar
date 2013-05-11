@@ -1,3 +1,258 @@
+0.16.9 release
+
+	* fix long filename truncation on windows
+	* distinguish file open mode when checking files and downloading/seeding with bittorrent. updates storage interface
+	* improve file_storage::map_file when dealing with invalid input
+	* improve handling of invalid utf-8 sequences in strings in torrent files
+	* handle more cases of broken .torrent files
+	* fix bug filename collision resolver
+	* fix bug in filename utf-8 verification
+	* make need_save_resume() a bit more robust
+	* fixed sparse flag manipulation on windows
+	* fixed streaming piece picking issue
+
+0.16.8 release
+
+	* make rename_file create missing directories for new filename
+	* added missing python function: parse_magnet_uri
+	* fix alerts.all_categories in python binding
+	* fix torrent-abort issue which would cancel name lookups of other torrents
+	* make torrent file parser reject invalid path elements earlier
+	* fixed piece picker bug when using pad-files
+	* fix read-piece response for cancelled deadline-pieces
+	* fixed file priority vector-overrun
+	* fix potential packet allocation alignment issue in utp
+	* make 'close_redudnant_connections' cover more cases
+	* set_piece_deadline() also unfilters the piece (if its priority is 0)
+	* add work-around for bug in windows vista and earlier in GetOverlappedResult
+	* fix traversal algorithm leak in DHT
+	* fix string encoding conversions on windows
+	* take torrent_handle::query_pieces into account in torrent_handle::statue()
+	* honor trackers responding with 410
+	* fixed merkle tree torrent creation bug
+	* fixed crash with empty url-lists in torrent files
+	* added missing max_connections() function to python bindings
+
+0.16.7 release
+
+	* fix string encoding in error messages
+	* handle error in read_piece and set_piece_deadline when torrent is removed
+	* DHT performance improvement
+	* attempt to handle ERROR_CANT_WAIT disk error on windows
+	* improve peers exchanged over PEX
+	* fixed rare crash in ut_metadata extension
+	* fixed files checking issue
+	* added missing pop_alerts() to python bindings
+	* fixed typos in configure script, inversing some feature-enable/disable flags
+	* added missing flag_update_subscribe to python bindings
+	* active_dht_limit, active_tracker_limit and active_lsd_limit now interpret -1 as infinite
+
+0.16.6 release
+
+	* fixed verbose log error for NAT holepunching
+	* fix a bunch of typos in python bindings
+	* make get_settings available in the python binding regardless of deprecated functions
+	* fix typo in python settings binding
+	* fix possible dangling pointer use in peer list
+	* fix support for storing arbitrary data in the DHT
+	* fixed bug in uTP packet circle buffer
+	* fix potential crash when using torrent_handle::add_piece
+	* added missing add_torrent_alert to python binding
+
+0.16.5 release
+
+	* udp socket refcounter fix
+	* added missing async_add_torrent to python bindings
+	* raised the limit for bottled http downloads to 2 MiB
+	* add support for magnet links and URLs in python example client
+	* fixed typo in python bindings' add_torrent_params
+	* introduce a way to add built-in plugins from python
+	* consistently disconnect the same peer when two peers simultaneously connect
+	* fix local endpoint queries for uTP connections
+	* small optimization to local peer discovery to ignore our own broadcasts
+	* try harder to bind the udp socket (uTP, DHT, UDP-trackers, LSD) to the same port as TCP
+	* relax file timestamp requirements for accepting resume data
+	* fix performance issue in web seed downloader (coalescing of blocks sometimes wouldn't work)
+	* web seed fixes (better support for torrents without trailing / in web seeds)
+	* fix some issues with SSL over uTP connections
+	* fix UDP trackers trying all endpoints behind the hostname
+
+0.16.4 release
+
+	* raise the default number of torrents allowed to announce to trackers to 1600
+	* improve uTP slow start behavior
+	* fixed UDP socket error causing it to fail on Win7
+	* update use of boost.system to not use deprecated functions
+	* fix GIL issue in python bindings. Deprecated extension support in python
+	* fixed bug where setting upload slots to -1 would not mean infinite
+	* extend the UDP tracker protocol to include the request string from the tracker URL
+	* fix mingw build for linux crosscompiler
+
+0.16.3 release
+
+	* fix python binding backwards compatibility in replace_trackers
+	* fix possible starvation in metadata extension
+	* fix crash when creating torrents and optimizing file order with pad files
+	* disable support for large MTUs in uTP until it is more reliable
+	* expose post_torrent_updates and state_update_alert to python bindings
+	* fix incorrect SSL error messages
+	* fix windows build of shared library with openssl
+	* fix race condition causing shutdown hang
+
+0.16.2 release
+
+	* fix permissions issue on linux with noatime enabled for non-owned files
+	* use random peer IDs in anonymous mode
+	* fix move_storage bugs
+	* fix unnecessary dependency on boost.date_time when building boost.asio as separate compilation
+	* always use SO_REUSEADDR and deprecate the flag to turn it on
+	* add python bindings for SSL support
+	* minor uTP tweaks
+	* fix end-game mode issue when some files are selected to not be downloaded
+	* improve uTP slow start
+	* make uTP less aggressive resetting cwnd when idle
+
+0.16.1 release
+
+	* fixed crash when providing corrupt resume data
+	* fixed support for boost-1.44
+	* fixed reversed semantics of queue_up() and queue_down()
+	* added missing functions to python bindings (file_priority(), set_dht_settings())
+	* fixed low_prio_disk support on linux
+	* fixed time critical piece accounting in the request queue
+	* fixed semantics of rate_limit_utp to also ignore per-torrent limits
+	* fixed piece sorting bug of deadline pieces
+	* fixed python binding build on Mac OS and BSD
+	* fixed UNC path normalization (on windows, unless UNC paths are disabled)
+	* fixed possible crash when enabling multiple connections per IP
+	* fixed typo in win vista specific code, breaking the build
+	* change default of rate_limit_utp to true
+	* fixed DLL export issue on windows (when building a shared library linking statically against boost)
+	* fixed FreeBSD build
+	* fixed web seed performance issue with pieces > 1 MiB
+	* fixed unchoke logic when using web seeds
+	* fixed compatibility with older versions of boost (down to boost 1.40)
+
+0.16 release
+
+	* support torrents with more than 262000 pieces
+	* make tracker back-off configurable
+	* don't restart the swarm after downloading metadata from magnet links
+	* lower the default tracker retry intervals
+	* support banning web seeds sending corrupt data
+	* don't let hung outgoing connection attempts block incoming connections
+	* improve SSL torrent support by using SNI and a single SSL listen socket
+	* improved peer exchange performance by sharing incoming connections which advertize listen port 
+	* deprecate set_ratio(), and per-peer rate limits
+	* add web seed support for torrents with pad files
+	* introduced a more scalable API for torrent status updates (post_torrent_updates()) and updated client_test to use it
+	* updated the API to add_torrent_params turning all bools into flags of a flags field
+	* added async_add_torrent() function to significantly improve performance when
+	  adding many torrents
+	* change peer_states to be a bitmask (bw_limit, bw_network, bw_disk)
+	* changed semantics of send_buffer_watermark_factor to be specified as a percentage
+	* add incoming_connection_alert for logging all successful incoming connections
+	* feature to encrypt peer connections with a secret AES-256 key stored in .torrent file
+	* deprecated compact storage allocation
+	* close files in separate thread on systems where close() may block (Mac OS X for instance)
+	* don't create all directories up front when adding torrents
+	* support DHT scrape
+	* added support for fadvise/F_RDADVISE for improved disk read performance
+	* introduced pop_alerts() which pops the entire alert queue in a single call
+	* support saving metadata in resume file, enable it by default for magnet links
+	* support for receiving multi announce messages for local peer discovery
+	* added session::listen_no_system_port flag to prevent libtorrent from ever binding the listen socket to port 0
+	* added option to not recheck on missing or incomplete resume data
+	* extended stats logging with statistics=on builds
+	* added new session functions to more efficiently query torrent status
+	* added alerts for added and removed torrents
+	* expanded plugin interface to support session wide states
+	* made the metadata block requesting algorithm more robust against hash check failures
+	* support a separate option to use proxies for peers or not
+	* pausing the session now also pauses checking torrents
+	* moved alert queue size limit into session_settings
+	* added support for DHT rss feeds (storing only)
+	* added support for RSS feeds
+	* fixed up some edge cases in DHT routing table and improved unit test of it
+	* added error category and error codes for HTTP errors
+	* made the DHT implementation slightly more robust against routing table poisoning and node ID spoofing
+	* support chunked encoding in http downloads (http_connection)
+	* support adding torrents by url to the .torrent file
+	* support CDATA tags in xml parser
+	* use a python python dictionary for settings instead of session_settings object (in python bindings)
+	* optimized metadata transfer (magnet link) startup time (shaved off about 1 second)
+	* optimized swarm startup time (shaved off about 1 second)
+	* support DHT name lookup
+	* optimized memory usage of torrent_info and file_storage, forcing some API changes
+	  around file_storage and file_entry
+	* support trackerid tracker extension
+	* graceful peer disconnect mode which finishes transactions before disconnecting peers
+	* support chunked encoding for web seeds
+	* uTP protocol support
+	* resistance towards certain flood attacks
+	* support chunked encoding for web seeds (only for BEP 19, web seeds)
+	* optimized session startup time
+	* support SSL for web seeds, through all proxies
+	* support extending web seeds with custom authorization and extra headers
+	* settings that are not changed from the default values are not saved
+	  in the session state
+	* made seeding choking algorithm configurable
+	* deprecated setters for max connections, max half-open, upload and download
+	  rates and unchoke slots. These are now set through session_settings
+	* added functions to query an individual peer's upload and download limit
+	* full support for BEP 21 (event=paused)
+	* added share-mode feature for improving share ratios
+	* merged all proxy settings into a single one
+	* improved SOCKS5 support by proxying hostname lookups
+	* improved support for multi-homed clients
+	* added feature to not count downloaded bytes from web seeds in stats
+	* added alert for incoming local service discovery messages
+	* added option to set file priorities when adding torrents
+	* removed the session mutex for improved performance
+	* added upload and download activity timer stats for torrents
+	* made the reuse-address flag configurable on the listen socket
+	* moved UDP trackers over to use a single socket
+	* added feature to make asserts log to a file instead of breaking the process
+	  (production asserts)
+	* optimized disk I/O cache clearing
+	* added feature to ask a torrent if it needs to save its resume data or not
+	* added setting to ignore file modification time when loading resume files
+	* support more fine-grained torrent states between which peer sources it
+	  announces to
+	* supports calculating sha1 file-hashes when creating torrents
+	* made the send_buffer_watermark performance warning more meaningful
+	* supports complete_ago extension
+	* dropped zlib as a dependency and builds using puff.c instead
+	* made the default cache size depend on available physical RAM
+	* added flags to torrent::status() that can filter which values are calculated
+	* support 'explicit read cache' which keeps a specific set of pieces
+	  in the read cache, without implicitly caching other pieces
+	* support sending suggest messages based on what's in the read cache
+	* clear sparse flag on files that complete on windows
+	* support retry-after header for web seeds
+	* replaced boost.filesystem with custom functions
+	* replaced dependency on boost.thread by asio's internal thread primitives
+	* added support for i2p torrents
+	* cleaned up usage of MAX_PATH and related macros
+	* made it possible to build libtorrent without RTTI support
+	* added support to build with libgcrypt and a shipped version of libtommath
+	* optimized DHT routing table memory usage
+	* optimized disk cache to work with large caches
+	* support variable number of optimistic unchoke slots and to dynamically
+	  adjust based on the total number of unchoke slots
+	* support for BitTyrant choker algorithm
+	* support for automatically start torrents when they receive an
+	  incoming connection
+	* added more detailed instrumentation of the disk I/O thread
+
+0.15.11 release
+
+	* fixed web seed bug, sometimes causing infinite loops
+	* fixed race condition when setting session_settings immediately after creating session
+	* give up immediately when failing to open a listen socket (report the actual error)
+	* restored ABI compatibility with 0.15.9
+	* added missing python bindings for create_torrent and torrent_info
+
 0.15.10 release
 
 	* fix 'parameter incorrect' issue when using unbuffered IO on windows
@@ -14,7 +269,6 @@
 
 0.15.9 release
 
-	* fixed https crash
 	* added some functions missing from the python binding
 	* fixed rare piece picker bug
 	* fixed invalid torrent_status::finished_time
@@ -27,7 +281,6 @@
 	* fix UPnP issue for routers with multiple PPPoE connections
 	* fix issue where event=stopped announces wouldn't be sent when closing session
 	* fix possible hang in file::readv() on windows
-	* fix crash when using broken SOCKS5 proxies
 	* fix CPU busy loop issue in tracker announce logic
 	* honor IOV_MAX when using writev and readv
 	* don't post 'operation aborted' UDP errors when changing listen port
@@ -71,7 +324,6 @@
 	* fixed bug in torrent_info::remap_files
 	* fix python binding for wait_for_alert
 	* only apply privileged port filter to DHT-only peers
-	* fixed build with deprecated functions disabled
 
 0.15.5 release
 
@@ -107,7 +359,7 @@
 	* fixed NAT-PMP issue when adding the same mapping multiple times
 	* no peers from tracker when stopping is no longer an error
 	* improved web seed retry behavior
-	* fixed announce issue which could cause high CPU and memory usage
+	* fixed announce issue
 
 0.15.3 release
 
@@ -258,7 +510,6 @@
 release 0.14.10
 
 	* fixed udp tracker race condition
-	* fixed error handling with torrents with invalid piece sizes
 	* added support for torrents with odd piece sizes
 	* fixed issue with disk read cache not being cleared when removing torrents
 	* made the DHT socket bind to the same interface as the session
