@@ -1,3 +1,14 @@
+libtorrent-rasterbar (0.16.9-1) experimental; urgency=low
+
+  * New upstream version 0.16.9.
+    - new package libtorrent-rasterbar7 (bump up library soname).
+    - debian/control: drop now useless (build-)deps.
+    - debian/control: switch to explicit boost1.53 (build-)deps.
+    - upload to experimental: the library is pretty stable, but will be
+      uploaded to unstable only after the transition of boost1.53.
+
+ -- Cristian Greco <cristian@debian.org>  Sun, 12 May 2013 10:48:57 +0200
+
 libtorrent-rasterbar (0.15.10-1) unstable; urgency=low
 
   * New upstream version.
