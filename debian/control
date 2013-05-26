@@ -152,7 +152,7 @@ Description: Python bindings for libtorrent-rasterbar (Python 3)
   * to be memory efficient
   * to be very easy to use
  .
- This package contains Python bindings for the libtorrent-rasterbar library.
+ This package contains Python 3 bindings for the libtorrent-rasterbar library.
 
 Package: python3-libtorrent-dbg
 Section: debug
@@ -170,5 +170,5 @@ Description: Python bindings for libtorrent-rasterbar (debug symbols) (Python 3)
   * to be memory efficient
   * to be very easy to use
  .
- This package contains Python bindings for the libtorrent-rasterbar library
+ This package contains Python 3 bindings for the libtorrent-rasterbar library
  (debug symbols).
