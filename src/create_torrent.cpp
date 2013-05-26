@@ -199,6 +199,7 @@ namespace libtorrent
 #else
 		std::string const& path = p;
 #endif
+
 		boost::scoped_ptr<storage_interface> st(
 			default_storage_constructor(const_cast<file_storage&>(t.files()), 0, path, fp
 			, std::vector<boost::uint8_t>()));

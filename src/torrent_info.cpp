@@ -214,6 +214,12 @@ namespace libtorrent
 			path_element.resize(max_path_len - ext.size());
 			path_element += ext;
 		}
+		// remove trailing spaces and dots. These aren't allowed in filenames on windows
+		for (int i = path_element.size() - 1; i >= 0; --i)
+		{
+			if (path_element[i] != L' ' && path_element[i] != L'.') break;
+			path_element[i] = L'_';
+		}
 		wchar_utf8(path_element, element);
 #else
 		std::string& path_element = element;
@@ -475,6 +481,20 @@ namespace libtorrent
 	announce_entry::announce_entry(std::string const& u)
 		: url(u)
 		, next_announce(min_time())
+		, min_announce(min_time())
+		, tier(0)
+		, fail_limit(0)
+		, fails(0)
+		, updating(false)
+		, source(0)
+		, verified(false)
+		, start_sent(false)
+		, complete_sent(false)
+		, send_stats(true)
+	{}
+
+	announce_entry::announce_entry()
+		: next_announce(min_time())
 		, min_announce(min_time())
 		, tier(0)
 		, fail_limit(0)

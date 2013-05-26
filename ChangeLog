@@ -1,3 +1,18 @@
+0.16.10 release
+
+	* fix encryption level handle invalid values
+	* add a number of missing functions to the python binding
+	* fix typo in Jamfile for building shared libraries
+	* prevent tracker exchange for magnet links before metadata is received
+	* fix crash in make_magnet_uri when generating links longer than 1024 characters
+	* fix hanging issue when closing files on windows (completing a download)
+	* fix piece picking edge case that could cause torrents to get stuck at hash failure
+	* try unencrypted connections first, and fall back to encryption if it fails (performance improvement)
+	* add missing functions to python binding (flush_cache(), remap_files() and orig_files())
+	* improve handling of filenames that are invalid on windows
+	* support 'implied_port' in DHT announce_peer
+	* don't use pool allocator for disk blocks (cache may now return pages to the kernel)
+
 0.16.9 release
 
 	* fix long filename truncation on windows
