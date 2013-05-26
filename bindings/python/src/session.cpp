@@ -43,6 +43,13 @@ namespace
         return;
     }
 #ifndef TORRENT_DISABLE_DHT
+    void add_dht_node(session& s, tuple n)
+    {
+        std::string ip = extract<std::string>(n[0]);
+        int port = extract<int>(n[1]);
+        s.add_dht_node(std::make_pair(ip, port));
+    }
+
     void add_dht_router(session& s, std::string router_, int port_)
     {
         allow_threading_guard guard;
@@ -169,7 +176,7 @@ namespace
 }
 
     void dict_to_add_torrent_params(dict params, add_torrent_params& p
-        , std::vector<char>& rd)
+        , std::vector<char>& rd, std::vector<boost::uint8_t>& fp)
     {
         // torrent_info objects are always held by an intrusive_ptr in the python binding
         if (params.has_key("ti") && params.get("ti") != boost::python::object())
@@ -240,6 +247,16 @@ namespace
             p.source_feed_url = extract<std::string>(params["source_feed_url"]);
         if (params.has_key("uuid"))
             p.uuid = extract<std::string>(params["uuid"]);
+
+        fp.clear();
+        if (params.has_key("file_priorities"))
+        {
+            list l = extract<list>(params["file_priorities"]);
+            int n = boost::python::len(l);
+            for(int i = 0; i < n; i++)
+                fp.push_back(extract<boost::uint8_t>(l[i]));
+            p.file_priorities = &fp;
+        }
     }
 
 namespace
@@ -249,7 +266,8 @@ namespace
     {
         add_torrent_params p;
         std::vector<char> resume_buf;
-        dict_to_add_torrent_params(params, p, resume_buf);
+        std::vector<boost::uint8_t> files_buf;
+        dict_to_add_torrent_params(params, p, resume_buf, files_buf);
 
         allow_threading_guard guard;
 
@@ -265,7 +283,8 @@ namespace
     {
         add_torrent_params p;
         std::vector<char> resume_buf;
-        dict_to_add_torrent_params(params, p, resume_buf);
+        std::vector<boost::uint8_t> files_buf;
+        dict_to_add_torrent_params(params, p, resume_buf, files_buf);
 
         allow_threading_guard guard;
 
@@ -278,7 +297,8 @@ namespace
     }
 
     void dict_to_feed_settings(dict params, feed_settings& feed
-        , std::vector<char>& resume_buf)
+        , std::vector<char>& resume_buf
+        , std::vector<boost::uint8_t> files_buf)
     {
         if (params.has_key("auto_download"))
             feed.auto_download = extract<bool>(params["auto_download"]);
@@ -288,7 +308,7 @@ namespace
             feed.url = extract<std::string>(params["url"]);
         if (params.has_key("add_args"))
             dict_to_add_torrent_params(dict(params["add_args"]), feed.add_args
-                , resume_buf);
+                , resume_buf, files_buf);
     }
 
     feed_handle add_feed(session& s, dict params)
@@ -297,7 +317,8 @@ namespace
         // this static here is a bit of a hack. It will
         // probably work for the most part
         static std::vector<char> resume_buf;
-        dict_to_feed_settings(params, feed, resume_buf);
+        static std::vector<boost::uint8_t> files_buf;
+        dict_to_feed_settings(params, feed, resume_buf, files_buf);
 
         allow_threading_guard guard;
         return s.add_feed(feed);
@@ -344,7 +365,8 @@ namespace
     {
         feed_settings feed;
         static std::vector<char> resume_buf;
-        dict_to_feed_settings(sett, feed, resume_buf);
+        static std::vector<boost::uint8_t> files_buf;
+        dict_to_feed_settings(sett, feed, resume_buf, files_buf);
         h.set_settings(feed);
     }
 
@@ -394,6 +416,41 @@ namespace
             ret.append(*i);
         }
         return ret;
+    }
+
+    dict get_utp_stats(session_status const& st)
+    {
+        dict ret;
+        ret["num_idle"] = st.utp_stats.num_idle;
+        ret["num_syn_sent"] = st.utp_stats.num_syn_sent;
+        ret["num_connected"] = st.utp_stats.num_connected;
+        ret["num_fin_sent"] = st.utp_stats.num_fin_sent;
+        ret["num_close_wait"] = st.utp_stats.num_close_wait;
+        return ret;
+    }
+
+    list get_cache_info(session& ses, sha1_hash ih)
+    {
+        std::vector<cached_piece_info> ret;
+
+        {
+           allow_threading_guard guard;
+           ses.get_cache_info(ih, ret);
+        }
+
+        list pieces;
+        ptime now = time_now();
+        for (std::vector<cached_piece_info>::iterator i = ret.begin()
+           , end(ret.end()); i != end; ++i)
+        {
+            dict d;
+            d["piece"] = i->piece;
+            d["last_use"] = total_milliseconds(now - i->last_use) / 1000.f;
+            d["next_to_hash"] = i->next_to_hash;
+            d["kind"] = i->kind;
+            pieces.append(d);
+        }
+        return pieces;
     }
 
 #ifndef TORRENT_DISABLE_GEO_IP
@@ -503,7 +560,9 @@ void bind_session()
         .def_readonly("dht_torrents", &session_status::dht_torrents)
         .def_readonly("dht_global_nodes", &session_status::dht_global_nodes)
         .def_readonly("active_requests", &session_status::active_requests)
+        .def_readonly("dht_total_allocations", &session_status::dht_total_allocations)
 #endif
+        .add_property("utp_stats", &get_utp_stats)
         ;
 
 #ifndef TORRENT_DISABLE_DHT
@@ -552,9 +611,24 @@ void bind_session()
         .def_readonly("blocks_read", &cache_status::blocks_read)
         .def_readonly("blocks_read_hit", &cache_status::blocks_read_hit)
         .def_readonly("reads", &cache_status::reads)
+        .def_readonly("queued_bytes", &cache_status::queued_bytes)
         .def_readonly("cache_size", &cache_status::cache_size)
         .def_readonly("read_cache_size", &cache_status::read_cache_size)
         .def_readonly("total_used_buffers", &cache_status::total_used_buffers)
+        .def_readonly("average_queue_time", &cache_status::average_queue_time)
+        .def_readonly("average_read_time", &cache_status::average_read_time)
+        .def_readonly("average_write_time", &cache_status::average_write_time)
+        .def_readonly("average_hash_time", &cache_status::average_hash_time)
+        .def_readonly("average_job_time", &cache_status::average_job_time)
+        .def_readonly("average_sort_time", &cache_status::average_sort_time)
+        .def_readonly("job_queue_length", &cache_status::job_queue_length)
+        .def_readonly("cumulative_job_time", &cache_status::cumulative_job_time)
+        .def_readonly("cumulative_read_time", &cache_status::cumulative_read_time)
+        .def_readonly("cumulative_write_time", &cache_status::cumulative_write_time)
+        .def_readonly("cumulative_hash_time", &cache_status::cumulative_hash_time)
+        .def_readonly("cumulative_sort_time", &cache_status::cumulative_sort_time)
+        .def_readonly("total_read_back", &cache_status::total_read_back)
+        .def_readonly("read_queue_size", &cache_status::read_queue_size)
     ;
 
     class_<session, boost::noncopyable>("session", no_init)
@@ -573,10 +647,12 @@ void bind_session()
         .def("listen_port", allow_threads(&session::listen_port))
         .def("status", allow_threads(&session::status))
 #ifndef TORRENT_DISABLE_DHT
+        .def("add_dht_node", add_dht_node)
         .def(
             "add_dht_router", &add_dht_router
           , (arg("router"), "port")
         )
+        .def("is_dht_running", allow_threads(&session::is_dht_running))
         .def("set_dht_settings", allow_threads(&session::set_dht_settings))
         .def("start_dht", allow_threads(start_dht0))
         .def("stop_dht", allow_threads(&session::stop_dht))
@@ -658,6 +734,10 @@ void bind_session()
         .def("tracker_proxy", allow_threads(&session::tracker_proxy))
         .def("web_seed_proxy", allow_threads(&session::web_seed_proxy))
 #endif
+#if TORRENT_USE_I2P
+        .def("set_i2p_proxy", allow_threads(&session::set_i2p_proxy))
+        .def("i2p_proxy", allow_threads(&session::i2p_proxy))
+#endif
         .def("set_proxy", allow_threads(&session::set_proxy))
         .def("proxy", allow_threads(&session::proxy))
         .def("start_upnp", &start_upnp)
@@ -675,6 +755,7 @@ void bind_session()
         .def("is_paused", allow_threads(&session::is_paused))
         .def("id", allow_threads(&session::id))
         .def("get_cache_status", allow_threads(&session::get_cache_status))
+		  .def("get_cache_info", get_cache_info)
         .def("set_peer_id", allow_threads(&session::set_peer_id))
         ;
 

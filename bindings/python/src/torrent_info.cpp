@@ -42,6 +42,50 @@ namespace
         return result;
     }
 
+    list get_web_seeds(torrent_info const& ti)
+    {
+        std::vector<web_seed_entry> const& ws = ti.web_seeds();
+        list ret;
+        for (std::vector<web_seed_entry>::const_iterator i = ws.begin()
+            , end(ws.end()); i != end; ++i)
+        {
+            dict d;
+            d["url"] = i->url;
+            d["type"] = i->type;
+            d["auth"] = i->auth;
+            d["extra_headers"] = i->extra_headers;
+            d["retry"] = total_seconds(i->retry - min_time());
+            d["resolving"] = i->resolving;
+            d["removed"] = i->removed;
+            d["endpoint"] = make_tuple(
+                boost::lexical_cast<std::string>(i->endpoint.address()), i->endpoint.port());
+            ret.append(d);
+        }
+
+        return ret;
+    }
+
+    list get_merkle_tree(torrent_info const& ti)
+    {
+        std::vector<sha1_hash> const& mt = ti.merkle_tree();
+        list ret;
+        for (std::vector<sha1_hash>::const_iterator i = mt.begin()
+            , end(mt.end()); i != end; ++i)
+        {
+            ret.append(i->to_string());
+        }
+        return ret;
+    }
+
+    void set_merkle_tree(torrent_info& ti, list hashes)
+    {
+        std::vector<sha1_hash> h;
+        for (int i = 0, e = len(hashes); i < e; ++i)
+            h.push_back(sha1_hash(extract<char const*>(hashes[i])));
+
+        ti.set_merkle_tree(h);
+    }
+
     file_storage::iterator begin_files(torrent_info& i)
     {
         return i.begin_files();
@@ -52,7 +96,14 @@ namespace
         return i.end_files();
     }
 
-    //list files(torrent_info const& ti, bool storage) {
+    void remap_files(torrent_info& ti, list files) {
+        file_storage st;
+        for (int i = 0, e = len(files); i < e; ++i)
+            st.add_file(extract<file_entry>(files[i]));
+
+        ti.remap_files(st);
+    }
+
     list files(torrent_info const& ti, bool storage) {
         list result;
 
@@ -60,6 +111,17 @@ namespace
 
         for (iter i = ti.begin_files(); i != ti.end_files(); ++i)
             result.append(ti.files().at(i));
+
+        return result;
+    }
+
+    list orig_files(torrent_info const& ti, bool storage) {
+        list result;
+
+        file_storage const& st = ti.orig_files();
+
+        for (int i = 0; i < st.num_files(); ++i)
+            result.append(st.at(i));
 
         return result;
     }
@@ -104,6 +166,8 @@ namespace
 
     size_type get_size(file_entry const& fe) { return fe.size; }
     size_type get_offset(file_entry const& fe) { return fe.offset; }
+    size_type get_file_base(file_entry const& fe) { return fe.file_base; }
+    void set_file_base(file_entry& fe, int b) { fe.file_base = b; }
     bool get_pad_file(file_entry const& fe) { return fe.pad_file; }
     bool get_executable_attribute(file_entry const& fe) { return fe.executable_attribute; }
     bool get_hidden_attribute(file_entry const& fe) { return fe.hidden_attribute; }
@@ -138,8 +202,11 @@ void bind_torrent_info()
         .def(init<std::wstring, int>((arg("file"), arg("flags") = 0)))
 #endif
 
+        .def("remap_files", &remap_files)
         .def("add_tracker", &torrent_info::add_tracker, arg("url"))
         .def("add_url_seed", &torrent_info::add_url_seed)
+        .def("add_http_seed", &torrent_info::add_http_seed)
+        .def("web_seeds", get_web_seeds)
 
         .def("name", &torrent_info::name, copy)
         .def("comment", &torrent_info::comment, copy)
@@ -151,12 +218,15 @@ void bind_torrent_info()
         .def("info_hash", &torrent_info::info_hash, copy)
 #endif
         .def("hash_for_piece", &hash_for_piece)
+        .def("merkle_tree", get_merkle_tree)
+        .def("set_merkle_tree", set_merkle_tree)
         .def("piece_size", &torrent_info::piece_size)
 
         .def("num_files", &torrent_info::num_files, (arg("storage")=false))
-        .def("file_at", &torrent_info::file_at) 
+        .def("file_at", &torrent_info::file_at)
         .def("file_at_offset", &torrent_info::file_at_offset)
         .def("files", &files, (arg("storage")=false))
+        .def("orig_files", &orig_files, (arg("storage")=false))
         .def("rename_file", rename_file0)
 #if TORRENT_USE_WSTRING
         .def("rename_file", rename_file1)
@@ -186,6 +256,7 @@ void bind_torrent_info()
         .add_property("symlink_attribute", &get_symlink_attribute)
         .add_property("offset", &get_offset)
         .add_property("size", &get_size)
+        .add_property("file_base", &get_file_base, &set_file_base)
         ;
 
     class_<announce_entry>("announce_entry", init<std::string const&>())
