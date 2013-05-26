@@ -5,18 +5,20 @@ include /usr/share/dpkg/buildflags.mk
 
 export DEB_LDFLAGS_MAINT_APPEND  = -Wl,--as-needed
 
-PYVERSIONS=$(shell pyversions -vr)
-ALLPY=$(PYVERSIONS) $(PYVERSIONS:%=%-dbg)
+PYTHON2=$(shell pyversions -vr)
+PYTHON3=$(shell py3versions -vr)
+ALLPY=$(PYTHON2) $(PYTHON3) $(PYTHON2:%=%-dbg) $(PYTHON3:%=%-dbg)
 
 CONFIGURE_ARGS = --with-libgeoip
 
 %:
-	dh $@ --parallel --with python2
+	dh $@ --parallel --with python2,python3
 
 override_dh_auto_configure-nopy:
 	dh_auto_configure --builddirectory build -- $(CONFIGURE_ARGS)
 
 override_dh_auto_configure-%:
+	CPPFLAGS="$(CPPFLAGS) $(shell python$*-config --includes)" \
 	dh_auto_configure --builddirectory build-py$* -- \
 		PYTHON=/usr/bin/python$* PYTHON_INSTALL_PARAMS="--root=$(CURDIR)/debian/tmp --install-layout=deb" \
 		--enable-python-binding --with-boost-python=boost_python-mt-py$(subst .,,$(subst -dbg,,$*)) \

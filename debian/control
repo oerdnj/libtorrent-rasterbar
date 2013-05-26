@@ -11,12 +11,16 @@ Build-Depends: debhelper (>= 7.4.10),
                pkg-config,
                python-all-dev (>= 2.6.6-3~),
                python-all-dbg,
-               python-docutils
+               python-docutils,
+               python3-all-dev,
+               python3-all-dbg,
+               python3-docutils
 Standards-Version: 3.9.2
 Vcs-Git: git://git.debian.org/git/collab-maint/libtorrent-rasterbar.git
 Vcs-Browser: http://git.debian.org/?p=collab-maint/libtorrent-rasterbar.git
 Homepage: http://www.rasterbar.com/products/libtorrent/index.html
 X-Python-Version: >= 2.4
+X-Python3-Version: >= 3.1
 
 Package: libtorrent-rasterbar7
 Architecture: any
@@ -121,6 +125,42 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-libtorren
 Provides: ${python:Provides}
 Breaks: ${python:Breaks}
 Description: Python bindings for libtorrent-rasterbar (debug symbols)
+ Bittorrent library by Rasterbar Software (Arvid Norberg).
+ libtorrent-rasterbar is a C++ library that aims to be a good alternative to
+ all the other bittorrent implementations around.
+ .
+ The main goals of libtorrent-rasterbar are:
+  * to be cpu efficient
+  * to be memory efficient
+  * to be very easy to use
+ .
+ This package contains Python bindings for the libtorrent-rasterbar library
+ (debug symbols).
+
+Package: python3-libtorrent
+Section: python
+Architecture: any
+Pre-Depends: dpkg (>= 1.15.6~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python3:Depends}, libtorrent-rasterbar7 (= ${binary:Version})
+Description: Python bindings for libtorrent-rasterbar (Python 3)
+ Bittorrent library by Rasterbar Software (Arvid Norberg).
+ libtorrent-rasterbar is a C++ library that aims to be a good alternative to
+ all the other bittorrent implementations around.
+ .
+ The main goals of libtorrent-rasterbar are:
+  * to be cpu efficient
+  * to be memory efficient
+  * to be very easy to use
+ .
+ This package contains Python bindings for the libtorrent-rasterbar library.
+
+Package: python3-libtorrent-dbg
+Section: debug
+Priority: extra
+Architecture: any
+Pre-Depends: dpkg (>= 1.15.6~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python3:Depends}, python-libtorrent (= ${binary:Version}), python3-dbg
+Description: Python bindings for libtorrent-rasterbar (debug symbols) (Python 3)
  Bittorrent library by Rasterbar Software (Arvid Norberg).
  libtorrent-rasterbar is a C++ library that aims to be a good alternative to
  all the other bittorrent implementations around.
