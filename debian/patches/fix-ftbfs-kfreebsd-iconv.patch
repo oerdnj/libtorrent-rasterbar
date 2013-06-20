@@ -1,3 +1,10 @@
+Description: Fix FTBFS on kfreebsd due to wrong configuration of iconv args
+Bug: https://code.google.com/p/libtorrent/issues/detail?id=487
+Bug-Debian: http://bugs.debian.org/712797
+Forwarded: http://sourceforge.net/p/libtorrent/code/8527/
+Origin: vendor
+Author: Pino Toscano <pino@debian.org>
+
 --- a/include/libtorrent/config.hpp
 +++ b/include/libtorrent/config.hpp
 @@ -183,9 +183,11 @@
