@@ -1,3 +1,12 @@
+libtorrent-rasterbar (0.16.10-3) unstable; urgency=low
+
+  * debian/patches:
+    - fix-ftbfs-kfreebsd-iconv.patch: new patch, fix
+      ftbfs on kfreebsd, thanks Pino Toscano! (Closes: #712797)
+    - refresh other patches.
+
+ -- Cristian Greco <cristian@debian.org>  Thu, 20 Jun 2013 21:18:23 +0200
+
 libtorrent-rasterbar (0.16.10-2) unstable; urgency=low
 
   * Upload to unstable.
