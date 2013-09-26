@@ -4,8 +4,8 @@ Priority: optional
 Maintainer: Cristian Greco <cristian@debian.org>
 Build-Depends: debhelper (>= 7.4.10),
                dpkg-dev (>= 1.16.1~),
-               libboost-system1.53-dev | libboost-system-dev,
-               libboost-python1.53-dev | libboost-python-dev,
+               libboost-system1.54-dev | libboost-system-dev,
+               libboost-python1.54-dev | libboost-python-dev,
                libssl-dev,
                libgeoip-dev,
                pkg-config,
