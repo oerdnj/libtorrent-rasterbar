@@ -181,10 +181,15 @@ POSSIBILITY OF SUCH DAMAGE.
 #define TORRENT_USE_ICONV 0
 #define TORRENT_USE_LOCALE 0
 #define TORRENT_CLOSE_MAY_BLOCK 1
+// execinfo.h is available in the MacOS X 10.5 SDK.
+#define TORRENT_USE_EXECINFO MAC_OS_X_VERSION_MIN_REQUIRED >= 1050
 #endif
 #else
 // FreeBSD has a reasonable iconv signature
-#define TORRENT_ICONV_ARG (const char**)
+// unless we're on glibc
+#ifndef __GLIBC__
+# define TORRENT_ICONV_ARG (const char**)
+#endif
 #endif
 #define TORRENT_HAS_FALLOCATE 0
 #define TORRENT_USE_IFADDRS 1
@@ -200,6 +205,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #define TORRENT_USE_IFCONF 1
 #define TORRENT_HAS_SALEN 0
 #define TORRENT_USE_POSIX_MEMALIGN 1
+#if __amd64__ || __i386__
+#define TORRENT_USE_EXECINFO 1
+#endif
 
 // ==== MINGW ===
 #elif defined __MINGW32__
@@ -337,6 +345,10 @@ inline int snprintf(char* buf, int len, char const* fmt, ...)
 
 #ifndef TORRENT_USE_NETLINK
 #define TORRENT_USE_NETLINK 0
+#endif
+
+#ifndef TORRENT_USE_EXECINFO
+#define TORRENT_USE_EXECINFO 0
 #endif
 
 #ifndef TORRENT_USE_SYSCTL

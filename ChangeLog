@@ -1,3 +1,20 @@
+0.16.11 release
+
+	* fix web seed URL double escape issue
+	* fix string encoding issue in alert messages
+	* fix SSL authentication issue
+	* deprecate std::wstring overloads. long live utf-8
+	* improve time-critical pieces feature (streaming)
+	* introduce bandwidth exhaustion attack-mitigation in allowed-fast pieces
+	* python binding fix issue where torrent_info objects where destructing when their torrents were deleted
+	* added missing field to scrape_failed_alert in python bindings
+	* GCC 4.8 fix
+	* fix proxy failure semantics with regards to anonymous mode
+	* fix round-robin seed-unchoke algorithm
+	* add bootstrap.sh to generage configure script and run configure
+	* fix bug in SOCK5 UDP support
+	* fix issue where torrents added by URL would not be started immediately
+
 0.16.10 release
 
 	* fix encryption level handle invalid values

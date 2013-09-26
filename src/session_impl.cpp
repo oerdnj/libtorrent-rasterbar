@@ -571,12 +571,17 @@ namespace aux {
 		if (!t) return SSL_TLSEXT_ERR_ALERT_FATAL;
 
 		// if the torrent we found isn't an SSL torrent, also fail.
-		// the torrent doesn't have an SSL context and should not allow
-		// incoming SSL connections
 		if (!t->is_ssl_torrent()) return SSL_TLSEXT_ERR_ALERT_FATAL;
 
+		// if the torrent doesn't have an SSL context and should not allow
+		// incoming SSL connections
+		if (!t->ssl_ctx()) return SSL_TLSEXT_ERR_ALERT_FATAL;
+
 		// use this torrent's certificate
-		SSL_set_SSL_CTX(s, t->ssl_ctx()->native_handle());
+		SSL_CTX *torrent_context = t->ssl_ctx()->native_handle();
+
+		SSL_set_SSL_CTX(s, torrent_context);
+		SSL_set_verify(s, SSL_CTX_get_verify_mode(torrent_context), SSL_CTX_get_verify_callback(torrent_context));
 
 		return SSL_TLSEXT_ERR_OK;
 	}
@@ -675,7 +680,12 @@ namespace aux {
 
 #ifdef TORRENT_REQUEST_LOGGING
 		char log_filename[200];
-		snprintf(log_filename, sizeof(log_filename), "requests-%d.log", getpid());
+#ifdef TORRENT_WINDOWS
+		const int pid = GetCurrentProcessId();
+#else
+		const int pid = getpid();
+#endif
+		snprintf(log_filename, sizeof(log_filename), "requests-%d.log", pid);
 		m_request_log = fopen(log_filename, "w+");
 		if (m_request_log == 0)
 		{
@@ -1116,7 +1126,12 @@ namespace aux {
 		error_code ec;
 		char filename[100];
 		create_directory("session_stats", ec);
-		snprintf(filename, sizeof(filename), "session_stats/%d.%04d.log", int(getpid()), m_log_seq);
+#ifdef TORRENT_WINDOWS
+		const int pid = GetCurrentProcessId();
+#else
+		const int pid = getpid();
+#endif
+		snprintf(filename, sizeof(filename), "session_stats/%d.%04d.log", pid, m_log_seq);
 		m_stats_logger = fopen(filename, "w+");
 		if (m_stats_logger == 0)
 		{
@@ -1585,6 +1600,7 @@ namespace aux {
 	}
 
 #if TORRENT_USE_WSTRING
+#ifndef TORRENT_NO_DEPRECATE
 	void session_impl::load_asnum_dbw(std::wstring file)
 	{
 		TORRENT_ASSERT(is_network_thread());
@@ -1606,6 +1622,7 @@ namespace aux {
 		m_country_db = GeoIP_open(utf8.c_str(), GEOIP_STANDARD);
 //		return m_country_db;
 	}
+#endif // TORRENT_NO_DEPRECATE
 #endif // TORRENT_USE_WSTRING
 
 	void session_impl::load_country_db(std::string file)
@@ -1958,6 +1975,9 @@ namespace aux {
 			m_unchoke_time_scaler = 0;
 		}
 
+		if (m_settings.anonymous_mode != s.anonymous_mode)
+			m_udp_socket.set_force_proxy(s.anonymous_mode);
+
 #ifndef TORRENT_DISABLE_DHT
 		if (m_settings.dht_announce_interval != s.dht_announce_interval)
 		{
@@ -2024,6 +2044,10 @@ namespace aux {
 #endif
 		}
 
+		bool reopen_listen_port = false;
+		if (m_settings.ssl_listen != s.ssl_listen)
+			reopen_listen_port = true;
+
 		m_settings = s;
 
 		if (m_settings.cache_buffer_chunk_size <= 0)
@@ -2078,6 +2102,12 @@ namespace aux {
 		while ((i = std::find(i, m_settings.user_agent.end(), '\n'))
 			!= m_settings.user_agent.end())
 			*i = ' ';
+
+		if (reopen_listen_port)
+		{
+			error_code ec;
+			open_listen_port(0, ec);
+		}
 	}
 
 	tcp::endpoint session_impl::get_ipv6_interface() const
@@ -2104,8 +2134,14 @@ namespace aux {
 			return;
 		}
 
+		// SO_REUSEADDR on windows is a bit special. It actually allows
+		// two active sockets to bind to the same port. That means we
+		// may end up binding to the same socket as some other random
+		// application. Don't do it!
+#ifndef TORRENT_WINDOWS
 		error_code err; // ignore errors here
 		s->sock->set_option(socket_acceptor::reuse_address(true), err);
+#endif
 
 #if TORRENT_USE_IPV6
 		if (ep.protocol() == tcp::v6())
@@ -2161,6 +2197,7 @@ namespace aux {
 			return;
 		}
 		s->external_port = s->sock->local_endpoint(ec).port();
+		TORRENT_ASSERT(s->external_port == ep.port() || ep.port() == 0);
 		if (!ec) s->sock->listen(m_settings.listen_queue_size, ec);
 		if (ec)
 		{
@@ -3277,8 +3314,8 @@ retry:
 				num_downloads_peers += t.num_peers();
 			}
 
-			t.second_tick(m_stat, tick_interval_ms);
 			++i;
+			t.second_tick(m_stat, tick_interval_ms);
 		}
 
 		// some people claim that there sometimes can be cases where
@@ -4536,9 +4573,9 @@ retry:
 					TORRENT_ASSERT(t1);
 					boost::shared_ptr<torrent> t2 = (*i)->associated_torrent().lock();
 					TORRENT_ASSERT(t2);
-					TORRENT_ASSERT((*prev)->uploaded_since_unchoke() * 1000
+					TORRENT_ASSERT((*prev)->uploaded_in_last_round() * 1000
 						* (1 + t1->priority()) / total_milliseconds(unchoke_interval)
-						>= (*i)->uploaded_since_unchoke() * 1000
+						>= (*i)->uploaded_in_last_round() * 1000
 						* (1 + t2->priority()) / total_milliseconds(unchoke_interval));
 				}
 				prev = i;
@@ -4552,7 +4589,7 @@ retry:
 				, end(peers.end()); i != end; ++i)
 			{
 				peer_connection const& p = **i;
-				int rate = int(p.uploaded_since_unchoke()
+				int rate = int(p.uploaded_in_last_round()
 					* 1000 / total_milliseconds(unchoke_interval));
 
 				if (rate < rate_threshold) break;

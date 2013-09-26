@@ -315,13 +315,13 @@ namespace libtorrent
 	}
 
 #define TORRENT_ASYNC_CALL(x) \
-	m_impl->m_io_service.post(boost::bind(&session_impl:: x, m_impl.get()))
+	m_impl->m_io_service.dispatch(boost::bind(&session_impl:: x, m_impl.get()))
 
 #define TORRENT_ASYNC_CALL1(x, a1) \
-	m_impl->m_io_service.post(boost::bind(&session_impl:: x, m_impl.get(), a1))
+	m_impl->m_io_service.dispatch(boost::bind(&session_impl:: x, m_impl.get(), a1))
 
 #define TORRENT_ASYNC_CALL2(x, a1, a2) \
-	m_impl->m_io_service.post(boost::bind(&session_impl:: x, m_impl.get(), a1, a2))
+	m_impl->m_io_service.dispatch(boost::bind(&session_impl:: x, m_impl.get(), a1, a2))
 
 #define TORRENT_WAIT \
 	mutex::scoped_lock l(m_impl->mut); \
@@ -329,51 +329,51 @@ namespace libtorrent
 
 #define TORRENT_SYNC_CALL(x) \
 	bool done = false; \
-	m_impl->m_io_service.post(boost::bind(&fun_wrap, &done, &m_impl->cond, &m_impl->mut, boost::function<void(void)>(boost::bind(&session_impl:: x, m_impl.get())))); \
+	m_impl->m_io_service.dispatch(boost::bind(&fun_wrap, &done, &m_impl->cond, &m_impl->mut, boost::function<void(void)>(boost::bind(&session_impl:: x, m_impl.get())))); \
 	TORRENT_WAIT
 
 #define TORRENT_SYNC_CALL1(x, a1) \
 	bool done = false; \
-	m_impl->m_io_service.post(boost::bind(&fun_wrap, &done, &m_impl->cond, &m_impl->mut, boost::function<void(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1)))); \
+	m_impl->m_io_service.dispatch(boost::bind(&fun_wrap, &done, &m_impl->cond, &m_impl->mut, boost::function<void(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1)))); \
 	TORRENT_WAIT
 
 #define TORRENT_SYNC_CALL2(x, a1, a2) \
 	bool done = false; \
-	m_impl->m_io_service.post(boost::bind(&fun_wrap, &done, &m_impl->cond, &m_impl->mut, boost::function<void(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1, a2)))); \
+	m_impl->m_io_service.dispatch(boost::bind(&fun_wrap, &done, &m_impl->cond, &m_impl->mut, boost::function<void(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1, a2)))); \
 	TORRENT_WAIT
 
 #define TORRENT_SYNC_CALL3(x, a1, a2, a3) \
 	bool done = false; \
-	m_impl->m_io_service.post(boost::bind(&fun_wrap, &done, &m_impl->cond, &m_impl->mut, boost::function<void(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1, a2, a3)))); \
+	m_impl->m_io_service.dispatch(boost::bind(&fun_wrap, &done, &m_impl->cond, &m_impl->mut, boost::function<void(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1, a2, a3)))); \
 	TORRENT_WAIT
 
 #define TORRENT_SYNC_CALL4(x, a1, a2, a3, a4) \
 	bool done = false; \
-	m_impl->m_io_service.post(boost::bind(&fun_wrap, &done, &m_impl->cond, &m_impl->mut, boost::function<void(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1, a2, a3, a4)))); \
+	m_impl->m_io_service.dispatch(boost::bind(&fun_wrap, &done, &m_impl->cond, &m_impl->mut, boost::function<void(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1, a2, a3, a4)))); \
 	TORRENT_WAIT
 
 #define TORRENT_SYNC_CALL_RET(type, x) \
 	bool done = false; \
 	type r; \
-	m_impl->m_io_service.post(boost::bind(&fun_ret<type>, &r, &done, &m_impl->cond, &m_impl->mut, boost::function<type(void)>(boost::bind(&session_impl:: x, m_impl.get())))); \
+	m_impl->m_io_service.dispatch(boost::bind(&fun_ret<type>, &r, &done, &m_impl->cond, &m_impl->mut, boost::function<type(void)>(boost::bind(&session_impl:: x, m_impl.get())))); \
 	TORRENT_WAIT
 
 #define TORRENT_SYNC_CALL_RET1(type, x, a1) \
 	bool done = false; \
 	type r; \
-	m_impl->m_io_service.post(boost::bind(&fun_ret<type>, &r, &done, &m_impl->cond, &m_impl->mut, boost::function<type(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1)))); \
+	m_impl->m_io_service.dispatch(boost::bind(&fun_ret<type>, &r, &done, &m_impl->cond, &m_impl->mut, boost::function<type(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1)))); \
 	TORRENT_WAIT
 
 #define TORRENT_SYNC_CALL_RET2(type, x, a1, a2) \
 	bool done = false; \
 	type r; \
-	m_impl->m_io_service.post(boost::bind(&fun_ret<type>, &r, &done, &m_impl->cond, &m_impl->mut, boost::function<type(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1, a2)))); \
+	m_impl->m_io_service.dispatch(boost::bind(&fun_ret<type>, &r, &done, &m_impl->cond, &m_impl->mut, boost::function<type(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1, a2)))); \
 	TORRENT_WAIT
 
 #define TORRENT_SYNC_CALL_RET3(type, x, a1, a2, a3) \
 	bool done = false; \
 	type r; \
-	m_impl->m_io_service.post(boost::bind(&fun_ret<type>, &r, &done, &m_impl->cond, &m_impl->mut, boost::function<type(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1, a2, a3)))); \
+	m_impl->m_io_service.dispatch(boost::bind(&fun_ret<type>, &r, &done, &m_impl->cond, &m_impl->mut, boost::function<type(void)>(boost::bind(&session_impl:: x, m_impl.get(), a1, a2, a3)))); \
 	TORRENT_WAIT
 
 #ifndef TORRENT_CFG
@@ -492,6 +492,7 @@ namespace libtorrent
 	}
 
 #if TORRENT_USE_WSTRING
+#ifndef TORRENT_NO_DEPRECATE
 	void session::load_asnum_db(wchar_t const* file)
 	{
 		TORRENT_ASYNC_CALL1(load_asnum_dbw, std::wstring(file));
@@ -501,6 +502,7 @@ namespace libtorrent
 	{
 		TORRENT_ASYNC_CALL1(load_country_dbw, std::wstring(file));
 	}
+#endif // TORRENT_NO_DEPRECATE
 #endif // TORRENT_USE_WSTRING
 #endif // TORRENT_DISABLE_GEO_IP
 
@@ -512,7 +514,11 @@ namespace libtorrent
 		bencode(std::back_inserter(buf), ses_state);
 		lazy_entry e;
 		error_code ec;
-		int ret = lazy_bdecode(&buf[0], &buf[0] + buf.size(), e, ec);
+#if defined TORRENT_DEBUG || TORRENT_RELEASE_ASSERTS
+		int ret =
+#endif
+		lazy_bdecode(&buf[0], &buf[0] + buf.size(), e, ec);
+
 		TORRENT_ASSERT(ret == 0);
 		TORRENT_SYNC_CALL1(load_state, &e);
 	}
@@ -721,6 +727,12 @@ namespace libtorrent
 	unsigned short session::listen_port() const
 	{
 		TORRENT_SYNC_CALL_RET(unsigned short, listen_port);
+		return r;
+	}
+
+	unsigned short session::ssl_listen_port() const
+	{
+		TORRENT_SYNC_CALL_RET(unsigned short, ssl_listen_port);
 		return r;
 	}
 

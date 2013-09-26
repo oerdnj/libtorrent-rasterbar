@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2003, Arvid Norberg
+Copyright (c) 2013, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,18 +30,21 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#ifndef TORRENT_VERSION_HPP_INCLUDED
-#define TORRENT_VERSION_HPP_INCLUDED
+#include "libtorrent/session.hpp"
 
-#define LIBTORRENT_VERSION_MAJOR 0
-#define LIBTORRENT_VERSION_MINOR 16
-#define LIBTORRENT_VERSION_TINY 11
+#include "test.hpp"
+#include "setup_transfer.hpp"
 
-// the format of this version is: MMmmtt
-// M = Major version, m = minor version, t = tiny version
-#define LIBTORRENT_VERSION_NUM ((LIBTORRENT_VERSION_MAJOR * 10000) + (LIBTORRENT_VERSION_MINOR * 100) + LIBTORRENT_VERSION_TINY)
+using namespace libtorrent;
 
-#define LIBTORRENT_VERSION "0.16.11.0"
-#define LIBTORRENT_REVISION "$Rev: 8829 $" 
+int test_main()
+{
+	session ses(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48130, 48140), "0.0.0.0", 0);
+	ses.set_alert_mask(~0);
 
-#endif
+	// make sure the destructor waits properly
+	// for the asynchronous call to set the alert
+	// mask completes, before it goes on to destruct
+	// the session object
+}
+

@@ -82,6 +82,7 @@ namespace libtorrent
 
 		void set_proxy_settings(proxy_settings const& ps);
 		proxy_settings const& get_proxy_settings() { return m_proxy_settings; }
+		void set_force_proxy(bool f) { m_force_proxy = f; }
 
 		bool is_closed() const { return m_abort; }
 		tcp::endpoint local_endpoint(error_code& ec) const
@@ -157,6 +158,8 @@ namespace libtorrent
 		void connect2(error_code const& e);
 		void hung_up(error_code const& e);
 
+		void drain_queue();
+
 		void wrap(udp::endpoint const& ep, char const* p, int len, error_code& ec);
 		void wrap(char const* hostname, int port, char const* p, int len, error_code& ec);
 		void unwrap(error_code const& e, char const* buf, int size);
@@ -215,8 +218,20 @@ namespace libtorrent
 		char m_tmp_buf[270];
 		bool m_queue_packets;
 		bool m_tunnel_packets;
+		bool m_force_proxy;
 		bool m_abort;
+
+		// this is the endpoint the proxy server lives at.
+		// when performing a UDP associate, we get another
+		// endpoint (presumably on the same IP) where we're
+		// supposed to send UDP packets.
 		udp::endpoint m_proxy_addr;
+
+		// this is where UDP packets that are to be forwarded
+		// are sent. The result from UDP ASSOCIATE is stored
+		// in here.
+		udp::endpoint m_udp_proxy_addr;
+
 		// while we're connecting to the proxy
 		// we have to queue the packets, we'll flush
 		// them once we're connected

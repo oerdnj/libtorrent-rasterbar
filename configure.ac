@@ -1,11 +1,11 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-# $Id: configure.ac 8403 2013-05-11 23:03:40Z arvidn $
+# $Id: configure.ac 8829 2013-08-18 01:31:00Z arvidn $
 
 AC_PREREQ([2.63])
 
-AC_INIT([libtorrent-rasterbar],[0.16.10],[arvid@rasterbar.com],
+AC_INIT([libtorrent-rasterbar],[0.16.11],[arvid@rasterbar.com],
         [libtorrent-rasterbar],[http://www.libtorrent.org])
 AC_CONFIG_SRCDIR([src/torrent.cpp])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -555,7 +555,13 @@ AS_ECHO
 AS_ECHO "Checking for external libraries:"
 
 AC_MSG_CHECKING([for FIEMAP support])
-AC_CHECK_HEADERS([linux/fiemap.h])
+AC_CHECK_HEADERS([linux/types.h])
+AC_CHECK_HEADERS([linux/fiemap.h], [], [],
+[#ifdef HAVE_LINUX_TYPES_H
+# include <linux/types.h>
+#endif
+])
+
 
 AC_MSG_CHECKING([whether to link against system libgeoip]) #depends: $ac_arg_enable_geoip
 AS_CASE(["$ARG_WITH_LIBGEOIP"],

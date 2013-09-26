@@ -611,11 +611,14 @@ namespace libtorrent
 		// enum from peer_info::bw_state
 		char m_channel_state[2];
 
-		size_type uploaded_since_unchoke() const
-		{ return m_statistics.total_payload_upload() - m_uploaded_at_last_unchoke; }
+		size_type uploaded_in_last_round() const
+		{ return m_statistics.total_payload_upload() - m_uploaded_at_last_round; }
 
-		size_type downloaded_since_unchoke() const
-		{ return m_statistics.total_payload_download() - m_downloaded_at_last_unchoke; }
+		size_type downloaded_in_last_round() const
+		{ return m_statistics.total_payload_download() - m_downloaded_at_last_round; }
+
+		size_type uploaded_since_unchoked() const
+		{ return m_statistics.total_payload_upload() - m_uploaded_at_last_unchoke; }
 
 		// called when the disk write buffer is drained again, and we can
 		// start downloading payload again
@@ -831,11 +834,19 @@ namespace libtorrent
 		size_type m_free_upload;
 
 		// the total payload download bytes
-		// at the last unchoke cycle. This is used to
+		// at the last unchoke round. This is used to
 		// measure the number of bytes transferred during
 		// an unchoke cycle, to unchoke peers the more bytes
 		// they sent us
-		size_type m_downloaded_at_last_unchoke;
+		size_type m_downloaded_at_last_round;
+		size_type m_uploaded_at_last_round;
+
+		// this is the number of bytes we had uploaded the
+		// last time this peer was unchoked. This does not
+		// reset each unchoke interval/round. This is used to
+		// track upload across rounds, for the full duration of
+		// the peer being unchoked. Specifically, it's used
+		// for the round-robin unchoke algorithm.
 		size_type m_uploaded_at_last_unchoke;
 
 #ifndef TORRENT_DISABLE_GEO_IP
@@ -887,6 +898,11 @@ namespace libtorrent
 		// the pieces we will send to the peer
 		// if requested (regardless of choke state)
 		std::vector<int> m_accept_fast;
+
+		// a sent-piece counter for the allowed fast set
+		// to avoid exploitation. Each slot is a counter
+		// for one of the pieces from the allowed-fast set
+		std::vector<boost::uint16_t> m_accept_fast_piece_cnt;
 
 		// the pieces the peer will send us if
 		// requested (regardless of choke state)
@@ -1279,4 +1295,3 @@ namespace libtorrent
 }
 
 #endif // TORRENT_PEER_CONNECTION_HPP_INCLUDED
-

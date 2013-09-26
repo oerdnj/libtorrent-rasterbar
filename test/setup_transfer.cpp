@@ -49,11 +49,14 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/socket_io.hpp" // print_endpoint
 #include "libtorrent/socket_type.hpp"
 #include "libtorrent/instantiate_connection.hpp"
+#include "setup_transfer.hpp"
 
 #ifdef TORRENT_USE_OPENSSL
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/ssl/context.hpp>
 #endif
+
+#include <boost/detail/atomic_count.hpp>
 
 #define DEBUG_WEB_SERVER 0
 
@@ -95,22 +98,22 @@ bool print_alerts(libtorrent::session& ses, char const* name
 		if (predicate && predicate(*i)) ret = true;
 		if (peer_disconnected_alert* p = alert_cast<peer_disconnected_alert>(*i))
 		{
-			fprintf(stderr, "%s(%s): %s\n", name, print_endpoint(p->ip).c_str(), p->message().c_str());
+			fprintf(stderr, "%s: %s(%s): %s\n", time_now_string(), name, print_endpoint(p->ip).c_str(), p->message().c_str());
 		}
 		else if ((*i)->message() != "block downloading"
 			&& (*i)->message() != "block finished"
 			&& (*i)->message() != "piece finished"
 			&& !no_output)
 		{
-			fprintf(stderr, "%s: %s\n", name, (*i)->message().c_str());
+			fprintf(stderr, "%s: %s: [%s] %s\n", time_now_string(), name, (*i)->what(), (*i)->message().c_str());
 		}
 
 		TEST_CHECK(alert_cast<fastresume_rejected_alert>(*i) == 0 || allow_failed_fastresume);
-
+/*
 		peer_error_alert* pea = alert_cast<peer_error_alert>(*i);
 		if (pea)
 		{
-			fprintf(stderr, "peer error: %s\n", pea->error.message().c_str());
+			fprintf(stderr, "%s: peer error: %s\n", time_now_string(), pea->error.message().c_str());
 			TEST_CHECK((!handles.empty() && h.status().is_seeding)
 				|| pea->error.message() == "connecting to peer"
 				|| pea->error.message() == "closing connection to ourself"
@@ -120,8 +123,10 @@ bool print_alerts(libtorrent::session& ses, char const* name
 				|| pea->error.message() == "stopping torrent"
 				|| (allow_disconnects && pea->error.message() == "Broken pipe")
 				|| (allow_disconnects && pea->error.message() == "Connection reset by peer")
+				|| (allow_disconnects && pea->error.message() == "no shared cipher")
 				|| (allow_disconnects && pea->error.message() == "End of file."));
 		}
+*/
 		delete *i;
 	}
 	return ret;
@@ -146,6 +151,8 @@ void wait_for_listen(libtorrent::session& ses, char const* name)
 		if (listen_done) break;
 		a = ses.wait_for_alert(milliseconds(500));
 	} while (a);
+	// we din't receive a listen alert!
+	TEST_CHECK(listen_done);
 }
 
 void test_sleep(int millisec)
@@ -251,7 +258,7 @@ void create_random_files(std::string const& path, const int file_sizes[], int nu
 }
 
 boost::intrusive_ptr<torrent_info> create_torrent(std::ostream* file, int piece_size
-	, int num_pieces, bool add_tracker, bool encrypted_torrent)
+	, int num_pieces, bool add_tracker, std::string ssl_certificate)
 {
 	char const* tracker_url = "http://non-existent-name.com/announce";
 	// excercise the path when encountering invalid urls
@@ -267,6 +274,23 @@ boost::intrusive_ptr<torrent_info> create_torrent(std::ostream* file, int piece_
 		t.add_tracker(tracker_url);
 		t.add_tracker(invalid_tracker_url);
 		t.add_tracker(invalid_tracker_protocol);
+	}
+
+	if (!ssl_certificate.empty())
+	{
+		std::vector<char> file_buf;
+		error_code ec;
+		int res = load_file(ssl_certificate, file_buf, ec);
+		if (ec || res < 0)
+		{
+			fprintf(stderr, "failed to load SSL certificate: %s\n", ec.message().c_str());
+		}
+		else
+		{
+			std::string pem;
+			std::copy(file_buf.begin(), file_buf.end(), std::back_inserter(pem));
+			t.set_root_cert(pem);
+		}
 	}
 
 	std::vector<char> piece(piece_size);
@@ -293,18 +317,18 @@ boost::intrusive_ptr<torrent_info> create_torrent(std::ostream* file, int piece_
 
 	entry tor = t.generate();
 
-	if (encrypted_torrent)
-	{
-		std::string key;
-		key.resize(32);
-		std::generate(key.begin(), key.end(), &std::rand);
-		tor["info"]["encryption-key"] = key;
-	}
-
 	bencode(out, tor);
 	error_code ec;
 	return boost::intrusive_ptr<torrent_info>(new torrent_info(
 		&tmp[0], tmp.size(), ec));
+}
+
+void update_settings(session_settings& sess_set, bool allow_multiple_ips)
+{
+	if (allow_multiple_ips) sess_set.allow_multiple_connections_per_ip = true;
+	sess_set.ignore_limits_on_local_network = false;
+	sess_set.mixed_mode_algorithm = session_settings::prefer_tcp;
+	sess_set.max_failcount = 1;
 }
 
 boost::tuple<torrent_handle, torrent_handle, torrent_handle>
@@ -312,7 +336,7 @@ setup_transfer(session* ses1, session* ses2, session* ses3
 	, bool clear_files, bool use_metadata_transfer, bool connect_peers
 	, std::string suffix, int piece_size
 	, boost::intrusive_ptr<torrent_info>* torrent, bool super_seeding
-	, add_torrent_params const* p, bool stop_lsd, bool encrypted_torrent)
+	, add_torrent_params const* p, bool stop_lsd, bool use_ssl_ports)
 {
 	assert(ses1);
 	assert(ses2);
@@ -325,13 +349,20 @@ setup_transfer(session* ses1, session* ses2, session* ses3
 	}
 
 	session_settings sess_set = ses1->settings();
-	if (ses3) sess_set.allow_multiple_connections_per_ip = true;
-	sess_set.ignore_limits_on_local_network = false;
-	sess_set.mixed_mode_algorithm = session_settings::prefer_tcp;
-	sess_set.max_failcount = 1;
+	update_settings(sess_set, ses3);
 	ses1->set_settings(sess_set);
+
+	sess_set = ses2->settings();
+	update_settings(sess_set, ses3);
 	ses2->set_settings(sess_set);
-	if (ses3) ses3->set_settings(sess_set);
+
+	if (ses3)
+	{
+		sess_set = ses3->settings();
+		update_settings(sess_set, ses3);
+		ses3->set_settings(sess_set);
+	}
+
 	ses1->set_alert_mask(~(alert::progress_notification | alert::stats_notification));
 	ses2->set_alert_mask(~(alert::progress_notification | alert::stats_notification));
 	if (ses3) ses3->set_alert_mask(~(alert::progress_notification | alert::stats_notification));
@@ -356,7 +387,7 @@ setup_transfer(session* ses1, session* ses2, session* ses3
 		error_code ec;
 		create_directory("tmp1" + suffix, ec);
 		std::ofstream file(combine_path("tmp1" + suffix, "temporary").c_str());
-		t = ::create_torrent(&file, piece_size, 19, true, encrypted_torrent);
+		t = ::create_torrent(&file, piece_size, 19, true);
 		file.close();
 		if (clear_files)
 		{
@@ -422,21 +453,47 @@ setup_transfer(session* ses1, session* ses2, session* ses3
 
 	if (connect_peers)
 	{
-		fprintf(stderr, "connecting peer\n");
 		error_code ec;
-		tor1.connect_peer(tcp::endpoint(address::from_string("127.0.0.1", ec)
-			, ses2->listen_port()));
+		if (use_ssl_ports)
+		{
+			fprintf(stderr, "%s: ses1: connecting peer port: %d\n", time_now_string(), int(ses2->ssl_listen_port()));
+			tor1.connect_peer(tcp::endpoint(address::from_string("127.0.0.1", ec)
+				, ses2->ssl_listen_port()));
+		}
+		else
+		{
+			fprintf(stderr, "%s: ses1: connecting peer port: %d\n", time_now_string(), int(ses2->listen_port()));
+			tor1.connect_peer(tcp::endpoint(address::from_string("127.0.0.1", ec)
+				, ses2->listen_port()));
+		}
 
 		if (ses3)
 		{
 			// give the other peers some time to get an initial
 			// set of pieces before they start sharing with each-other
-			tor3.connect_peer(tcp::endpoint(
-				address::from_string("127.0.0.1", ec)
-				, ses2->listen_port()));
-			tor3.connect_peer(tcp::endpoint(
-				address::from_string("127.0.0.1", ec)
-				, ses1->listen_port()));
+
+			if (use_ssl_ports)
+			{
+				fprintf(stderr, "ses3: connecting peer port: %d\n", int(ses2->ssl_listen_port()));
+				tor3.connect_peer(tcp::endpoint(
+					address::from_string("127.0.0.1", ec)
+					, ses2->ssl_listen_port()));
+				fprintf(stderr, "ses3: connecting peer port: %d\n", int(ses1->ssl_listen_port()));
+				tor3.connect_peer(tcp::endpoint(
+					address::from_string("127.0.0.1", ec)
+					, ses1->ssl_listen_port()));
+			}
+			else
+			{
+				fprintf(stderr, "ses3: connecting peer port: %d\n", int(ses2->listen_port()));
+				tor3.connect_peer(tcp::endpoint(
+					address::from_string("127.0.0.1", ec)
+					, ses2->listen_port()));
+				fprintf(stderr, "ses3: connecting peer port: %d\n", int(ses1->listen_port()));
+				tor3.connect_peer(tcp::endpoint(
+					address::from_string("127.0.0.1", ec)
+					, ses1->listen_port()));
+			}
 		}
 	}
 
@@ -452,6 +509,7 @@ bool udp_failed = false;
 
 void stop_tracker()
 {
+	fprintf(stderr, "%s: stop_tracker()\n", time_now_string());
 	if (tracker_server && tracker_ios)
 	{
 		tracker_ios->stop();
@@ -460,6 +518,7 @@ void stop_tracker()
 		delete tracker_ios;
 		tracker_ios = 0;
 	}
+	fprintf(stderr, "%s: stop_tracker() done\n", time_now_string());
 }
 
 void udp_tracker_thread(int* port);
@@ -485,8 +544,8 @@ int start_tracker()
 	return port;
 }
 
-int g_udp_tracker_requests = 0;
-int g_http_tracker_requests = 0;
+boost::detail::atomic_count g_udp_tracker_requests(0);
+boost::detail::atomic_count g_http_tracker_requests(0);
 
 void on_udp_receive(error_code const& ec, size_t bytes_transferred, udp::endpoint const* from, char* buffer, udp::socket* sock)
 {
@@ -503,6 +562,9 @@ void on_udp_receive(error_code const& ec, size_t bytes_transferred, udp::endpoin
 		fprintf(stderr, "UDP message too short\n");
 		return;
 	}
+
+	fprintf(stderr, "%s: UDP message %d bytes\n", time_now_string(), int(bytes_transferred));
+
 	char* ptr = buffer;
 	detail::read_uint64(ptr);
 	boost::uint32_t action = detail::read_uint32(ptr);
@@ -514,6 +576,7 @@ void on_udp_receive(error_code const& ec, size_t bytes_transferred, udp::endpoin
 	{
 		case 0: // connect
 
+			fprintf(stderr, "%s: UDP connect\n", time_now_string());
 			ptr = buffer;
 			detail::write_uint32(0, ptr); // action = connect
 			detail::write_uint32(transaction_id, ptr); // transaction_id
@@ -523,6 +586,7 @@ void on_udp_receive(error_code const& ec, size_t bytes_transferred, udp::endpoin
 
 		case 1: // announce
 
+			fprintf(stderr, "%s: UDP announce\n", time_now_string());
 			ptr = buffer;
 			detail::write_uint32(1, ptr); // action = announce
 			detail::write_uint32(transaction_id, ptr); // transaction_id
@@ -533,7 +597,12 @@ void on_udp_receive(error_code const& ec, size_t bytes_transferred, udp::endpoin
 			// 0 peers
 			sock->send_to(asio::buffer(buffer, 20), *from, 0, e);
 			break;
-		default: // ignore scrapes
+		case 2:
+			// ignore scrapes
+			fprintf(stderr, "%s: UDP scrape\n", time_now_string());
+			break;
+		default:
+			fprintf(stderr, "%s: UDP unknown message: %d\n", time_now_string(), action);
 			break;
 	}
 }
@@ -562,7 +631,7 @@ void udp_tracker_thread(int* port)
 	}
 	*port = acceptor.local_endpoint().port();
 
-	fprintf(stderr, "UDP tracker initialized on port %d\n", *port);
+	fprintf(stderr, "%s: UDP tracker initialized on port %d\n", time_now_string(), *port);
 
 	{
 		libtorrent::mutex::scoped_lock l(tracker_lock);
@@ -584,7 +653,7 @@ void udp_tracker_thread(int* port)
 
 		if (ec)
 		{
-			fprintf(stderr, "Error receiving on UDP socket: %s\n", ec.message().c_str());
+			fprintf(stderr, "%s: Error receiving on UDP socket: %s\n", time_now_string(), ec.message().c_str());
 			libtorrent::mutex::scoped_lock l(tracker_lock);
 			tracker_initialized.signal(l);
 			return;
@@ -608,13 +677,15 @@ static void terminate_web_thread()
 
 void stop_web_server()
 {
+	fprintf(stderr, "%s: stop_web_server()\n", time_now_string());
 	if (web_server && web_ios)
 	{
-		fprintf(stderr, "stopping web server thread\n");
+		fprintf(stderr, "%s: stopping web server thread\n", time_now_string());
 		web_ios->post(&terminate_web_thread);
 		web_server->join();
 		web_server.reset();
 	}
+	fprintf(stderr, "%s: stop_web_server() done\n", time_now_string());
 }
 
 void web_server_thread(int* port, bool ssl, bool chunked);
@@ -628,19 +699,6 @@ int start_web_server(bool ssl, bool chunked_encoding)
 	{
 		libtorrent::mutex::scoped_lock l(web_lock);
 		web_initialized.clear(l);
-	}
-
-	if (ssl)
-	{
-		system("echo . > tmp");
-		system("echo test province >>tmp");
-		system("echo test city >> tmp");
-		system("echo test company >> tmp");
-		system("echo test department >> tmp");
-		system("echo 127.0.0.1 >> tmp");
-		system("echo test@test.com >> tmp");   
-		system("openssl req -new -x509 -keyout server.pem -out server.pem "
-			"-days 365 -nodes <tmp");
 	}
 
 	int port = 0;
@@ -782,13 +840,6 @@ void web_server_thread(int* port, bool ssl, bool chunked)
 
 	web_ios = &ios;
 
-	fprintf(stderr, "web server initialized on port %d\n", *port);
-
-	{
-		libtorrent::mutex::scoped_lock l(web_lock);
-		web_initialized.signal(l);
-	}
-
 	char buf[10000];
 	int len = 0;
 	int offset = 0;
@@ -797,15 +848,26 @@ void web_server_thread(int* port, bool ssl, bool chunked)
 	void* ctx = 0;
 #ifdef TORRENT_USE_OPENSSL
 	boost::asio::ssl::context ssl_ctx(ios, boost::asio::ssl::context::sslv23_server);
-	ssl_ctx.use_certificate_chain_file("server.pem");
-	ssl_ctx.use_private_key_file("server.pem", asio::ssl::context::pem);
-	ssl_ctx.set_verify_mode(boost::asio::ssl::context::verify_none);
+	if (ssl)
+	{
+		ssl_ctx.use_certificate_chain_file("ssl/server.pem");
+		ssl_ctx.use_private_key_file("ssl/server.pem", asio::ssl::context::pem);
+		ssl_ctx.set_verify_mode(boost::asio::ssl::context::verify_none);
 
-	if (ssl) ctx = &ssl_ctx;
+		ctx = &ssl_ctx;
+	}
 #endif
 
 	proxy_settings p;
 	instantiate_connection(ios, p, s, ctx);
+
+	fprintf(stderr, "web server initialized on port %d%s\n", *port, ssl ? " [SSL]" : "");
+
+	{
+		libtorrent::mutex::scoped_lock l(web_lock);
+		web_initialized.signal(l);
+	}
+
 	for (;;)
 	{
 		if (connection_close)
@@ -976,7 +1038,7 @@ void web_server_thread(int* port, bool ssl, bool chunked)
 				connection_close = true;
 			}
 
-			DLOG(stderr, "%s", std::string(buf + offset, p.body_start()).c_str());
+			DLOG(stderr, "REQ: %s", std::string(buf + offset, p.body_start()).c_str());
 
 			if (failed)
 			{

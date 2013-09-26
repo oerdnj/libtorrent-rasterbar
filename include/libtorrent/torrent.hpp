@@ -123,7 +123,10 @@ namespace libtorrent
 #endif
 
 		sha1_hash const& info_hash() const
-		{ return m_torrent_file->info_hash(); }
+		{
+			static sha1_hash empty;
+			return m_torrent_file ? m_torrent_file->info_hash() : empty;
+		}
 
 		// starts the announce timer
 		void start();
@@ -825,12 +828,13 @@ namespace libtorrent
 			TORRENT_ASSERT(m_num_connecting > 0);
 			--m_num_connecting;
 		}
+
+		bool is_ssl_torrent() const { return m_ssl_torrent; } 
 #ifdef TORRENT_USE_OPENSSL
 		void set_ssl_cert(std::string const& certificate
 			, std::string const& private_key
 			, std::string const& dh_params
 			, std::string const& passphrase);
-		bool is_ssl_torrent() const { return m_ssl_ctx; } 
 		boost::asio::ssl::context* ssl_ctx() const { return m_ssl_ctx.get(); } 
 #endif
 
@@ -894,7 +898,7 @@ namespace libtorrent
 
 		// if this pointer is 0, the torrent is in
 		// a state where the metadata hasn't been
-		// received yet.
+		// received yet, or during shutdown.
 		// the piece_manager keeps the torrent object
 		// alive by holding a shared_ptr to it and
 		// the torrent keeps the piece manager alive
@@ -1331,6 +1335,11 @@ namespace libtorrent
 		// session_impl's m_state_update list, this bit is set
 		// to never add the same torrent twice
 		bool m_in_state_updates:1;
+
+		// even if we're not built to support SSL torrents,
+		// remember that this is an SSL torrent, so that we don't
+		// accidentally start seeding it without any authentication.
+		bool m_ssl_torrent:1;
 
 #if defined TORRENT_DEBUG || TORRENT_RELEASE_ASSERTS
 	public:
