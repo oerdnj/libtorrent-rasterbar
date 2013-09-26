@@ -5,6 +5,7 @@
 #include <boost/python.hpp>
 #include <libtorrent/alert.hpp>
 #include <libtorrent/alert_types.hpp>
+#include <memory>
 
 using namespace boost::python;
 using namespace libtorrent;
@@ -93,7 +94,7 @@ void bind_alert()
     using boost::noncopyable;
 
     {
-        scope alert_scope = class_<alert, noncopyable>("alert", no_init)
+        scope alert_scope = class_<alert, boost::shared_ptr<alert>, noncopyable >("alert", no_init)
             .def("message", &alert::message)
             .def("what", &alert::what)
             .def("category", &alert::category)
@@ -126,7 +127,8 @@ void bind_alert()
             .value("ip_block_notification", alert::ip_block_notification)
             .value("performance_warning", alert::performance_warning)
             .value("stats_notification", alert::stats_notification)
-            .value("all_categories", alert::all_categories)
+            // deliberately not INT_MAX. Arch linux crash while throwing an exception
+            .value("all_categories", (alert::category_t)0xfffffff)
             ;
 
     }
@@ -338,6 +340,7 @@ void bind_alert()
 
     class_<scrape_failed_alert, bases<tracker_alert>, noncopyable>(
         "scrape_failed_alert", no_init)
+        .def_readonly("msg", &scrape_failed_alert::msg)
         ;
 
     class_<udp_error_alert, bases<alert>, noncopyable>(

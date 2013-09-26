@@ -431,6 +431,7 @@ namespace libtorrent
 		, m_merge_resume_trackers(p.flags & add_torrent_params::flag_merge_resume_trackers)
 		, m_state_subscription(p.flags & add_torrent_params::flag_update_subscribe)
 		, m_in_state_updates(false)
+		, m_ssl_torrent(false)
 	{
 		// if there is resume data already, we don't need to trigger the initial save
 		// resume data
@@ -1362,6 +1363,12 @@ namespace libtorrent
 		if (!preverified) return false;
 
 		// we're only interested in checking the certificate at the end of the chain.
+		// TODO: is verify_peer_cert called once per certificate in the chain, and
+		// this function just tells us which depth we're at right now? If so, the comment
+		// makes sense.
+		// any certificate that isn't the leaf (i.e. the one presented by the peer)
+		// should be accepted automatically, given preverified is true. The leaf certificate
+		// need to be verified to make sure its DN matches the info-hash
 		int depth = X509_STORE_CTX_get_error_depth(ctx.native_handle());
 		if (depth > 0) return true;
 
@@ -1569,10 +1576,14 @@ namespace libtorrent
 		if (m_file_priority.size() > m_torrent_file->num_files())
 			m_file_priority.resize(m_torrent_file->num_files());
 
-#ifdef TORRENT_USE_OPENSSL
 		std::string cert = m_torrent_file->ssl_cert();
-		if (!cert.empty()) init_ssl(cert);
+		if (!cert.empty())
+		{
+			m_ssl_torrent = true;
+#ifdef TORRENT_USE_OPENSSL
+			init_ssl(cert);
 #endif
+		}
 
 		m_file_priority.resize(m_torrent_file->num_files(), 1);
 		m_file_progress.resize(m_torrent_file->num_files(), 0);
@@ -2377,10 +2388,13 @@ namespace libtorrent
 			if (settings().anonymous_mode)
 			{
 				// in anonymous_mode we don't talk directly to trackers
-				// only if there is a proxy
+				// we only allow trackers if there is a proxy and issue
+				// a warning if there isn't one
 				std::string protocol = req.url.substr(0, req.url.find(':'));
 				int proxy_type = m_ses.m_proxy.type;
 	
+				// http can run over any proxy, so as long as one is used
+				// it's OK. If no proxy is configured, skip this tracker
 				if ((protocol == "http" || protocol == "https")
 					&& proxy_type == proxy_settings::none)
 				{
@@ -2394,10 +2408,13 @@ namespace libtorrent
 					continue;
 				}
 
+				// for UDP, only socks5 and i2p proxies will work.
+				// if we're not using one of those proxues with a UDP
+				// tracker, skip it
 				if (protocol == "udp"
-					|| (proxy_type != proxy_settings::socks5
+					&& proxy_type != proxy_settings::socks5
 					&& proxy_type != proxy_settings::socks5_pw
-					&& proxy_type != proxy_settings::i2p_proxy))
+					&& proxy_type != proxy_settings::i2p_proxy)
 				{
 					ae.next_announce = now + minutes(10);
 					if (m_ses.m_alerts.should_post<anonymous_mode_alert>())
@@ -2519,8 +2536,7 @@ namespace libtorrent
 		INVARIANT_CHECK;
 		TORRENT_ASSERT(r.kind == tracker_request::announce_request);
 
-		TORRENT_ASSERT(!tracker_ips.empty());
-		if (external_ip != address())
+		if (external_ip != address() && !tracker_ips.empty())
 			m_ses.set_external_address(external_ip, aux::session_impl::source_tracker
 				, *tracker_ips.begin());
 
@@ -3532,6 +3548,7 @@ namespace libtorrent
 		}
 		else
 		{
+			TORRENT_ASSERT(m_abort);
 			if (alerts().should_post<cache_flushed_alert>())
 				alerts().post_alert(cache_flushed_alert(get_handle()));
 		}
@@ -3991,9 +4008,9 @@ namespace libtorrent
 		// this call is only valid on torrents with metadata
 		if (!valid_metadata() || is_seed()) return;
 
-		TORRENT_ASSERT(index < m_torrent_file->num_files());
-		TORRENT_ASSERT(index >= 0);
 		if (index < 0 || index >= m_torrent_file->num_files()) return;
+		if (prio < 0) prio = 0;
+		else if (prio > 7) prio = 7;
 		if (m_file_priority.size() <= index)
 		{
 			if (prio == 1) return;
@@ -4009,8 +4026,6 @@ namespace libtorrent
 		// this call is only valid on torrents with metadata
 		if (!valid_metadata()) return 1;
 
-		TORRENT_ASSERT(index < m_torrent_file->num_files());
-		TORRENT_ASSERT(index >= 0);
 		if (index < 0 || index >= m_torrent_file->num_files()) return 0;
 		if (m_file_priority.size() <= index) return 1;
 		return m_file_priority[index];
@@ -5687,13 +5702,13 @@ namespace libtorrent
 
 			void* userdata = 0;
 #ifdef TORRENT_USE_OPENSSL
-			if (is_ssl_torrent())
+			if (is_ssl_torrent() && m_ses.settings().ssl_listen != 0)
 			{
 				userdata = m_ssl_ctx.get();
 				// SSL handshakes are slow
 				timeout_extend = 10;
 
-				// we don't support SSL over uTP yet
+				// TODO: 3 support SSL over uTP
 				sm = 0;
 			}
 #endif
@@ -5885,6 +5900,13 @@ namespace libtorrent
 				return false;
 			}
 
+			if (!m_ssl_ctx)
+			{
+				// we don't have a valid cert, don't accept any connection!
+				p->disconnect(errors::invalid_ssl_cert);
+				return false;
+			}
+
 			if (SSL_get_SSL_CTX(ssl_conn) != m_ssl_ctx->native_handle())
 			{
 				// if the SSL_CTX associated with this connection is
@@ -5903,6 +5925,14 @@ namespace libtorrent
 			return false;
 		}
 #endif
+#else // TORRENT_USE_OPENSSL
+		if (is_ssl_torrent())
+		{
+			// Don't accidentally allow seeding of SSL torrents, just
+			// because libtorrent wasn't built with SSL support
+			p->disconnect(errors::requires_ssl_connection);
+			return false;
+		}
 #endif // TORRENT_USE_OPENSSL
 
 		TORRENT_ASSERT(p != 0);
@@ -6394,6 +6424,14 @@ namespace libtorrent
 		TORRENT_ASSERT(m_ses.is_network_thread());
 		INVARIANT_CHECK;
 
+		if (m_abort)
+		{
+			if (alerts().should_post<storage_moved_failed_alert>())
+				alerts().post_alert(storage_moved_failed_alert(get_handle(), boost::asio::error::operation_aborted));
+			return;
+		}
+
+		// storage may be NULL during shutdown
 		if (m_owning_storage.get())
 		{
 #if TORRENT_USE_UNC_PATHS
@@ -6846,6 +6884,7 @@ namespace libtorrent
 		disconnect_all(errors::torrent_removed);
 		stop_announcing();
 
+		// storage may be NULL during shutdown
 		if (m_owning_storage.get())
 		{
 			TORRENT_ASSERT(m_storage);
@@ -7044,7 +7083,8 @@ namespace libtorrent
 			return;
 		}
 
-		if (flags & torrent_handle::flush_disk_cache)
+		// storage may be NULL during shutdown
+		if ((flags & torrent_handle::flush_disk_cache) && m_storage)
 			m_storage->async_release_files();
 
 		m_storage->async_save_resume_data(
@@ -7067,6 +7107,13 @@ namespace libtorrent
 	void torrent::flush_cache()
 	{
 		TORRENT_ASSERT(m_ses.is_network_thread());
+
+		// storage may be NULL during shutdown
+		if (!m_owning_storage)
+		{
+			TORRENT_ASSERT(m_abort);
+			return;
+		}
 		m_storage->async_release_files(
 			boost::bind(&torrent::on_cache_flushed, shared_from_this(), _1, _2));
 	}
@@ -7409,6 +7456,13 @@ namespace libtorrent
 #endif
 			return;
 		}
+		if (!m_torrent_file->is_valid() && !m_url.empty())
+		{
+#if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_LOGGING
+			debug_log("start_announcing(), downloading URL");
+#endif
+			return;
+		}
 		if (m_announcing) return;
 
 		m_announcing = true;
@@ -7468,6 +7522,8 @@ namespace libtorrent
 		TORRENT_ASSERT(m_ses.is_network_thread());
 		INVARIANT_CHECK;
 
+		boost::weak_ptr<torrent> self(shared_from_this());
+
 #ifndef TORRENT_DISABLE_EXTENSIONS
 		for (extension_list_t::iterator i = m_extensions.begin()
 			, end(m_extensions.end()); i != end; ++i)
@@ -7476,6 +7532,8 @@ namespace libtorrent
 				(*i)->tick();
 			} TORRENT_CATCH (std::exception&) {}
 		}
+
+		if (m_abort) return;
 #endif
 
 		m_time_scaler--;
@@ -7793,6 +7851,10 @@ namespace libtorrent
 	{
 		TORRENT_ASSERT(m_ses.is_network_thread());
 		if (!ready_for_connections()) return;
+
+		if (m_abort) return;
+		TORRENT_ASSERT(m_storage);
+
 		// rotate the cached pieces
 
 		// add blocks_per_piece / 2 in order to round to closest whole piece
@@ -7935,6 +7997,11 @@ namespace libtorrent
 			, boost::bind(&peer_connection::download_queue_time, _1, 16*1024)
 			< boost::bind(&peer_connection::download_queue_time, _2, 16*1024));
 
+		// remove the bottom 10% of peers from the candidate set
+		int new_size = (peers.size() * 9 + 9) / 10;
+		TORRENT_ASSERT(new_size <= peers.size());
+		peers.resize(new_size);
+
 		std::set<peer_connection*> peers_with_requests;
 
 		std::vector<piece_block> interesting_blocks;
@@ -7956,7 +8023,7 @@ namespace libtorrent
 		for (std::deque<time_critical_piece>::iterator i = m_time_critical_pieces.begin()
 			, end(m_time_critical_pieces.end()); i != end && !peers.empty(); ++i)
 		{
-			// the +1000 is to compensate for the fact that we only call this functions
+			// the +1000 is to compensate for the fact that we only call this function
 			// once per second, so if we need to request it 500 ms from now, we should request
 			// it right away
 			if (i != m_time_critical_pieces.begin() && i->deadline > now
@@ -7971,6 +8038,8 @@ namespace libtorrent
 			piece_picker::downloading_piece pi;
 			m_picker->piece_info(i->piece, pi);
 
+			bool timed_out = false;
+
 			int free_to_request = m_picker->blocks_in_piece(i->piece) - pi.finished - pi.writing - pi.requested;
 			if (free_to_request == 0)
 			{
@@ -7983,8 +8052,13 @@ namespace libtorrent
 					// we're just waiting for it to flush them to disk.
 					// if last_requested is recent enough, we should give it some
 					// more time
-					break;
+					// skip to the next piece
+					continue;
 				}
+
+				// it's been too long since we requested the last block from this piece. Allow re-requesting
+				// blocks from this piece
+				timed_out = true;
 			}
 
 			// loop until every block has been requested from this piece (i->piece)
@@ -8012,6 +8086,14 @@ namespace libtorrent
 				std::vector<pending_block> const& dq = c.download_queue();
 
 				bool added_request = false;
+				bool busy_blocks = false;
+
+				if (timed_out && interesting_blocks.empty())
+				{
+					// if the piece has timed out, allow requesting back-up blocks
+					interesting_blocks.swap(backup1.empty() ? backup2 : backup1);
+					busy_blocks = true;
+				}
 
 				if (!interesting_blocks.empty())
 				{
@@ -8024,6 +8106,7 @@ namespace libtorrent
 						// simply disregard this peer from this piece, since this peer
 						// is likely to be causing the stall. We should request it
 						// from the next peer in the list
+						// the peer will be put back in the set for the next piece
 						ignore_peers.push_back(*p);
 						peers.erase(p);
 						continue;
@@ -8039,7 +8122,8 @@ namespace libtorrent
 					}
 					else
 					{
-						if (!c.add_request(interesting_blocks.front(), peer_connection::req_time_critical))
+						if (!c.add_request(interesting_blocks.front(), peer_connection::req_time_critical
+							| (busy_blocks ? peer_connection::req_busy : 0)))
 						{
 							peers.erase(p);
 							continue;

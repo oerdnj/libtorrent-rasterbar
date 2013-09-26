@@ -234,6 +234,8 @@ namespace libtorrent
 				request += "GET ";
 				if (using_proxy)
 				{
+					// m_url is already a properly escaped URL
+					// with the correct slashes. Don't encode it again
 					request += m_url;
 					std::string path = info.orig_files().file_path(info.orig_files().internal_at(f.file_index));
 #ifdef TORRENT_WINDOWS
@@ -243,8 +245,11 @@ namespace libtorrent
 				}
 				else
 				{
-					std::string path = m_path;
-					path += info.orig_files().file_path(info.orig_files().internal_at(f.file_index));
+					// m_path is already a properly escaped URL
+					// with the correct slashes. Don't encode it again
+					request += m_path;
+
+					std::string path = info.orig_files().file_path(info.orig_files().internal_at(f.file_index));
 #ifdef TORRENT_WINDOWS
 					convert_path_to_posix(path);
 #endif
@@ -770,8 +775,8 @@ namespace libtorrent
 
 			if (!m_requests.empty())
 			{
-				range_overlaps_request = in_range.start + in_range.length
-					> m_requests.front().start + int(m_piece.size());
+//				range_overlaps_request = in_range.start + in_range.length
+//					> m_requests.front().start + int(m_piece.size());
 
 				if (in_range.start + in_range.length < m_requests.front().start + m_requests.front().length
 					&& (m_received_body + recv_buffer.left() >= range_end - range_start))

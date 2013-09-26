@@ -1442,8 +1442,9 @@ int main(int argc, char* argv[])
 		, ec, bind_to_interface.c_str());
 	if (ec)
 	{
-		fprintf(stderr, "failed to listen on %s on ports %d-%d: %s\n"
-			, bind_to_interface.c_str(), listen_port, listen_port+1, ec.message().c_str());
+		fprintf(stderr, "failed to listen%s%s on ports %d-%d: %s\n"
+			, bind_to_interface.empty() ? "" : " on ", bind_to_interface.c_str()
+			, listen_port, listen_port+1, ec.message().c_str());
 	}
 
 #ifndef TORRENT_DISABLE_DHT
@@ -1551,7 +1552,7 @@ int main(int argc, char* argv[])
 		int c = 0;
 		while (sleep_and_input(&c, refresh_delay))
 		{
-			if (c == EOF) { c = 'q'; break; }
+			if (c == EOF) { break; }
 			if (c == 27)
 			{
 				// escape code, read another character
@@ -1560,7 +1561,7 @@ int main(int argc, char* argv[])
 #else
 				int c = getc(stdin);
 #endif
-				if (c == EOF) { c = 'q'; break; }
+				if (c == EOF) { break; }
 				if (c != '[') continue;
 #ifdef _WIN32
 				c = _getch();

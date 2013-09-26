@@ -33,6 +33,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef TORRENT_DISK_BUFFER_POOL
 #define TORRENT_DISK_BUFFER_POOL
 
+#include <boost/utility.hpp>
+
 #include "libtorrent/config.hpp"
 #include "libtorrent/thread.hpp"
 #include "libtorrent/session_settings.hpp"
@@ -42,7 +44,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <fstream>
 #endif
 
-#if defined TORRENT_DEBUG || TORRENT_RELEASE_ASSERTS
+#if defined TORRENT_DEBUG || TORRENT_RELEASE_ASSERTS || TORRENT_DISK_STATS
 #include <map>
 #endif
 

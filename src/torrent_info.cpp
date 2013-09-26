@@ -587,7 +587,10 @@ namespace libtorrent
 			error_code ec;
 			m_info_section.reset(new char[m_info_section_size]);
 			memcpy(m_info_section.get(), t.m_info_section.get(), m_info_section_size);
-			int ret = lazy_bdecode(m_info_section.get(), m_info_section.get()
+#if defined TORRENT_DEBUG || TORRENT_RELEASE_ASSERTS
+			int ret =
+#endif
+				lazy_bdecode(m_info_section.get(), m_info_section.get()
 				+ m_info_section_size, m_info_dict, ec);
 			TORRENT_ASSERT(ret == 0);
 
@@ -711,6 +714,7 @@ namespace libtorrent
 	}
 
 #if TORRENT_USE_WSTRING
+#ifndef TORRENT_NO_DEPRECATE
 	torrent_info::torrent_info(std::wstring const& filename, int flags)
 		: m_merkle_first_leaf(0)
 		, m_piece_hashes(0)
@@ -736,7 +740,8 @@ namespace libtorrent
 
 		INVARIANT_CHECK;
 	}
-#endif
+#endif // TORRENT_NO_DEPRECATE
+#endif // TORRENT_USE_WSTRING
 #endif
 
 	torrent_info::torrent_info(lazy_entry const& torrent_file, error_code& ec, int flags)
@@ -792,6 +797,7 @@ namespace libtorrent
 	}
 
 #if TORRENT_USE_WSTRING
+#ifndef TORRENT_NO_DEPRECATE
 	torrent_info::torrent_info(std::wstring const& filename, error_code& ec, int flags)
 		: m_merkle_first_leaf(0)
 		, m_piece_hashes(0)
@@ -814,7 +820,8 @@ namespace libtorrent
 
 		INVARIANT_CHECK;
 	}
-#endif
+#endif // TORRENT_NO_DEPRECATE
+#endif // TORRENT_USE_WSTRING
 
 	// constructor used for creating new torrents
 	// will not contain any hashes, comments, creation date

@@ -98,7 +98,7 @@ am__EXEEXT_1 = test_auto_unchoke$(EXEEXT) \
 	test_threads$(EXEEXT) test_torrent$(EXEEXT) \
 	test_torrent_parse$(EXEEXT) test_trackers_extension$(EXEEXT) \
 	test_transfer$(EXEEXT) test_upnp$(EXEEXT) test_utp$(EXEEXT) \
-	test_web_seed$(EXEEXT)
+	test_session$(EXEEXT) test_web_seed$(EXEEXT)
 am_test_auto_unchoke_OBJECTS = test_auto_unchoke.$(OBJEXT)
 test_auto_unchoke_OBJECTS = $(am_test_auto_unchoke_OBJECTS)
 test_auto_unchoke_LDADD = $(LDADD)
@@ -198,6 +198,11 @@ test_rss_OBJECTS = $(am_test_rss_OBJECTS)
 test_rss_LDADD = $(LDADD)
 test_rss_DEPENDENCIES = $(top_builddir)/src/libtorrent-rasterbar.la \
 	libtest.la
+am_test_session_OBJECTS = test_session.$(OBJEXT)
+test_session_OBJECTS = $(am_test_session_OBJECTS)
+test_session_LDADD = $(LDADD)
+test_session_DEPENDENCIES =  \
+	$(top_builddir)/src/libtorrent-rasterbar.la libtest.la
 am_test_storage_OBJECTS = test_storage.$(OBJEXT)
 test_storage_OBJECTS = $(am_test_storage_OBJECTS)
 test_storage_LDADD = $(LDADD)
@@ -294,9 +299,10 @@ SOURCES = $(libtest_la_SOURCES) $(test_auto_unchoke_SOURCES) \
 	$(test_metadata_extension_SOURCES) $(test_natpmp_SOURCES) \
 	$(test_pe_crypto_SOURCES) $(test_pex_SOURCES) \
 	$(test_piece_picker_SOURCES) $(test_primitives_SOURCES) \
-	$(test_rss_SOURCES) $(test_storage_SOURCES) \
-	$(test_swarm_SOURCES) $(test_threads_SOURCES) \
-	$(test_torrent_SOURCES) $(test_torrent_parse_SOURCES) \
+	$(test_rss_SOURCES) $(test_session_SOURCES) \
+	$(test_storage_SOURCES) $(test_swarm_SOURCES) \
+	$(test_threads_SOURCES) $(test_torrent_SOURCES) \
+	$(test_torrent_parse_SOURCES) \
 	$(test_trackers_extension_SOURCES) $(test_transfer_SOURCES) \
 	$(test_upnp_SOURCES) $(test_utp_SOURCES) \
 	$(test_web_seed_SOURCES)
@@ -310,9 +316,10 @@ DIST_SOURCES = $(libtest_la_SOURCES) $(test_auto_unchoke_SOURCES) \
 	$(test_metadata_extension_SOURCES) $(test_natpmp_SOURCES) \
 	$(test_pe_crypto_SOURCES) $(test_pex_SOURCES) \
 	$(test_piece_picker_SOURCES) $(test_primitives_SOURCES) \
-	$(test_rss_SOURCES) $(test_storage_SOURCES) \
-	$(test_swarm_SOURCES) $(test_threads_SOURCES) \
-	$(test_torrent_SOURCES) $(test_torrent_parse_SOURCES) \
+	$(test_rss_SOURCES) $(test_session_SOURCES) \
+	$(test_storage_SOURCES) $(test_swarm_SOURCES) \
+	$(test_threads_SOURCES) $(test_torrent_SOURCES) \
+	$(test_torrent_parse_SOURCES) \
 	$(test_trackers_extension_SOURCES) $(test_transfer_SOURCES) \
 	$(test_upnp_SOURCES) $(test_utp_SOURCES) \
 	$(test_web_seed_SOURCES)
@@ -517,6 +524,7 @@ test_programs = \
   test_transfer              \
   test_upnp                  \
   test_utp                   \
+  test_session               \
   test_web_seed
 
 @ENABLE_TESTS_TRUE@noinst_LTLIBRARIES = libtest.la
@@ -590,6 +598,7 @@ test_trackers_extension_SOURCES = test_trackers_extension.cpp
 test_transfer_SOURCES = test_transfer.cpp
 test_upnp_SOURCES = test_upnp.cpp
 test_utp_SOURCES = test_utp.cpp
+test_session_SOURCES = test_session.cpp
 test_web_seed_SOURCES = test_web_seed.cpp
 LDADD = $(top_builddir)/src/libtorrent-rasterbar.la libtest.la
 
@@ -708,6 +717,9 @@ test_primitives$(EXEEXT): $(test_primitives_OBJECTS) $(test_primitives_DEPENDENC
 test_rss$(EXEEXT): $(test_rss_OBJECTS) $(test_rss_DEPENDENCIES) $(EXTRA_test_rss_DEPENDENCIES) 
 	@rm -f test_rss$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(test_rss_OBJECTS) $(test_rss_LDADD) $(LIBS)
+test_session$(EXEEXT): $(test_session_OBJECTS) $(test_session_DEPENDENCIES) $(EXTRA_test_session_DEPENDENCIES) 
+	@rm -f test_session$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(test_session_OBJECTS) $(test_session_LDADD) $(LIBS)
 test_storage$(EXEEXT): $(test_storage_OBJECTS) $(test_storage_DEPENDENCIES) $(EXTRA_test_storage_DEPENDENCIES) 
 	@rm -f test_storage$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(test_storage_OBJECTS) $(test_storage_LDADD) $(LIBS)
@@ -766,6 +778,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_piece_picker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_primitives.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_rss.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_session.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_storage.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_swarm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_threads.Po@am__quote@

@@ -218,7 +218,7 @@ namespace libtorrent {
 	{
 		char ret[200];
 		snprintf(ret, sizeof(ret), "%s peer sent an invalid piece request (piece: %u start: %u len: %u)"
-			, torrent_alert::message().c_str(), request.piece, request.start, request.length);
+			, peer_alert::message().c_str(), request.piece, request.start, request.length);
 		return ret;
 	}
 
@@ -631,5 +631,12 @@ namespace libtorrent {
 		return msg;
 	}
 
+	std::string peer_disconnected_alert::message() const
+	{
+		char msg[600];
+		snprintf(msg, sizeof(msg), "%s disconnecting: [%s] %s", peer_alert::message().c_str()
+			, error.category().name(), convert_from_native(error.message()).c_str());
+		return msg;
+	}
 } // namespace libtorrent
 
