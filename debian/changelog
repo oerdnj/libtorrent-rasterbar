@@ -3,8 +3,14 @@ libtorrent-rasterbar (0.16.11-1) UNRELEASED; urgency=low
   * Non-maintainer upload.
   * New upstream version 0.16.11.
   * debian/control: switch to boost1.54-dev | boost-dev deps.
+  * fix-ftbfs-kfreebsd-iconv.patch: deleted (already in upstream).
+  * debian/copyright:
+    - update in according to Copyright format 1.0
+    - remove copyright holders whose code was deleted from source tree
+    - add missed copyright holders
+    - update years
 
- -- Boris Pek <tehnick@debian.org>  Fri, 27 Sep 2013 01:14:59 +0300
+ -- Boris Pek <tehnick@debian.org>  Fri, 27 Sep 2013 02:54:51 +0300
 
 libtorrent-rasterbar (0.16.10-3.1) unstable; urgency=low
 
