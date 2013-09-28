@@ -21,7 +21,7 @@ override_dh_auto_configure-%:
 	CPPFLAGS="$(CPPFLAGS) $(shell python$*-config --includes)" \
 	dh_auto_configure --builddirectory build-py$* -- \
 		PYTHON=/usr/bin/python$* PYTHON_INSTALL_PARAMS="--root=$(CURDIR)/debian/tmp --install-layout=deb" \
-		--enable-python-binding --with-boost-python=boost_python-mt-py$(subst .,,$(subst -dbg,,$*)) \
+		--enable-python-binding --with-boost-python=boost_python-py$(subst .,,$(subst -dbg,,$*)) \
 		$(CONFIGURE_ARGS)
 	mv build-py$*/bindings/python build/bindings/python$*
 	cp -r bindings/python/src build/bindings/python$*
