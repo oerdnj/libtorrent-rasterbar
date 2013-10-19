@@ -1,3 +1,10 @@
+libtorrent-rasterbar (0.16.11-2) unstable; urgency=low
+
+  * debian/control: libtorrent-rasterbar-dev should depend on
+    boost-system1.54 (Closes: #726823).
+
+ -- Cristian Greco <cristian@debian.org>  Sat, 19 Oct 2013 20:26:01 +0200
+
 libtorrent-rasterbar (0.16.11-1) unstable; urgency=low
 
   * Non-maintainer upload.
