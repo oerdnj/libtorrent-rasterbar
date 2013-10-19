@@ -45,7 +45,7 @@ Architecture: any
 Pre-Depends: dpkg (>= 1.15.6~)
 Depends: ${misc:Depends},
          libtorrent-rasterbar7 (= ${binary:Version}),
-         libboost-system1.53-dev | libboost-system-dev,
+         libboost-system1.54-dev | libboost-system-dev,
          libssl-dev,
          libgeoip-dev,
          pkg-config
