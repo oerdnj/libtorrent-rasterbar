@@ -3,6 +3,7 @@ libtorrent-rasterbar (0.16.11-3) UNRELEASED; urgency=medium
   * Explictly pass --with-boost-system=boost_system to configure
     as ax_boost_system.m4 doesn't want to find it now that it
     is multiarch. Fixes FTBFS (Closes: #738381).
+  * Fix build with python3.4 as a supported version, using python-config.
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Mon, 10 Feb 2014 10:37:28 -0500
 

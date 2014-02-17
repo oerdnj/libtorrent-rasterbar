@@ -19,6 +19,7 @@ override_dh_auto_configure-nopy:
 
 override_dh_auto_configure-%:
 	CPPFLAGS="$(CPPFLAGS) $(shell python$*-config --includes)" \
+	PYTHON_LDFLAGS="$(shell python$*-config --libs)" \
 	dh_auto_configure --builddirectory build-py$* -- \
 		PYTHON=/usr/bin/python$* PYTHON_INSTALL_PARAMS="--root=$(CURDIR)/debian/tmp --install-layout=deb" \
 		--enable-python-binding --with-boost-python=boost_python-py$(subst .,,$(subst -dbg,,$*)) \
