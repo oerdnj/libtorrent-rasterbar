@@ -1,6 +1,7 @@
 libtorrent-rasterbar (0.16.11-3) UNRELEASED; urgency=medium
 
   * Add myself as a maintainer.
+  * Bump Standards-Version to 3.9.5, no changes needed.
 
  -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Mon, 17 Feb 2014 17:09:22 -0500
 
