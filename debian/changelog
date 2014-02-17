@@ -1,11 +1,12 @@
-libtorrent-rasterbar (0.16.11-3) UNRELEASED; urgency=medium
+libtorrent-rasterbar (0.16.11-2.1) unstable; urgency=medium
 
+  * Non-maintainer upload.
   * Explictly pass --with-boost-system=boost_system to configure
     as ax_boost_system.m4 doesn't want to find it now that it
     is multiarch. Fixes FTBFS (Closes: #738381).
   * Fix build with python3.4 as a supported version, using python-config.
 
- -- Andrew Starr-Bochicchio <asb@debian.org>  Mon, 10 Feb 2014 10:37:28 -0500
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Mon, 17 Feb 2014 12:19:53 -0500
 
 libtorrent-rasterbar (0.16.11-2) unstable; urgency=low
 
