@@ -1,7 +1,7 @@
 libtorrent-rasterbar (0.16.13-1) UNRELEASED; urgency=medium
 
   * New upstream release.
-  * Add myself as a maintainer.
+  * Add myself as an uploader.
   * Bump Standards-Version to 3.9.5, no changes needed. 
   * Update fix-html-docs.patch so that all docs are built from
     source and fix lintian privacy-breach-google-adsense errors. 
