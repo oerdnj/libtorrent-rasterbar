@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<meta name="generator" content="Docutils 0.5: http://docutils.sourceforge.net/" />
+<meta name="generator" content="Docutils 0.11: http://docutils.sourceforge.net/" />
 <title>libtorrent hacking</title>
 <meta name="author" content="Arvid Norberg, arvid&#64;rasterbar.com" />
 <link rel="stylesheet" type="text/css" href="../../css/base.css" />
@@ -49,7 +49,7 @@
 <tr><th class="docinfo-name">Author:</th>
 <td>Arvid Norberg, <a class="last reference external" href="mailto:arvid&#64;rasterbar.com">arvid&#64;rasterbar.com</a></td></tr>
 <tr><th class="docinfo-name">Version:</th>
-<td>0.16.10</td></tr>
+<td>0.16.12</td></tr>
 </tbody>
 </table>
 <div class="contents topic" id="table-of-contents">
@@ -151,24 +151,24 @@ interface:</p>
 <p>This is the session state object, containing all session global information, such as:</p>
 <blockquote>
 <ul class="simple">
-<li>the list of all torrents <tt class="docutils literal"><span class="pre">m_torrent</span></tt>.</li>
-<li>the list of all peer connections <tt class="docutils literal"><span class="pre">m_connections</span></tt>.</li>
-<li>the global rate limits <tt class="docutils literal"><span class="pre">m_settings</span></tt>.</li>
-<li>the DHT state <tt class="docutils literal"><span class="pre">m_dht</span></tt>.</li>
-<li>the port mapping state, <tt class="docutils literal"><span class="pre">m_upnp</span></tt> and <tt class="docutils literal"><span class="pre">m_natpmp</span></tt>.</li>
+<li>the list of all torrents <tt class="docutils literal">m_torrent</tt>.</li>
+<li>the list of all peer connections <tt class="docutils literal">m_connections</tt>.</li>
+<li>the global rate limits <tt class="docutils literal">m_settings</tt>.</li>
+<li>the DHT state <tt class="docutils literal">m_dht</tt>.</li>
+<li>the port mapping state, <tt class="docutils literal">m_upnp</tt> and <tt class="docutils literal">m_natpmp</tt>.</li>
 </ul>
 </blockquote>
 </div>
 <div class="section" id="session">
 <h2>session</h2>
 <p>This is the public interface to the session. It implements pimpl (pointer to implementation)
-in order to hide the internal representation of the <tt class="docutils literal"><span class="pre">session_impl</span></tt> object from the user and
+in order to hide the internal representation of the <tt class="docutils literal">session_impl</tt> object from the user and
 make binary compatibility simpler to maintain.</p>
 </div>
 <div class="section" id="torrent-handle">
 <h2>torrent_handle</h2>
-<p>This is the public interface to a <tt class="docutils literal"><span class="pre">torrent</span></tt>. It holds a weak reference to the internal
-<tt class="docutils literal"><span class="pre">torrent</span></tt> object and manipulates it by sending messages to the network thread.</p>
+<p>This is the public interface to a <tt class="docutils literal">torrent</tt>. It holds a weak reference to the internal
+<tt class="docutils literal">torrent</tt> object and manipulates it by sending messages to the network thread.</p>
 </div>
 <div class="section" id="torrent">
 <h2>torrent</h2>
@@ -192,7 +192,7 @@ make binary compatibility simpler to maintain.</p>
 <blockquote>
 <ul class="simple">
 <li>The first thread is the main thread that will sit
-idle in a <tt class="docutils literal"><span class="pre">kqueue()</span></tt> or <tt class="docutils literal"><span class="pre">epoll</span></tt> call most of the time.
+idle in a <tt class="docutils literal">kqueue()</tt> or <tt class="docutils literal">epoll</tt> call most of the time.
 This thread runs the main loop that will send and receive
 data on all connections.</li>
 <li>The second thread is the disk I/O thread. All disk read and write operations

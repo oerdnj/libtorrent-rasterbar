@@ -82,6 +82,34 @@ void report_failure(char const* err, char const* file, int line)
 	tests_failure = true;
 }
 
+std::auto_ptr<alert> wait_for_alert(session& ses, int type, char const* name)
+{
+	std::auto_ptr<alert> ret;
+	ptime end = time_now() + seconds(10);
+	while (!ret.get())
+	{
+		ptime now = time_now();
+		if (now > end) return std::auto_ptr<alert>();
+
+		ses.wait_for_alert(end - now);
+		std::deque<alert*> alerts;
+		ses.pop_alerts(&alerts);
+		for (std::deque<alert*>::iterator i = alerts.begin()
+			, end(alerts.end()); i != end; ++i)
+		{
+			fprintf(stderr, "%s: %s: [%s] %s\n", time_now_string(), name
+				, (*i)->what(), (*i)->message().c_str());
+			if (!ret.get() && (*i)->type() == type)
+			{
+				ret = std::auto_ptr<alert>(*i);
+			}
+			else
+				delete *i;
+		}
+	}
+	return ret;
+}
+
 bool print_alerts(libtorrent::session& ses, char const* name
 	, bool allow_disconnects, bool allow_no_torrents, bool allow_failed_fastresume
 	, bool (*predicate)(libtorrent::alert*), bool no_output)
@@ -246,7 +274,7 @@ void create_random_files(std::string const& path, const int file_sizes[], int nu
 		while (to_write > 0)
 		{
 			int s = (std::min)(to_write, 300000);
-			file::iovec_t b = { random_data, s};
+			file::iovec_t b = { random_data, size_t(s) };
 			f.writev(offset, &b, 1, ec);
 			if (ec) fprintf(stderr, "failed to write file \"%s\": (%d) %s\n"
 				, full_path.c_str(), ec.value(), ec.message().c_str());

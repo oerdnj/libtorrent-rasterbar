@@ -1,4 +1,6 @@
 test_programs = \
+  test_privacy               \
+  test_file_storage          \
   test_auto_unchoke          \
   test_bandwidth_limiter     \
   test_bdecode_performance   \
@@ -12,17 +14,19 @@ test_programs = \
   test_dht                   \
   test_lsd                   \
   test_metadata_extension    \
-  test_natpmp                \
   test_pe_crypto             \
   test_pex                   \
   test_piece_picker          \
   test_primitives            \
+  test_read_piece            \
   test_rss                   \
+  test_ssl                   \
   test_storage               \
   test_swarm                 \
   test_threads               \
   test_torrent               \
   test_torrent_parse         \
+  test_tracker               \
   test_trackers_extension    \
   test_transfer              \
   test_upnp                  \
@@ -80,8 +84,10 @@ EXTRA_PROGRAMS = $(test_programs)
 
 noinst_HEADERS = test.hpp setup_transfer.hpp
 
-libtest_la_SOURCES = main.cpp setup_transfer.cpp
+libtest_la_SOURCES = main.cpp setup_transfer.cpp dht_server.cpp peer_server.cpp
 
+test_privacy_SOURCES = test_privacy.cpp
+test_file_storage_SOURCES = test_file_storage.cpp
 test_auto_unchoke_SOURCES = test_auto_unchoke.cpp
 test_bandwidth_limiter_SOURCES = test_bandwidth_limiter.cpp
 test_bdecode_performance_SOURCES = test_bdecode_performance.cpp
@@ -95,17 +101,19 @@ test_http_connection_SOURCES = test_http_connection.cpp
 test_ip_filter_SOURCES = test_ip_filter.cpp
 test_lsd_SOURCES = test_lsd.cpp
 test_metadata_extension_SOURCES = test_metadata_extension.cpp
-test_natpmp_SOURCES = test_natpmp.cpp
 test_pe_crypto_SOURCES = test_pe_crypto.cpp
 test_pex_SOURCES = test_pex.cpp
 test_piece_picker_SOURCES = test_piece_picker.cpp
 test_primitives_SOURCES = test_primitives.cpp
+test_read_piece_SOURCES = test_read_piece.cpp
 test_storage_SOURCES = test_storage.cpp
 test_swarm_SOURCES = test_swarm.cpp
 test_rss_SOURCES = test_rss.cpp
+test_ssl_SOURCES = test_ssl.cpp
 test_threads_SOURCES = test_threads.cpp
 test_torrent_SOURCES = test_torrent.cpp
 test_torrent_parse_SOURCES = test_torrent_parse.cpp
+test_tracker_SOURCES = test_tracker.cpp
 test_trackers_extension_SOURCES = test_trackers_extension.cpp
 test_transfer_SOURCES = test_transfer.cpp
 test_upnp_SOURCES = test_upnp.cpp

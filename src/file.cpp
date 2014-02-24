@@ -34,6 +34,9 @@ POSSIBILITY OF SUCH DAMAGE.
 	Physical file offset patch by Morten Husveit
 */
 
+#define _FILE_OFFSET_BITS 64
+#define _LARGE_FILES 1
+
 #include "libtorrent/pch.hpp"
 #include "libtorrent/config.hpp"
 #include "libtorrent/alloca.hpp"
@@ -68,17 +71,16 @@ POSSIBILITY OF SUCH DAMAGE.
 #else
 // posix part
 
-#define _FILE_OFFSET_BITS 64
 #include <unistd.h>
 #include <fcntl.h> // for F_LOG2PHYS
 #include <sys/types.h>
-#include <sys/statvfs.h>
 #include <errno.h>
 #include <dirent.h>
 
 #ifdef TORRENT_LINUX
 // linux specifics
 
+#include <sys/statvfs.h>
 #include <sys/ioctl.h>
 #include <linux/types.h>
 #ifdef HAVE_LINUX_FIEMAP_H
@@ -410,16 +412,33 @@ namespace libtorrent
 
 	std::string extension(std::string const& f)
 	{
-		char const* ext = strrchr(f.c_str(), '.');
-		if (ext == 0) return "";
-		return ext;
+		for (int i = f.size() - 1; i >= 0; --i)
+		{
+			if (f[i] == '/') break;
+#ifdef TORRENT_WINDOWS
+			if (f[i] == '\\') break;
+#endif
+			if (f[i] != '.') continue;
+			return f.substr(i);
+		}
+		return "";
 	}
 
 	void replace_extension(std::string& f, std::string const& ext)
 	{
-		char const* e = strrchr(f.c_str(), '.');
-		if (e == 0) f += '.';
-		else f.resize(e - f.c_str() + 1);
+		for (int i = f.size() - 1; i >= 0; --i)
+		{
+			if (f[i] == '/') break;
+#ifdef TORRENT_WINDOWS
+			if (f[i] == '\\') break;
+#endif
+
+			if (f[i] != '.') continue;
+
+			f.resize(i);
+			break;
+		}
+		f += '.';
 		f += ext;
 	}
 
@@ -1082,7 +1101,7 @@ namespace libtorrent
 				0, // start offset
 				0, // length (0 = until EOF)
 				getpid(), // owner
-				(mode & write_only) ? F_WRLCK : F_RDLCK, // lock type
+				short((mode & write_only) ? F_WRLCK : F_RDLCK), // lock type
 				SEEK_SET // whence
 			};
 			if (fcntl(m_fd, F_SETLK, &l) != 0)
@@ -1979,10 +1998,18 @@ typedef struct _FILE_ALLOCATED_RANGE_BUFFER {
 			// only allocate the space if the file
 			// is not fully allocated
 			DWORD high_dword = 0;
-			offs.LowPart = GetCompressedFileSize(m_path.c_str(), &high_dword);
+#if TORRENT_USE_WSTRING
+#define GetCompressedFileSize_ GetCompressedFileSizeW
+#else
+#define GetCompressedFileSize_ GetCompressedFileSizeA
+#endif
+			offs.LowPart = GetCompressedFileSize_(m_path.c_str(), &high_dword);
 			offs.HighPart = high_dword;
-			ec.assign(GetLastError(), get_system_category());
-			if (ec) return false;
+			if (offs.LowPart == INVALID_FILE_SIZE)
+			{
+				ec.assign(GetLastError(), get_system_category());
+				if (ec) return false;
+			}
 			if (offs.QuadPart != s)
 			{
 				// if the user has permissions, avoid filling

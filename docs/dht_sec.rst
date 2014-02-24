@@ -3,7 +3,7 @@ BitTorrent DHT security extension
 =================================
 
 :Author: Arvid Norberg, arvid@rasterbar.com
-:Version: 0.16.11
+:Version: 0.16.13
 
 .. contents:: Table of contents
   :depth: 2
@@ -63,20 +63,26 @@ In order to avoid the number node IDs controlled to grow linearly by the number
 of IPs, as well as allowing more than one node ID per external IP, the node
 ID can be restricted at each class level of the IP.
 
+Another important property of the restriction put on node IDs is that the
+distribution of the IDs remoain uniform. This is why CRC32 was chosen
+as the hash function. See `comparisons of hash functions`__.
+
+__ http://blog.libtorrent.org/2012/12/dht-security/
+
 The expression to calculate a valid ID prefix (from an IPv4 address) is::
 
-	sha1((ip & 0x01071f7f) .. r)
+	crc32((ip & 0x01071f7f) .. r)
 
 And for an IPv6 address (``ip`` is the high 64 bits of the address)::
 
-	sha1((ip & 0x000103070f1f3f7f) ..  r)
+	crc32((ip & 0x000103070f1f3f7f) ..  r)
 
 ``r`` is a random number in the range [0, 7]. The resulting integer,
 representing the masked IP address is supposed to be big-endian before
 hashed. The ".." means concatenation.
 
 The details of implementing this is to evaluate the expression, store the
-result in a big endian 64 bit integer and hash those 8 bytes with SHA-1.
+result in a big endian 64 bit integer and hash those 8 bytes with CRC32.
 
 The first 4 bytes of the node ID used in the DHT MUST match the first 4
 bytes in the resulting hash. The last byte of the hash MUST match the
@@ -98,13 +104,17 @@ Example code code for calculating a valid node ID::
 	for (int i = 0; i < num_octets; ++i)
 		ip[i] &= mask[i];
 
-	SHA_CTX ctx;
-	SHA1_Init(&ctx);
-	SHA1_Update(&ctx, (unsigned char*)ip, num_octets);
 	uint32_t rand = rand() & 0xff;
 	uint8_t r = rand & 0x7;
-	SHA1_Update(&ctx, (unsigned char*)&r, 1);
-	SHA1_Final(&ctx, node_id);
+
+	uint32_t crc = crc32(0, NULL, 0);
+	crc = crc32(crc, ip, num_octets);
+	crc = crc32(crc, &r, 1);
+
+	node_id[0] = (crc >> 24) & 0xff;
+	node_id[1] = (crc >> 16) & 0xff;
+	node_id[2] = (crc >> 8) & 0xff;
+	node_id[3] = crc & 0xff;
 	for (int i = 4; i < 19; ++i) node_id[i] = std::rand();
 	node_id[19] = rand;
 
@@ -114,11 +124,11 @@ test vectors:
 
 	IP           rand  example node ID
 	============ ===== ==========================================
-	124.31.75.21   1   **f766f9f5** 0c5d6a4ec8a88e4c6ab4c28b95eee4 **01**
-	21.75.31.124  86   **7ee04779** 4e7a08645677bbd1cfe7d8f956d532 **56**
-	65.23.51.170  22   **76a626ff** bc8f112a3d426c84764f8c2a1150e6 **16**
-	84.124.73.14  65   **beb4e619** 1bb1fe518101ceef99462b947a01ff **41**
-	43.213.53.83  90   **ace5613a** 5b7c4be0237986d5243b87aa6d5130 **5a**
+	124.31.75.21   1   **1712f6c7** 0c5d6a4ec8a88e4c6ab4c28b95eee4 **01**
+	21.75.31.124  86   **946406c1** 4e7a08645677bbd1cfe7d8f956d532 **56**
+	65.23.51.170  22   **fefd9220** bc8f112a3d426c84764f8c2a1150e6 **16**
+	84.124.73.14  65   **af1546dd** 1bb1fe518101ceef99462b947a01ff **41**
+	43.213.53.83  90   **a9e920bf** 5b7c4be0237986d5243b87aa6d5130 **5a**
 
 The bold parts of the node ID are the important parts. The rest are
 random numbers.
@@ -127,15 +137,21 @@ bootstrapping
 -------------
 
 In order to set ones initial node ID, the external IP needs to be known. This
-is not a trivial problem. With this extension, *all* DHT requests whose node
-ID does not match its IP address MUST be serviced and MUST also include one
-extra result value (inside the ``r`` dictionary) called ``ip``. The IP field
-contains the raw (big endian) byte representation of the external IP address.
-This is the same byte sequence used to verify the node ID.
+is not a trivial problem. With this extension, *all* DHT responses SHOULD include
+a *top-level* field called ``ip``, containing a compact binary representation of
+the requestor's IP and port. That is big endian IP followed by 2 bytes of big endian
+port.
+
+The IP portion is the same byte sequence used to verify the node ID.
+
+It is important that the ``ip`` field is in the top level dictionary. Nodes that
+enforce the node-ID will respond with an error message ("y": "e", "e": { ... }),
+whereas a node that supports this extension but without enforcing it will respond
+with a normal reply ("y": "r", "r": { ... }).
 
 A DHT node which receives an ``ip`` result in a request SHOULD consider restarting
 its DHT node with a new node ID, taking this IP into account. Since a single node
-can not be trusted, there should be some mechanism of determining whether or
+can not be trusted, there should be some mechanism to determine whether or
 not the node has a correct understanding of its external IP or not. This could
 be done by voting, or only restart the DHT once at least a certain number of
 nodes, from separate searches, tells you your node ID is incorrect.

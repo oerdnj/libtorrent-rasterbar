@@ -300,10 +300,24 @@ namespace
     }
 }
 
+#if BOOST_VERSION > 104200
+
 boost::intrusive_ptr<const torrent_info> get_torrent_info(torrent_handle const& h)
 {
-   return boost::intrusive_ptr<const torrent_info>(&h.get_torrent_info());
+	return boost::intrusive_ptr<const torrent_info>(&h.get_torrent_info());
 }
+
+#else
+
+boost::intrusive_ptr<torrent_info> get_torrent_info(torrent_handle const& h)
+{
+	// I can't figure out how to expose intrusive_ptr<const torrent_info>
+	// as well as supporting mutable instances. So, this hack is better
+	// than compilation errors. It seems to work on newer versions of boost though
+   return boost::intrusive_ptr<torrent_info>(const_cast<torrent_info*>(&h.get_torrent_info()));
+}
+
+#endif
 
 void force_reannounce(torrent_handle& th, int s)
 {
@@ -347,7 +361,7 @@ void bind_torrent_handle()
     void (torrent_handle::*move_storage0)(std::string const&) const = &torrent_handle::move_storage;
     void (torrent_handle::*rename_file0)(int, std::string const&) const = &torrent_handle::rename_file;
 
-#if TORRENT_USE_WSTRING
+#if TORRENT_USE_WSTRING && !defined TORRENT_NO_DEPRECATE
     void (torrent_handle::*move_storage1)(std::wstring const&) const = &torrent_handle::move_storage;
     void (torrent_handle::*rename_file1)(int, std::wstring const&) const = &torrent_handle::rename_file;
 #endif
@@ -459,7 +473,7 @@ void bind_torrent_handle()
         .def("force_recheck", _(&torrent_handle::force_recheck))
         .def("rename_file", _(rename_file0))
         .def("set_ssl_certificate", &torrent_handle::set_ssl_certificate, (arg("cert"), arg("private_key"), arg("dh_params"), arg("passphrase")=""))
-#if TORRENT_USE_WSTRING
+#if TORRENT_USE_WSTRING && !defined TORRENT_NO_DEPRECATE
         .def("move_storage", _(move_storage1))
         .def("rename_file", _(rename_file1))
 #endif

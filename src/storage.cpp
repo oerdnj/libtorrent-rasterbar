@@ -805,7 +805,15 @@ namespace libtorrent
 			{
 				error_code ec;
 				recursive_copy(old_path, new_path, ec);
-				if (ec)
+				if (ec == boost::system::errc::no_such_file_or_directory)
+				{
+					// it's a bit weird that rename() would not return
+					// ENOENT, but the file still wouldn't exist. But,
+					// in case it does, we're done.
+					ec.clear();
+					break;
+				}
+				else if (ec)
 				{
 					set_error(old_path, ec);
 					ret = false;
@@ -1285,7 +1293,7 @@ ret:
 
 		// allocate a temporary, aligned, buffer
 		aligned_holder aligned_buf(aligned_size);
-		file::iovec_t b = {aligned_buf.get(), aligned_size};
+		file::iovec_t b = {aligned_buf.get(), size_t(aligned_size) };
 		size_type ret = file_handle->readv(aligned_start, &b, 1, ec);
 		if (ret < 0)
 		{
@@ -1326,7 +1334,7 @@ ret:
 
 		// allocate a temporary, aligned, buffer
 		aligned_holder aligned_buf(aligned_size);
-		file::iovec_t b = {aligned_buf.get(), aligned_size};
+		file::iovec_t b = {aligned_buf.get(), size_t(aligned_size) };
 		// we have something to read
 		if (aligned_start < actual_file_size && !ec)
 		{
@@ -1368,7 +1376,7 @@ ret:
 		, int offset
 		, int size)
 	{
-		file::iovec_t b = { (file::iovec_base_t)buf, size };
+		file::iovec_t b = { (file::iovec_base_t)buf, size_t(size) };
 		return writev(&b, slot, offset, 1, 0);
 	}
 
@@ -1378,7 +1386,7 @@ ret:
 		, int offset
 		, int size)
 	{
-		file::iovec_t b = { (file::iovec_base_t)buf, size };
+		file::iovec_t b = { (file::iovec_base_t)buf, size_t(size) };
 		return readv(&b, slot, offset, 1);
 	}
 
@@ -2313,7 +2321,7 @@ ret:
 						m_scratch_buffer2.reset(page_aligned_allocator::malloc(m_files.piece_length()));
 
 					int piece_size = m_files.piece_size(other_piece);
-					file::iovec_t b = {m_scratch_buffer2.get(), piece_size};
+					file::iovec_t b = {m_scratch_buffer2.get(), size_t(piece_size) };
 					if (m_storage->readv(&b, piece, 0, 1) != piece_size)
 					{
 						error = m_storage->error();
@@ -2327,7 +2335,7 @@ ret:
 				// the slot where this piece belongs is
 				// free. Just move the piece there.
 				int piece_size = m_files.piece_size(piece);
-				file::iovec_t b = {m_scratch_buffer.get(), piece_size};
+				file::iovec_t b = {m_scratch_buffer.get(), size_t(piece_size) };
 				if (m_storage->writev(&b, piece, 0, 1) != piece_size)
 				{
 					error = m_storage->error();
@@ -2369,7 +2377,7 @@ ret:
 					m_scratch_buffer.reset(page_aligned_allocator::malloc(m_files.piece_length()));
 			
 				int piece_size = m_files.piece_size(other_piece);
-				file::iovec_t b = {m_scratch_buffer.get(), piece_size};
+				file::iovec_t b = {m_scratch_buffer.get(), size_t(piece_size) };
 				if (m_storage->readv(&b, piece, 0, 1) != piece_size)
 				{
 					error = m_storage->error();
