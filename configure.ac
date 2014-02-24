@@ -1,11 +1,11 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-# $Id: configure.ac 8829 2013-08-18 01:31:00Z arvidn $
+# $Id: configure.ac 9412 2013-12-15 22:29:48Z arvidn $
 
 AC_PREREQ([2.63])
 
-AC_INIT([libtorrent-rasterbar],[0.16.11],[arvid@rasterbar.com],
+AC_INIT([libtorrent-rasterbar],[0.16.13],[arvid@rasterbar.com],
         [libtorrent-rasterbar],[http://www.libtorrent.org])
 AC_CONFIG_SRCDIR([src/torrent.cpp])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -99,6 +99,7 @@ AX_PTHREAD()
 LIBS="$PTHREAD_LIBS $LIBS"
 CFLAGS="$PTHREAD_CFLAGS $CFLAGS"
 CC="$PTHREAD_CC"
+CXXFLAGS="$CXXFLAGS -ftemplate-depth=120"
 
 AS_ECHO "Checking for visibility support:"
 AC_CACHE_CHECK([for __attribute__((visibility("hidden")))],

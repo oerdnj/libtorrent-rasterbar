@@ -621,7 +621,6 @@ namespace libtorrent
 				disconnect(ec);
 				return;
 			}
-			TORRENT_ASSERT(m_remote.address() != address_v4::any());
 			if (m_remote.address().is_v4())
 			{
 				m_socket->set_option(type_of_service(m_ses.settings().peer_tos), ec);
@@ -1986,7 +1985,7 @@ namespace libtorrent
 		// peer has
 		// if we're a seed, we don't keep track of piece availability
 		bool interesting = false;
-		if (!t->is_upload_only())
+		if (!t->is_seed())
 		{
 			t->peer_has(bits);
 
@@ -4740,10 +4739,11 @@ namespace libtorrent
 			, channel == upload_channel ? ">>>" : "<<<", amount);
 #endif
 
-		TORRENT_ASSERT(amount > 0);
+		TORRENT_ASSERT(amount > 0 || is_disconnecting());
 		m_quota[channel] += amount;
 		TORRENT_ASSERT(m_channel_state[channel] & peer_info::bw_limit);
 		m_channel_state[channel] &= ~peer_info::bw_limit;
+		if (is_disconnecting()) return;
 		if (channel == upload_channel)
 		{
 			setup_send();
@@ -5797,6 +5797,16 @@ namespace libtorrent
 		TORRENT_ASSERT(m_upload_limit >= 0);
 		TORRENT_ASSERT(m_download_limit >= 0);
 
+		// if we're waiting for bandwidth, we should be in the
+		// bandwidth manager's queue
+		if (!m_disconnecting)
+		{
+			if (m_channel_state[0] & peer_info::bw_limit)
+				TORRENT_ASSERT(m_ses.m_upload_rate.is_queued(this));
+			if (m_channel_state[1] & peer_info::bw_limit)
+				TORRENT_ASSERT(m_ses.m_download_rate.is_queued(this));
+		}
+
 		boost::shared_ptr<torrent> t = m_torrent.lock();
 
 		if (!m_disconnect_started && m_initialized)
@@ -5913,7 +5923,7 @@ namespace libtorrent
 				TORRENT_ASSERT(m_disconnect_started);
 		}
 
-		if (!m_disconnect_started && m_initialized)
+		if (!m_disconnect_started && m_initialized && m_ses.settings().close_redundant_connections)
 		{
 			// none of this matters if we're disconnecting anyway
 			if (t->is_upload_only())

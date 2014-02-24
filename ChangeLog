@@ -1,3 +1,32 @@
+0.16.13 release
+
+	* fix auto-manage issue when pausing session
+	* fix bug in non-sparse mode on windows, causing incorrect file errors to be generated
+	* fix set_name() on file_storage actually affecting save paths
+	* fix large file support issue on mingw
+	* add some error handling to set_piece_hashes()
+	* fix completed-on timestamp to not be clobbered on each startup
+	* fix deadlock caused by some UDP tracker failures
+	* fix potential integer overflow issue in timers on windows
+	* minor fix to peer_proportional mixed_mode algorithm (TCP limit could go too low)
+	* graceful pause fix
+	* i2p fixes
+	* fix issue when loading certain malformed .torrent files
+	* pass along host header with http proxy requests and possible http_connection shutdown hang
+
+0.16.12 release
+
+	* fix building with C++11
+	* fix IPv6 support in UDP socket (uTP)
+	* fix mingw build issues
+	* increase max allowed outstanding piece requests from peers
+	* uTP performance improvement. only fast retransmit one packet at a time
+	* improve error message for 'file too short'
+	* fix piece-picker stat bug when only selecting some files for download
+	* fix bug in async_add_torrent when settings file_priorities
+	* fix boost-1.42 support for python bindings
+	* fix memory allocation issue (virtual addres space waste) on windows
+
 0.16.11 release
 
 	* fix web seed URL double escape issue

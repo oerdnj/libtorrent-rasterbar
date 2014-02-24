@@ -56,6 +56,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/kademlia/routing_table.hpp"
 #include "libtorrent/kademlia/node.hpp"
 #endif
+#include "libtorrent/socket_io.hpp"
 #include <boost/tuple/tuple.hpp>
 #include <boost/tuple/tuple_comparison.hpp>
 #include <boost/bind.hpp>
@@ -68,13 +69,6 @@ using namespace boost::tuples;
 
 namespace libtorrent {
 	TORRENT_EXPORT std::string sanitize_path(std::string const& p);
-#ifndef TORRENT_DISABLE_DHT
-	namespace dht
-	{
-		TORRENT_EXPORT libtorrent::dht::node_id generate_id_impl(
-			address const& ip_, boost::uint32_t r);
-	}
-#endif
 }
 
 sha1_hash to_hash(char const* s)
@@ -912,6 +906,7 @@ int test_main()
 	TEST_EQUAL(extension("blah.exe"), ".exe");
 	TEST_EQUAL(extension("blah.foo.bar"), ".bar");
 	TEST_EQUAL(extension("blah.foo."), ".");
+	TEST_EQUAL(extension("blah.foo/bar"), "");
 
 	TEST_EQUAL(filename("blah"), "blah");
 	TEST_EQUAL(filename("/blah/foo/bar"), "bar");
@@ -1264,6 +1259,14 @@ int test_main()
 	test = "foo.bar";
 	replace_extension(test, "txt");
 	TEST_EQUAL(test, "foo.txt");
+
+	test = "_";
+	replace_extension(test, "txt");
+	TEST_EQUAL(test, "_.txt");
+
+	test = "1.2.3/_";
+	replace_extension(test, "txt");
+	TEST_EQUAL(test, "1.2.3/_.txt");
 
 	// file class
 	file f;
@@ -1810,11 +1813,11 @@ int test_main()
 
 	boost::uint8_t prefixes[][4] =
 	{
-		{0xf7, 0x66, 0xf9, 0xf5},
-		{0x7e, 0xe0, 0x47, 0x79 },
-		{0x76, 0xa6, 0x26, 0xff },
-		{0xbe, 0xb4, 0xe6, 0x19 },
-		{0xac, 0xe5, 0x61, 0x3a },
+		{ 0x17, 0x12, 0xf6, 0xc7 },
+		{ 0x94, 0x64, 0x06, 0xc1 },
+		{ 0xfe, 0xfd, 0x92, 0x20 },
+		{ 0xaf, 0x15, 0x46, 0xdd },
+		{ 0xa9, 0xe9, 0x20, 0xbf }
 	};
 
 	for (int i = 0; i < 5; ++i)
@@ -2077,6 +2080,14 @@ int test_main()
 		std::string magnet = make_magnet_uri(ti);
 		printf("%s len: %d\n", magnet.c_str(), int(magnet.size()));
 	}
+
+	// test address_to_bytes
+	TEST_EQUAL(address_to_bytes(address_v4::from_string("10.11.12.13")), "\x0a\x0b\x0c\x0d");
+	TEST_EQUAL(address_to_bytes(address_v4::from_string("16.5.127.1")), "\x10\x05\x7f\x01");
+
+	// test endpoint_to_bytes
+	TEST_EQUAL(endpoint_to_bytes(udp::endpoint(address_v4::from_string("10.11.12.13"), 8080)), "\x0a\x0b\x0c\x0d\x1f\x90");
+	TEST_EQUAL(endpoint_to_bytes(udp::endpoint(address_v4::from_string("16.5.127.1"), 12345)), "\x10\x05\x7f\x01\x30\x39");
 	return 0;
 }
 
