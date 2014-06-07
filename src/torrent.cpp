@@ -2357,8 +2357,7 @@ namespace libtorrent
 		{
 			announce_entry& ae = m_trackers[i];
 #if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_LOGGING || defined TORRENT_ERROR_LOGGING
-			char msg[1000];
-			snprintf(msg, sizeof(msg), "*** announce with tracker: considering \"%s\" "
+			debug_log("*** announce with tracker: considering \"%s\" "
 				"[ announce_to_all_tiers: %d announce_to_all_trackers: %d"
 				" i->tier: %d tier: %d "
 				" is_working: %d fails: %d fail_limit: %d updating: %d"
@@ -2367,7 +2366,6 @@ namespace libtorrent
 				, settings().announce_to_all_trackers
 				, ae.tier, tier, ae.is_working(), ae.fails, ae.fail_limit
 				, ae.updating, ae.can_announce(now, is_seed()), sent_announce);
-			debug_log(msg);
 #endif
 			// if trackerid is not specified for tracker use default one, probably set explicitly
 			req.trackerid = ae.trackerid.empty() ? m_trackerid : ae.trackerid;
@@ -4301,14 +4299,14 @@ namespace libtorrent
 		}
 	}
 
-	void torrent::add_tracker(announce_entry const& url)
+	bool torrent::add_tracker(announce_entry const& url)
 	{
 		std::vector<announce_entry>::iterator k = std::find_if(m_trackers.begin()
 			, m_trackers.end(), boost::bind(&announce_entry::url, _1) == url.url);
 		if (k != m_trackers.end()) 
 		{
 			k->source |= url.source;
-			return;
+			return false;
 		}
 		k = std::upper_bound(m_trackers.begin(), m_trackers.end(), url
 			, boost::bind(&announce_entry::tier, _1) < boost::bind(&announce_entry::tier, _2));
@@ -4316,6 +4314,7 @@ namespace libtorrent
 		k = m_trackers.insert(k, url);
 		if (k->source == 0) k->source = announce_entry::source_client;
 		if (!m_trackers.empty()) announce_with_tracker();
+		return true;
 	}
 
 	bool torrent::choke_peer(peer_connection& c)
@@ -4507,10 +4506,6 @@ namespace libtorrent
 			|| m_ses.num_connections() >= m_ses.settings().connections_limit)
 			return;
 
-#if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_LOGGING
-		debug_log("resolving web seed: %s", web->url.c_str());
-#endif
-
 		std::string protocol;
 		std::string auth;
 		std::string hostname;
@@ -4613,6 +4608,10 @@ namespace libtorrent
 		if (ps.type == proxy_settings::http
 			|| ps.type == proxy_settings::http_pw)
 		{
+#if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_LOGGING
+			debug_log("resolving proxy for web seed: %s", web->url.c_str());
+#endif
+
 			// use proxy
 			web->resolving = true;
 			tcp::resolver::query q(ps.hostname, to_string(ps.port).elems);
@@ -4627,6 +4626,10 @@ namespace libtorrent
 		}
 		else
 		{
+#if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_LOGGING
+			debug_log("resolving web seed: %s", web->url.c_str());
+#endif
+
 			web->resolving = true;
 			tcp::resolver::query q(hostname, to_string(port).elems);
 			m_host_resolver.async_resolve(q,
@@ -4762,11 +4765,15 @@ namespace libtorrent
 			return;
 		}
 
+		tcp::endpoint a(host->endpoint());
+
+		// fill in the peer struct's address field
+		web->endpoint = a;
+
 		if (int(m_connections.size()) >= m_max_connections
 			|| m_ses.num_connections() >= m_ses.settings().connections_limit)
 			return;
 
-		tcp::endpoint a(host->endpoint());
 		connect_web_seed(web, a);
 	}
 
