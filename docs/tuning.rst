@@ -3,7 +3,7 @@ libtorrent manual
 =================
 
 :Author: Arvid Norberg, arvid@rasterbar.com
-:Version: 0.16.13
+:Version: 0.16.16
 
 .. contents:: Table of contents
   :depth: 2
@@ -312,8 +312,7 @@ enough to not draining the socket's send buffer before the disk operation comple
 The watermark is bound to a max value, to avoid buffer sizes growing out of control.
 The default max send buffer size might not be enough to sustain very high upload rates,
 and you might have to increase it. It's specified in bytes in
-``session_settings::send_buffer_watermark``. The ``high_performance_seed()`` preset
-sets this value to 5 MB.
+``session_settings::send_buffer_watermark``.
 
 peers
 -----
