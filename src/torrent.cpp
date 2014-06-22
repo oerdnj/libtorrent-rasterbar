@@ -907,8 +907,17 @@ namespace libtorrent
 		boost::shared_ptr<http_connection> conn(
 			new http_connection(m_ses.m_io_service, m_ses.m_half_open
 				, boost::bind(&torrent::on_torrent_download, shared_from_this()
-					, _1, _2, _3, _4)));
-		conn->get(m_url, seconds(30), 0, 0, 5, m_ses.m_settings.user_agent);
+					, _1, _2, _3, _4)
+				, true
+				, http_connect_handler()
+				, http_filter_handler()
+#ifdef TORRENT_USE_OPENSSL
+				, m_ssl_ctx.get()
+#endif
+				));
+
+		conn->get(m_url, seconds(30), 0, &m_ses.proxy()
+			, 5, m_ses.m_settings.user_agent);
 		set_state(torrent_status::downloading_metadata);
 	}
 
@@ -2178,8 +2187,9 @@ namespace libtorrent
 		if (m_abort) return;
 
 		// if the files haven't been checked yet, we're
-		// not ready for peers
-		if (!m_files_checked) return;
+		// not ready for peers. Except, if we don't have metadata,
+		// we need peers to download from
+		if (!m_files_checked && valid_metadata()) return;
 
 		if (!m_announce_to_lsd) return;
 
@@ -3191,7 +3201,7 @@ namespace libtorrent
 			size_type file_offset = off - f->offset;
 			TORRENT_ASSERT(f != m_torrent_file->files().end());
 			TORRENT_ASSERT(file_offset <= f->size);
-			int add = (std::min)(f->size - file_offset, (size_type)size);
+			int add = (std::min)(f->size - file_offset, boost::uint64_t(size));
 			m_file_progress[file_index] += add;
 
 			TORRENT_ASSERT(m_file_progress[file_index]
@@ -4248,11 +4258,13 @@ namespace libtorrent
 		}
 	}
 
+	bool has_empty_url(announce_entry const& e) { return e.url.empty(); }
+
 	void torrent::replace_trackers(std::vector<announce_entry> const& urls)
 	{
 		m_trackers.clear();
 		std::remove_copy_if(urls.begin(), urls.end(), back_inserter(m_trackers)
-			, boost::bind(&std::string::empty, boost::bind(&announce_entry::url, _1)));
+			, &has_empty_url);
 
 		m_last_working_tracker = -1;
 		for (std::vector<announce_entry>::iterator i = m_trackers.begin()
@@ -8367,30 +8379,30 @@ namespace libtorrent
 	
 		fp.resize(m_torrent_file->num_files(), 0);
 
+		if (is_seed())
+		{
+			for (int i = 0; i < m_torrent_file->num_files(); ++i)
+				fp[i] = m_torrent_file->files().file_size(i);
+			return;
+		}
+		
 		if (flags & torrent_handle::piece_granularity)
 		{
 			std::copy(m_file_progress.begin(), m_file_progress.end(), fp.begin());
 			return;
 		}
 
-		if (is_seed())
-		{
-			for (int i = 0; i < m_torrent_file->num_files(); ++i)
-				fp[i] = m_torrent_file->files().at(i).size;
-			return;
-		}
-		
 		TORRENT_ASSERT(has_picker());
 
 		for (int i = 0; i < m_torrent_file->num_files(); ++i)
 		{
 			peer_request ret = m_torrent_file->files().map_file(i, 0, 0);
-			size_type size = m_torrent_file->files().at(i).size;
-
-// zero sized files are considered
-// 100% done all the time
-			if (size == 0)
+			size_type size = m_torrent_file->files().file_size(i);
+			TORRENT_ASSERT(ret.piece >= 0);
+			TORRENT_ASSERT(ret.piece < m_picker->num_pieces());
+			if (ret.piece < 0 || ret.piece >= m_picker->num_pieces())
 			{
+				// this is not supposed to happen.
 				fp[i] = 0;
 				continue;
 			}
@@ -8398,8 +8410,12 @@ namespace libtorrent
 			size_type done = 0;
 			while (size > 0)
 			{
+				TORRENT_ASSERT(ret.piece < m_picker->num_pieces());
+				TORRENT_ASSERT(ret.piece >= 0);
+
 				size_type bytes_step = (std::min)(size_type(m_torrent_file->piece_size(ret.piece)
 					- ret.start), size);
+
 				if (m_picker->have_piece(ret.piece)) done += bytes_step;
 				++ret.piece;
 				ret.start = 0;
@@ -8470,7 +8486,7 @@ namespace libtorrent
 					{
 						TORRENT_ASSERT(offset <= file->offset + file->size);
 						size_type slice = (std::min)(file->offset + file->size - offset
-							, block);
+							, boost::uint64_t(block));
 						fp[file_index] += slice;
 						offset += slice;
 						block -= slice;
