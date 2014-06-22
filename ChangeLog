@@ -1,3 +1,15 @@
+0.16.17 release
+
+	* don't fall back on wildcard port in UPnP
+	* fix local service discovery for magnet links
+	* fix bitfield issue in file_storage
+	* added work-around for MingW issue in file I/O
+	* fixed sparse file detection on windows
+	* fixed bug in gunzip
+	* fix to use proxy settings when adding .torrent file from URL
+	* fix resume file issue related to daylight savings time on windows
+	* improve error checking in lazy_bdecode
+
 0.16.16 release
 
 	* add missing add_files overload to the python bindings

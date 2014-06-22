@@ -161,6 +161,17 @@ namespace libtorrent
 			if (p[i] == '/') p[i] = '\\';
 		return p;
 	}
+
+	time_t file_time_to_posix(FILETIME f)
+	{
+		const boost::uint64_t posix_time_offset = 11644473600LL;
+		boost::uint64_t ft = (boost::uint64_t(f.dwHighDateTime) << 32)
+			| f.dwLowDateTime;
+
+		// windows filetime is specified in 100 nanoseconds resolution.
+		// convert to seconds
+		return time_t(ft / 10000000 - posix_time_offset);
+	}
 #endif
 
 	void stat_file(std::string inf, file_status* s
@@ -175,24 +186,40 @@ namespace libtorrent
 			inf.resize(inf.size() - 1);
 #endif
 
+#if defined TORRENT_WINDOWS
+
+		// windows version
+
 #if TORRENT_USE_WSTRING && defined TORRENT_WINDOWS
+#define GetFileAttributesEx_ GetFileAttributesExW
 		std::wstring f = convert_to_wstring(inf);
 #else
+#define GetFileAttributesEx_ GetFileAttributesExA
 		std::string f = convert_to_native(inf);
 #endif
-
-#if defined TORRENT_WINDOWS
-		struct _stati64 ret;
-#if TORRENT_USE_WSTRING
-		if (_wstati64(f.c_str(), &ret) < 0)
-#else
-		if (_stati64(f.c_str(), &ret) < 0)
-#endif
+		WIN32_FILE_ATTRIBUTE_DATA data;
+		if (!GetFileAttributesEx(f.c_str(), GetFileExInfoStandard, &data))
 		{
-			ec.assign(errno, boost::system::get_generic_category());
+			ec.assign(GetLastError(), boost::system::get_system_category());
 			return;
 		}
+
+		s->file_size = (boost::uint64_t(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+		s->ctime = file_time_to_posix(data.ftCreationTime);
+		s->atime = file_time_to_posix(data.ftLastAccessTime);
+		s->mtime = file_time_to_posix(data.ftLastWriteTime);
+
+		s->mode = (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+			? file_status::directory
+			: (data.dwFileAttributes & FILE_ATTRIBUTE_DEVICE)
+			? file_status::character_special : file_status::regular_file;
+
 #else
+		
+		// posix version
+
+		std::string f = convert_to_native(inf);
+
 		struct stat ret;
 		int retval;
 		if (flags & dont_follow_links)
@@ -204,18 +231,12 @@ namespace libtorrent
 			ec.assign(errno, boost::system::get_generic_category());
 			return;
 		}
-#endif // TORRENT_WINDOWS
 
 		s->file_size = ret.st_size;
 		s->atime = ret.st_atime;
 		s->mtime = ret.st_mtime;
 		s->ctime = ret.st_ctime;
-#if defined TORRENT_WINDOWS
-    s->mode = ((ret.st_mode & _S_IFREG) ? file_status::regular_file : 0)
-      | ((ret.st_mode & _S_IFDIR) ? file_status::directory : 0)
-      | ((ret.st_mode & _S_IFCHR) ? file_status::character_special : 0)
-      | ((ret.st_mode & _S_IFIFO) ? file_status::fifo : 0);
-#else
+
     s->mode = (S_ISREG(ret.st_mode) ? file_status::regular_file : 0)
       | (S_ISDIR(ret.st_mode) ? file_status::directory : 0)
       | (S_ISLNK(ret.st_mode) ? file_status::link : 0)
@@ -223,7 +244,8 @@ namespace libtorrent
       | (S_ISCHR(ret.st_mode) ? file_status::character_special : 0)
       | (S_ISBLK(ret.st_mode) ? file_status::block_special : 0)
       | (S_ISSOCK(ret.st_mode) ? file_status::socket : 0);
-#endif
+
+#endif // TORRENT_WINDOWS
 	}
 
 	void rename(std::string const& inf, std::string const& newf, error_code& ec)
@@ -1108,24 +1130,11 @@ namespace libtorrent
 			return false;
 		}
 
-#ifdef F_SETLK
-		if (mode & lock_file)
-		{
-			struct flock l =
-			{
-				0, // start offset
-				0, // length (0 = until EOF)
-				getpid(), // owner
-				short((mode != read_only) ? F_WRLCK : F_RDLCK), // lock type
-				SEEK_SET // whence
-			};
-			if (fcntl(m_fd, F_SETLK, &l) != 0)
-			{
-				ec.assign(errno, get_posix_category());
-				return false;
-			}
-		}
-#endif
+		// The purpose of the lock_file flag is primarily to prevent other
+		// processes from corrupting files that are being used by libtorrent.
+		// the posix file locking mechanism does not prevent others from
+		// accessing files, unless they also attempt to lock the file. That's
+		// why the SETLK mechanism is not used here.
 
 #ifdef DIRECTIO_ON
 		// for solaris
@@ -1276,8 +1285,12 @@ typedef struct _FILE_ALLOCATED_RANGE_BUFFER {
 			return true;
 		}
 
-		// if we only have a single range in the file, we're not sparse
-		return returned_bytes != sizeof(FILE_ALLOCATED_RANGE_BUFFER);
+		// if we have more than one range in the file, we're sparse
+		if (returned_bytes != sizeof(FILE_ALLOCATED_RANGE_BUFFER)) {
+			return true;
+		}
+
+		return (in.Length.QuadPart != out[0].Length.QuadPart);
 	}
 #endif
 
@@ -1458,6 +1471,12 @@ typedef struct _FILE_ALLOCATED_RANGE_BUFFER {
 		int num_pages = (size + m_page_size - 1) / m_page_size;
 		// allocate array of FILE_SEGMENT_ELEMENT for ReadFileScatter
 		FILE_SEGMENT_ELEMENT* segment_array = TORRENT_ALLOCA(FILE_SEGMENT_ELEMENT, num_pages + 1);
+#ifdef __GNUC__
+		// MingW seems to have issues with 64 bit wide pointers
+		// (PVOID64) and only assign the low 32 bits. Therefore, make
+		// sure the other 32 bits are cleared out
+		memset(segment_array, 0, (num_pages + 1) * sizeof(FILE_SEGMENT_ELEMENT));
+#endif
 		FILE_SEGMENT_ELEMENT* cur_seg = segment_array;
 
 		for (file::iovec_t const* i = bufs, *end(bufs + num_bufs); i < end; ++i)
@@ -1693,6 +1712,12 @@ typedef struct _FILE_ALLOCATED_RANGE_BUFFER {
 		int num_pages = (size + m_page_size - 1) / m_page_size;
 		// allocate array of FILE_SEGMENT_ELEMENT for WriteFileGather
 		FILE_SEGMENT_ELEMENT* segment_array = TORRENT_ALLOCA(FILE_SEGMENT_ELEMENT, num_pages + 1);
+#ifdef __GNUC__
+		// MingW seems to have issues with 64 bit wide pointers
+		// (PVOID64) and only assign the low 32 bits. Therefore, make
+		// sure the other 32 bits are cleared out
+		memset(segment_array, 0, (num_pages + 1) * sizeof(FILE_SEGMENT_ELEMENT));
+#endif
 		FILE_SEGMENT_ELEMENT* cur_seg = segment_array;
 
 		for (file::iovec_t const* i = bufs, *end(bufs + num_bufs); i < end; ++i)
