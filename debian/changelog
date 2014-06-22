@@ -1,9 +1,9 @@
-libtorrent-rasterbar (0.16.17-1) UNRELEASED; urgency=medium
+libtorrent-rasterbar (0.16.17-1) unstable; urgency=medium
 
   * New upstream release.
    - Don't fall back on wildcard port in UPnP (LP: #1330703). 
 
- -- Andrew Starr-Bochicchio <asb@debian.org>  Sun, 22 Jun 2014 11:26:41 -0400
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Sun, 22 Jun 2014 11:36:34 -0400
 
 libtorrent-rasterbar (0.16.16-1) unstable; urgency=medium
 
