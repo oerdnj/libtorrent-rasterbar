@@ -1,3 +1,22 @@
+0.16.18 release
+
+	* fix uninitialized values in DHT DOS mitigation
+	* fix error handling in file::phys_offset
+	* fix bug in HTTP scrape response parsing
+	* enable TCP keepalive for socks5 connection for UDP associate
+	* fix python3 support
+	* fix bug in lt_donthave extension
+	* expose i2p_alert to python. cleaning up of i2p connection code
+	* fixed overflow and download performance issue when downloading at high rates
+	* fixed bug in add_torrent_alert::message for magnet links
+	* disable optimistic disconnects when connection limit is low
+	* improved error handling of session::listen_on
+	* suppress initial 'completed' announce to trackers added with replace_trackers
+	  after becoming a seed
+	* SOCKS4 fix for trying to connect over IPv6
+	* fix saving resume data when removing all trackers
+	* fix bug in udp_socket when changing socks5 proxy quickly
+
 0.16.17 release
 
 	* don't fall back on wildcard port in UPnP
