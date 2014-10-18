@@ -913,6 +913,13 @@ void udp_socket::on_connect(int ticket)
 	if (m_abort) return;
 	if (is_closed()) return;
 
+	if (m_connection_ticket != -1)
+	{
+		// there's already an outstanding connect. Cancel it.
+		m_socks5_sock.close();
+		m_connection_ticket = -1;
+	}
+
 #if defined TORRENT_ASIO_DEBUGGING
 	add_outstanding_async("udp_socket::on_connected");
 #endif
@@ -920,15 +927,19 @@ void udp_socket::on_connect(int ticket)
 
 	error_code ec;
 	m_socks5_sock.open(m_proxy_addr.address().is_v4()?tcp::v4():tcp::v6(), ec);
+
+	// enable keepalives
+	m_socks5_sock.set_option(boost::asio::socket_base::keep_alive(true), ec);
+
 	++m_outstanding_ops;
 #if defined TORRENT_DEBUG || TORRENT_RELEASE_ASSERTS
 	++m_outstanding_connect;
 #endif
 	m_socks5_sock.async_connect(tcp::endpoint(m_proxy_addr.address(), m_proxy_addr.port())
-		, boost::bind(&udp_socket::on_connected, this, _1));
+		, boost::bind(&udp_socket::on_connected, this, _1, ticket));
 }
 
-void udp_socket::on_connected(error_code const& e)
+void udp_socket::on_connected(error_code const& e, int ticket)
 {
 #if defined TORRENT_ASIO_DEBUGGING
 	complete_async("udp_socket::on_connected");
@@ -945,18 +956,14 @@ void udp_socket::on_connected(error_code const& e)
 		+ m_outstanding_connect_queue
 		+ m_outstanding_socks);
 
-	if (m_abort)
-	{
-		maybe_clear_callback();
-		return;
-	}
 	CHECK_MAGIC;
 
-	if (e == asio::error::operation_aborted) return;
-
 	TORRENT_ASSERT(is_single_thread());
-	m_cc.done(m_connection_ticket);
-	m_connection_ticket = -1;
+	m_cc.done(ticket);
+	// if the tickets mismatch, another connection attempt
+	// was initiated while waiting for this one to complete.
+	if (ticket == m_connection_ticket)
+		m_connection_ticket = -1;
 
 	// we just called done, which means on_timeout
 	// won't be called. Decrement the outstanding
@@ -972,6 +979,13 @@ void udp_socket::on_connected(error_code const& e)
 		+ m_outstanding_resolve
 		+ m_outstanding_connect_queue
 		+ m_outstanding_socks);
+
+	if (e == asio::error::operation_aborted) return;
+
+	// if ticket != m_connection_ticket, it means m_connection_ticket
+	// will not have been reset, and it means we are still waiting
+	// for a connection attempt.
+	if (m_connection_ticket != -1) return;
 
 	if (m_abort)
 	{

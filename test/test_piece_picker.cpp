@@ -33,6 +33,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/piece_picker.hpp"
 #include "libtorrent/policy.hpp"
 #include "libtorrent/bitfield.hpp"
+#include "libtorrent/random.hpp"
+
 #include <boost/shared_ptr.hpp>
 #include <boost/bind.hpp>
 #include <algorithm>
@@ -221,6 +223,8 @@ int test_pick(boost::shared_ptr<piece_picker> const& p, int options = piece_pick
 
 int test_main()
 {
+	random_seed(total_microseconds(time_now_hires() - min_time()));
+
 	tcp::endpoint endp;
 	piece_picker::downloading_piece st;
 	policy::ipv4_peer tmp1(endp, false, 0);
@@ -432,6 +436,33 @@ int test_main()
 	picked = pick_pieces(p, "*** ** ", 1, 0, 0, piece_picker::fast, options, empty_vector);
 	TEST_CHECK(int(picked.size()) > 0);
 	TEST_CHECK(picked.front().piece_index == 1);
+
+// ========================================================
+
+	// make sure we can split m_seed when removing a refcount
+	print_title("test dec_refcount split seed");
+	p = setup_picker("0000000", "       ", "0000000", "");
+	p->inc_refcount_all();
+
+	std::vector<int> avail;
+	p->get_availability(avail);
+	TEST_EQUAL(avail.size(), 7);
+	TEST_CHECK(avail[0] != 0);
+	TEST_CHECK(avail[1] != 0);
+	TEST_CHECK(avail[2] != 0);
+	TEST_CHECK(avail[3] != 0);
+	TEST_CHECK(avail[4] != 0);
+
+	p->dec_refcount(3);
+
+	p->get_availability(avail);
+	TEST_EQUAL(avail.size(), 7);
+
+	TEST_CHECK(avail[0] != 0);
+	TEST_CHECK(avail[1] != 0);
+	TEST_CHECK(avail[2] != 0);
+	TEST_CHECK(avail[3] == 0);
+	TEST_CHECK(avail[4] != 0);
 
 // ========================================================
 	

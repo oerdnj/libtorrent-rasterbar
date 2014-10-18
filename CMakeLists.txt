@@ -232,7 +232,7 @@ if (MSVC)
 endif(MSVC)
 
 add_definitions(-D_FILE_OFFSET_BITS=64)
-add_definitions(-DBOOST_DISABLE_EXCEPTION)
+add_definitions(-DBOOST_EXCEPTION_DISABLE)
 add_definitions(-DBOOST_ASIO_ENABLE_CANCELIO)
 
 if (tcmalloc)
@@ -245,7 +245,7 @@ set_target_properties(torrent-rasterbar PROPERTIES
 	SOVERSION 1
 	VERSION 1)
 
-set (VERSION "0.16.17")
+set (VERSION "0.16.18")
 
 get_property (COMPILETIME_OPTIONS_LIST
 	DIRECTORY ${CMAKE_CURRENT_SOURCE_DIRECTORY}

@@ -2,8 +2,8 @@
 libtorrent manual
 =================
 
-:Author: Arvid Norberg, arvid@rasterbar.com
-:Version: 0.16.17
+:Author: Arvid Norberg, arvid@libtorrent.org
+:Version: 0.16.18
 
 .. contents:: Table of contents
   :depth: 2
@@ -14,7 +14,7 @@ contributing to libtorrent
 
 There are several ways to contribute to libtorrent at various levels. Any help is
 much appreciated. If you're interested in something libtorrent related that's not
-enumerated on this page, please contact arvid@rasterbar.com or the `mailing list`_.
+enumerated on this page, please contact arvid@libtorrent.org or the `mailing list`_.
 
 .. _`mailing list`: http://lists.sourceforge.net/lists/listinfo/libtorrent-discuss
 
