@@ -5,10 +5,8 @@ Forwarded: not-needed
 Origin: vendor
 Author: Cristian Greco <cristian@regolo.cc>
 
-Index: libtorrent-rasterbar/docs/template.txt
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libtorrent-rasterbar/docs/template.txt	2014-02-24 13:35:46.747128562 -0500
+--- /dev/null
++++ b/docs/template.txt
 @@ -0,0 +1,29 @@
 +%(head_prefix)s
 +%(head)s
@@ -39,10 +37,8 @@ Index: libtorrent-rasterbar/docs/template.txt
 +    </div>
 +    </div>
 +%(body_suffix)s
-Index: libtorrent-rasterbar/docs/makefile
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libtorrent-rasterbar/docs/makefile	2014-02-24 13:35:46.747128562 -0500
+--- /dev/null
++++ b/docs/makefile
 @@ -0,0 +1,34 @@
 +#!/usr/bin/make -f
 +# Upstream Author: Arvid Norberg - Modified by: Cristian Greco
@@ -78,10 +74,8 @@ Index: libtorrent-rasterbar/docs/makefile
 +
 +clean:
 +	@rm -f $(TARGETS:=.html)
-Index: libtorrent-rasterbar/docs/css/base.css
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libtorrent-rasterbar/docs/css/base.css	2014-02-24 13:35:46.747128562 -0500
+--- /dev/null
++++ b/docs/css/base.css
 @@ -0,0 +1,136 @@
 +/* Page template */
 +
@@ -219,10 +213,8 @@ Index: libtorrent-rasterbar/docs/css/base.css
 +
 +p, ul, ol, img {margin-bottom: 1em;}
 +
-Index: libtorrent-rasterbar/docs/css/rst.css
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libtorrent-rasterbar/docs/css/rst.css	2014-02-24 13:35:46.747128562 -0500
+--- /dev/null
++++ b/docs/css/rst.css
 @@ -0,0 +1,245 @@
 +.document {
 +    margin-left: 10px;
@@ -469,11 +461,9 @@ Index: libtorrent-rasterbar/docs/css/rst.css
 +* html #table-of-contents ul ul { height: 1%; }
 +/* End hide from IE-mac */
 +
-Index: libtorrent-rasterbar/docs/index.rst
-===================================================================
---- libtorrent-rasterbar.orig/docs/index.rst	2014-02-24 13:35:46.751128562 -0500
-+++ libtorrent-rasterbar/docs/index.rst	2014-02-24 13:47:12.763143144 -0500
-@@ -83,7 +83,7 @@
+--- a/docs/index.rst
++++ b/docs/index.rst
+@@ -85,7 +85,7 @@
  .. _`ruby bindings`: http://libtorrent-ruby.rubyforge.org/
  .. _`python bindings`: python_binding.html
  
@@ -482,7 +472,7 @@ Index: libtorrent-rasterbar/docs/index.rst
  
  libtorrent is a feature complete C++ bittorrent implementation focusing
  on efficiency and scalability. It runs on embedded devices as well as
-@@ -103,13 +103,9 @@
+@@ -105,13 +105,9 @@
  Donate
  ======
  
@@ -498,7 +488,7 @@ Index: libtorrent-rasterbar/docs/index.rst
  
  
  Feedback
-@@ -152,13 +148,10 @@
+@@ -154,13 +150,10 @@
  
  __ http://www.cs.umu.se
  
@@ -513,12 +503,10 @@ Index: libtorrent-rasterbar/docs/index.rst
  .. |copy| unicode:: 0xA9 .. copyright sign
  
  .. raw:: html
-Index: libtorrent-rasterbar/docs/hacking.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/hacking.html	2014-02-24 12:28:09.643042324 -0500
-+++ libtorrent-rasterbar/docs/hacking.html	2014-02-24 13:37:18.643130516 -0500
+--- a/docs/hacking.html
++++ b/docs/hacking.html
 @@ -8,17 +8,6 @@
- <meta name="author" content="Arvid Norberg, arvid&#64;rasterbar.com" />
+ <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
  <link rel="stylesheet" type="text/css" href="../../css/base.css" />
  <link rel="stylesheet" type="text/css" href="../../css/rst.css" />
 -<script type="text/javascript">
@@ -535,8 +523,8 @@ Index: libtorrent-rasterbar/docs/hacking.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <style type="text/css">
  /* Hides from IE-mac \*/
-@@ -208,12 +197,6 @@
-     <span>Copyright &copy; 2005 Rasterbar Software.</span>
+@@ -201,12 +190,6 @@
+     <span>Copyright &copy; 2014 Arvid Norberg</span>
      </div>
      </div>
 -    <script src="http://www.google-analytics.com/urchin.js" type="text/javascript">
