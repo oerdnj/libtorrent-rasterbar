@@ -1,3 +1,15 @@
+libtorrent-rasterbar (0.16.18-1) unstable; urgency=medium
+
+  * New upstream version.
+    - fix string handling in python3 bindings (Closes: #756503).
+  * debian/patches:
+    - fix-python-dbg-build.patch: drop, fixed upstream.
+    - fix-html-docs.patch: refresh.
+    - fix-python-build-missing-byteshpp.patch: new, fix missing file
+      from upstream tarball.
+
+ -- Cristian Greco <cristian@debian.org>  Sat, 18 Oct 2014 19:47:37 +0200
+
 libtorrent-rasterbar (0.16.17-2) unstable; urgency=medium
 
   * debian/control: switch back to unversioned {build-,}depends
