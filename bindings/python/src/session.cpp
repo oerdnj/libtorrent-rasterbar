@@ -7,13 +7,14 @@
 #include <string>
 #include <libtorrent/session.hpp>
 #include <libtorrent/settings.hpp> // for bencode_map_entry
-#include <libtorrent/torrent.hpp>
 #include <libtorrent/storage.hpp>
+#include <libtorrent/error_code.hpp>
 #include <libtorrent/ip_filter.hpp>
 #include <libtorrent/disk_io_thread.hpp>
 #include <libtorrent/extensions.hpp>
 #include <libtorrent/lazy_entry.hpp>
 #include <libtorrent/bencode.hpp>
+#include <libtorrent/aux_/session_impl.hpp> // for settings_map()
 
 #include <libtorrent/extensions/lt_trackers.hpp>
 #include <libtorrent/extensions/metadata_transfer.hpp>
@@ -34,7 +35,9 @@ namespace
         allow_threading_guard guard;
         error_code ec;
         s.listen_on(std::make_pair(min_, max_), ec, interface, flags);
+#ifndef BOOST_NO_EXCEPTIONS
         if (ec) throw libtorrent_exception(ec);
+#endif
     }
 
     void outgoing_ports(session& s, int _min, int _max)
@@ -62,6 +65,7 @@ namespace
 
     void add_extension(session& s, object const& e)
     {
+#ifndef TORRENT_DISABLE_EXTENSIONS
        if (!extract<std::string>(e).check()) return;
 
        std::string name = extract<std::string>(e);
@@ -73,17 +77,13 @@ namespace
             s.add_extension(create_smart_ban_plugin);
        else if (name == "lt_trackers")
             s.add_extension(create_lt_trackers_plugin);
+#ifndef TORRENT_NO_DEPRECATE
        else if (name == "metadata_transfer")
             s.add_extension(create_metadata_plugin);
+#endif // TORRENT_NO_DEPRECATE
+
+#endif // TORRENT_DISABLE_EXTENSIONS
     }
-
-#ifndef TORRENT_NO_DEPRECATE
-
-    boost::shared_ptr<torrent_plugin> dummy_plugin_wrapper(torrent* t) {
-        return boost::shared_ptr<torrent_plugin>();
-    }
-
-#endif
 
 	void session_set_settings(session& ses, dict const& sett_dict)
 	{
@@ -178,12 +178,11 @@ namespace
 #endif
 }
 
-    void dict_to_add_torrent_params(dict params, add_torrent_params& p
-        , std::vector<char>& rd, std::vector<boost::uint8_t>& fp)
+    void dict_to_add_torrent_params(dict params, add_torrent_params& p)
     {
         // torrent_info objects are always held by an intrusive_ptr in the python binding
         if (params.has_key("ti") && params.get("ti") != boost::python::object())
-            p.ti = extract<intrusive_ptr<torrent_info> >(params["ti"]);
+            p.ti = extract<boost::intrusive_ptr<torrent_info> >(params["ti"]);
 
         if (params.has_key("info_hash"))
             p.info_hash = sha1_hash(bytes(extract<bytes>(params["info_hash"])).arr);
@@ -194,9 +193,7 @@ namespace
         if (params.has_key("resume_data"))
         {
             std::string resume = extract<std::string>(params["resume_data"]);
-            rd.resize(resume.size());
-            std::memcpy(&rd[0], &resume[0], rd.size());
-            p.resume_data = &rd;
+            p.resume_data.assign(resume.begin(), resume.end());
         }
         if (params.has_key("storage_mode"))
             p.storage_mode = extract<storage_mode_t>(params["storage_mode"]);
@@ -251,14 +248,13 @@ namespace
         if (params.has_key("uuid"))
             p.uuid = extract<std::string>(params["uuid"]);
 
-        fp.clear();
         if (params.has_key("file_priorities"))
         {
             list l = extract<list>(params["file_priorities"]);
             int n = boost::python::len(l);
             for(int i = 0; i < n; i++)
-                fp.push_back(extract<boost::uint8_t>(l[i]));
-            p.file_priorities = &fp;
+                p.file_priorities.push_back(extract<boost::uint8_t>(l[i]));
+            p.file_priorities.clear();
         }
     }
 
@@ -268,9 +264,7 @@ namespace
     torrent_handle add_torrent(session& s, dict params)
     {
         add_torrent_params p;
-        std::vector<char> resume_buf;
-        std::vector<boost::uint8_t> files_buf;
-        dict_to_add_torrent_params(params, p, resume_buf, files_buf);
+        dict_to_add_torrent_params(params, p);
 
         allow_threading_guard guard;
 
@@ -285,23 +279,14 @@ namespace
     void async_add_torrent(session& s, dict params)
     {
         add_torrent_params p;
-        std::vector<char> resume_buf;
-        std::vector<boost::uint8_t> files_buf;
-        dict_to_add_torrent_params(params, p, resume_buf, files_buf);
+        dict_to_add_torrent_params(params, p);
 
         allow_threading_guard guard;
 
-#ifndef BOOST_NO_EXCEPTIONS
         s.async_add_torrent(p);
-#else
-        error_code ec;
-        s.async_add_torrent(p, ec);
-#endif
     }
 
-    void dict_to_feed_settings(dict params, feed_settings& feed
-        , std::vector<char>& resume_buf
-        , std::vector<boost::uint8_t> files_buf)
+    void dict_to_feed_settings(dict params, feed_settings& feed)
     {
         if (params.has_key("auto_download"))
             feed.auto_download = extract<bool>(params["auto_download"]);
@@ -310,8 +295,7 @@ namespace
         if (params.has_key("url"))
             feed.url = extract<std::string>(params["url"]);
         if (params.has_key("add_args"))
-            dict_to_add_torrent_params(dict(params["add_args"]), feed.add_args
-                , resume_buf, files_buf);
+            dict_to_add_torrent_params(dict(params["add_args"]), feed.add_args);
     }
 
     feed_handle add_feed(session& s, dict params)
@@ -319,9 +303,7 @@ namespace
         feed_settings feed;
         // this static here is a bit of a hack. It will
         // probably work for the most part
-        static std::vector<char> resume_buf;
-        static std::vector<boost::uint8_t> files_buf;
-        dict_to_feed_settings(params, feed, resume_buf, files_buf);
+        dict_to_feed_settings(params, feed);
 
         allow_threading_guard guard;
         return s.add_feed(feed);
@@ -367,9 +349,7 @@ namespace
     void set_feed_settings(feed_handle& h, dict sett)
     {
         feed_settings feed;
-        static std::vector<char> resume_buf;
-        static std::vector<boost::uint8_t> files_buf;
-        dict_to_feed_settings(sett, feed, resume_buf, files_buf);
+        dict_to_feed_settings(sett, feed);
         h.set_settings(feed);
     }
 
@@ -605,7 +585,6 @@ void bind_session()
     ;
 
     enum_<session::options_t>("options_t")
-        .value("none", session::none)
         .value("delete_files", session::delete_files)
     ;
 
@@ -625,6 +604,9 @@ void bind_session()
         .value("flag_duplicate_is_error", add_torrent_params::flag_duplicate_is_error)
         .value("flag_merge_resume_trackers", add_torrent_params::flag_merge_resume_trackers)
         .value("flag_update_subscribe", add_torrent_params::flag_update_subscribe)
+        .value("flag_super_seeding", add_torrent_params::flag_super_seeding)
+        .value("flag_sequential_download", add_torrent_params::flag_sequential_download)
+        .value("flag_use_resume_save_path", add_torrent_params::flag_use_resume_save_path)
     ;
     class_<cache_status>("cache_status")
         .def_readonly("blocks_written", &cache_status::blocks_written)
@@ -699,8 +681,7 @@ void bind_session()
 #endif
 #endif
         .def("add_feed", &add_feed)
-        .def("remove_torrent", allow_threads(&session::remove_torrent), arg("option") = session::none
-)
+        .def("remove_torrent", allow_threads(&session::remove_torrent), arg("option") = 0)
 #ifndef TORRENT_NO_DEPRECATE
         .def("set_local_download_rate_limit", allow_threads(&session::set_local_download_rate_limit))
         .def("local_download_rate_limit", allow_threads(&session::local_download_rate_limit))
@@ -775,7 +756,7 @@ void bind_session()
         .def("is_paused", allow_threads(&session::is_paused))
         .def("id", allow_threads(&session::id))
         .def("get_cache_status", allow_threads(&session::get_cache_status))
-		  .def("get_cache_info", get_cache_info)
+        .def("get_cache_info", get_cache_info)
         .def("set_peer_id", allow_threads(&session::set_peer_id))
         ;
 
@@ -809,20 +790,13 @@ void bind_session()
         .def("settings", &get_feed_settings)
     ;
 
-#ifndef TORRENT_NO_DEPRECATE
-    def("create_ut_pex_plugin", dummy_plugin_wrapper);
-    def("create_metadata_plugin", dummy_plugin_wrapper);
-    def("create_ut_metadata_plugin", dummy_plugin_wrapper);
-    def("create_smart_ban_plugin", dummy_plugin_wrapper);
-#endif
-
     register_ptr_to_python<std::auto_ptr<alert> >();
 
-	 def("high_performance_seed", high_performance_seed);
-	 def("min_memory_usage", min_memory_usage);
+    def("high_performance_seed", high_performance_seed);
+    def("min_memory_usage", min_memory_usage);
 
-	 scope().attr("create_metadata_plugin") = "metadata_transfer";
-	 scope().attr("create_ut_metadata_plugin") = "ut_metadata";
-	 scope().attr("create_ut_pex_plugin") = "ut_pex";
-	 scope().attr("create_smart_ban_plugin") = "smart_ban";
+    scope().attr("create_metadata_plugin") = "metadata_transfer";
+    scope().attr("create_ut_metadata_plugin") = "ut_metadata";
+    scope().attr("create_ut_pex_plugin") = "ut_pex";
+    scope().attr("create_smart_ban_plugin") = "smart_ban";
 }

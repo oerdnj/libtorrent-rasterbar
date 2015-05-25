@@ -1,11 +1,11 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-# $Id: configure.ac 10391 2014-10-13 06:10:34Z arvidn $
+# $Id: configure.ac 11072 2015-05-11 04:16:49Z arvidn $
 
 AC_PREREQ([2.63])
 
-AC_INIT([libtorrent-rasterbar],[0.16.18],[arvid@libtorrent.org],
+AC_INIT([libtorrent-rasterbar],[1.0.5],[arvid@libtorrent.org],
         [libtorrent-rasterbar],[http://www.libtorrent.org])
 AC_CONFIG_SRCDIR([src/torrent.cpp])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -41,7 +41,7 @@ dnl  increment AGE, Otherwise AGE is reset to 0. If CURRENT has changed,
 dnl  REVISION is set to 0, otherwise REVISION is incremented.
 dnl ---------------------------------------------------------------------------
 
-m4_define([VERSION_INFO_CURRENT],[7])
+m4_define([VERSION_INFO_CURRENT],[8])
 m4_define([VERSION_INFO_REVISION],[0])
 m4_define([VERSION_INFO_AGE],[0])
 INTERFACE_VERSION_INFO=VERSION_INFO_CURRENT:VERSION_INFO_REVISION:VERSION_INFO_AGE
@@ -110,8 +110,6 @@ AC_CACHE_CHECK([for __attribute__((visibility("hidden")))],
     then
         AS_ECHO "found"
         ac_cv_hidden_visibility_attribute=yes
-        CXXFLAGS="$CXXFLAGS -fvisibility-inlines-hidden"
-        CFLAGS="$CFLAGS -fvisibility=hidden"
     fi
     rm -f visibility_conftest.*
 ])
@@ -173,7 +171,7 @@ AC_CHECK_FUNCS([clock_gettime], [],
 )
 
 
-dnl Pass some build options to setup.py and .pc file
+dnl Pass some build options to .pc file
 COMPILETIME_OPTIONS=""
 
 
@@ -221,6 +219,15 @@ AC_ARG_ENABLE(
     [enable encryption support (requires OpenSSL to be installed on your system, you can use --with-openssl to set the path) [default=yes]])],
   [[ARG_ENABLE_ENCRYPTION=$enableval]],
   [[ARG_ENABLE_ENCRYPTION=yes]]
+)
+
+AC_ARG_ENABLE(
+  [export-all],
+  [AS_HELP_STRING(
+    [--enable-export-all],
+    [export all symbols from libtorrent, including non-public ones [default=no]])],
+  [[ARG_ENABLE_FULL_EXPORT=$enableval]],
+  [[ARG_ENABLE_FULL_EXPORT=no]]
 )
 
 AC_ARG_ENABLE(
@@ -514,6 +521,14 @@ AS_CASE(["$ARG_ENABLE_POOL_ALLOC"],
    AC_MSG_ERROR([Unknown option "$ARG_ENABLE_POOL_ALLOC". Use either "yes" or "no".])]
 )
 
+AS_IF([test "x$ac_cv_hidden_visibility_attribute" = "xyes"], [
+  AS_IF([test "x$ARG_ENABLE_FULL_EXPORT" = "xno"], [
+     CXXFLAGS="$CXXFLAGS -fvisibility=hidden -fvisibility-inlines-hidden"
+     CFLAGS="$CFLAGS -fvisibility=hidden"
+     LDFLAGS="$LDFLAGS -fvisibility=hidden -fvisibility-inlines-hidden"
+  ])
+])
+
 AS_ECHO
 AS_ECHO "Checking for extra build files:"
 
@@ -527,7 +542,11 @@ AS_CASE(["$ARG_ENABLE_EXAMPLES"],
 
 AC_MSG_CHECKING([whether test files should be built])
 AS_CASE(["$ARG_ENABLE_TESTS"],
-  ["yes"], [AC_MSG_RESULT([yes])],
+  ["yes"], [
+      AC_MSG_RESULT([yes])
+      AC_DEFINE([TORRENT_EXPORT_EXTRA],[1],[Define to export additional symbols for unit tests.])
+      COMPILETIME_OPTIONS="$COMPILETIME_OPTIONS -DTORRENT_EXPORT_EXTRA "
+    ],
   ["no"],  [AC_MSG_RESULT([no])],
   [AC_MSG_RESULT([$ARG_ENABLE_TESTS])
    AC_MSG_ERROR([Unknown option "$ARG_ENABLE_TESTS". Use either "yes" or "no".])]
@@ -687,7 +706,8 @@ AC_CONFIG_FILES(
   [tools/Makefile]
   [bindings/Makefile]
   [bindings/python/Makefile]
-  [bindings/python/setup.py]
+  [bindings/python/link_flags]
+  [bindings/python/compile_flags]
   [libtorrent-rasterbar.pc]
   [libtorrent-rasterbar-cmake.pc]
 )
@@ -775,7 +795,6 @@ Python environment:
   cppflags:             ${PYTHON_CPPFLAGS}
   ldflags:              ${PYTHON_LDFLAGS}
   extra libs:           ${PYTHON_EXTRA_LIBS}
-  extra ldflags:        ${PYTHON_EXTRA_LDFLAGS}
 
 END
 ])

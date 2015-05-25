@@ -77,7 +77,7 @@ using libtorrent in python
 ==========================
 
 The python interface is nearly identical to the C++ interface. Please refer to
-the `main library reference`_. The main differences are:
+the `library reference`_. The main differences are:
 
 asio::tcp::endpoint
 	The endpoint type is represented as a tuple of a string (as the address) and an int for
@@ -106,7 +106,7 @@ keys that are not present, are set to their default value.
 For backwards compatibility, ``session::settings()`` still returns a ``session_settings``
 struct. To get a python dictionary of the settings, call ``session::get_settings``.
 
-.. _`main library reference`: manual.html
+.. _`library reference`: reference.html
 
 For an example python program, see ``client.py`` in the ``bindings/python``
 directory.
@@ -122,7 +122,7 @@ A very simple example usage of the module would be something like this::
 	e = lt.bdecode(open("test.torrent", 'rb').read())
 	info = lt.torrent_info(e)
 
-	params = { save_path: './', \
+	params = { save_path: '.', \
 		storage_mode: lt.storage_mode_t.storage_mode_sparse, \
 		ti: info }
 	h = ses.add_torrent(params)

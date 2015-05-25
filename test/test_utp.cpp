@@ -56,6 +56,12 @@ void test_transfer()
 	remove_all("./tmp1_utp", ec);
 	remove_all("./tmp2_utp", ec);
 
+	// these are declared before the session objects
+	// so that they are destructed last. This enables
+	// the sessions to destruct in parallel
+	session_proxy p1;
+	session_proxy p2;
+
 	session ses1(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48885, 49930), "0.0.0.0", 0);
 	session ses2(fingerprint("LT", 0, 1, 0, 0), std::make_pair(49885, 50930), "0.0.0.0", 0);
 
@@ -67,6 +73,9 @@ void test_transfer()
 	sett.announce_to_all_tiers = true;
 	// make sure we announce to both http and udp trackers
 	sett.prefer_udp_trackers = false;
+
+	// speed up loopback connections (by using the full MTU)
+	sett.utp_dynamic_sock_buf = true;
 
 	// for performance testing
 //	sett.disable_hash_checks = true;
@@ -91,7 +100,7 @@ void test_transfer()
 
 	create_directory("./tmp1_utp", ec);
 	std::ofstream file("./tmp1_utp/temporary");
-	boost::intrusive_ptr<torrent_info> t = ::create_torrent(&file, 512 * 1024, 20, false);
+	boost::intrusive_ptr<torrent_info> t = ::create_torrent(&file, 128 * 1024, 6, false);
 	file.close();
 
 	// for performance testing
@@ -102,30 +111,19 @@ void test_transfer()
 	boost::tie(tor1, tor2, ignore) = setup_transfer(&ses1, &ses2, 0
 		, true, false, true, "_utp", 0, &t, false, &atp);
 
-	for (int i = 0; i < 300; ++i)
+	for (int i = 0; i < 6; ++i)
 	{
 		print_alerts(ses1, "ses1", true, true, true);
 		print_alerts(ses2, "ses2", true, true, true);
 
+		test_sleep(500);
+
 		torrent_status st1 = tor1.status();
 		torrent_status st2 = tor2.status();
 
-		std::cerr
-			<< "\033[32m" << int(st1.download_payload_rate / 1000.f) << "kB/s "
-			<< "\033[33m" << int(st1.upload_payload_rate / 1000.f) << "kB/s "
-			<< "\033[0m" << int(st1.progress * 100) << "% "
-			<< st1.num_peers
-			<< ": "
-			<< "\033[32m" << int(st2.download_payload_rate / 1000.f) << "kB/s "
-			<< "\033[31m" << int(st2.upload_payload_rate / 1000.f) << "kB/s "
-			<< "\033[0m" << int(st2.progress * 100) << "% "
-			<< st2.num_peers
-			<< " cc: " << st2.connect_candidates
-			<< std::endl;
+		print_ses_rate(i / 2.f, &st1, &st2);
 
 		if (st2.is_finished) break;
-
-		test_sleep(500);
 
 		TEST_CHECK(st1.state == torrent_status::seeding
 			|| st1.state == torrent_status::checking_files);
@@ -134,6 +132,10 @@ void test_transfer()
 
 	TEST_CHECK(tor1.status().is_finished);
 	TEST_CHECK(tor2.status().is_finished);
+
+	// this allows shutting down the sessions in parallel
+	p1 = ses1.abort();
+	p2 = ses2.abort();
 }
 
 int test_main()

@@ -492,7 +492,7 @@ void bind_alert()
 
     class_<stats_alert, bases<torrent_alert>, noncopyable>(
         "stats_alert", no_init)
-        	.add_property("transferred", &stats_alert_transferred)
+        .add_property("transferred", &stats_alert_transferred)
         .def_readonly("interval", &stats_alert::interval)
     ;
 
@@ -534,4 +534,10 @@ void bind_alert()
        .def_readonly("error", &add_torrent_alert::error)
        .add_property("params", &get_params)
        ;
+
+    class_<torrent_update_alert, bases<torrent_alert>, noncopyable>(
+       "torrent_update_alert", no_init)
+        .def_readonly("old_ih", &torrent_update_alert::old_ih)
+        .def_readonly("new_ih", &torrent_update_alert::new_ih)
+        ;
 }
