@@ -1,3 +1,6 @@
+:Author: Arvid Norberg, arvid@libtorrent.org
+:Version: 1.0.5
+
 .. raw:: html
 
    <div id="librarySidebar">
@@ -8,9 +11,9 @@
 * contributing_
 * `building libtorrent`_
 * examples_
-* `api documentation`_
-* `create torrents`_
-* `running tests`_
+* `library overview`_
+* `reference documentation`_
+* `troubleshooting issues`_
 * `tuning`_
 * screenshot_
 * `mailing list`_ (archive_)
@@ -18,7 +21,6 @@
 * `report bugs`_
 * `sourceforge page`_
 * `blog`_
-* `wiki`_
 
 --------
 
@@ -27,9 +29,10 @@ Extensions
 * `uTP`_
 * `extensions protocol`_
 * `plugin interface`_
+* `streaming`_
 * `DHT extensions`_
 * `DHT security extension`_
-* `DHT feed extension`_
+* `DHT store extension`_
 * `UDP tracker protocol`_
 * `HTTP seed`_
 * multitracker_
@@ -60,17 +63,18 @@ libtorrent
 .. _contributing: contributing.html
 .. _`building libtorrent`: building.html
 .. _examples: examples.html
-.. _`api documentation`: manual.html
-.. _`create torrents`: make_torrent.html
-.. _`running tests`: running_tests.html
+.. _`library overview`: manual-ref.html
+.. _`reference documentation`: reference.html
+.. _`troubleshooting issues`: troubleshooting.html
 .. _`tuning`: tuning.html
 .. _screenshot: client_test.png
 .. _`uTP`: utp.html
 .. _`extensions protocol`: extension_protocol.html
-.. _`plugin interface`: libtorrent_plugins.html
+.. _`plugin interface`: reference-Plugins.html
+.. _`streaming`: streaming.html
 .. _`DHT extensions`: dht_extensions.html
 .. _`DHT security extension`: dht_sec.html
-.. _`DHT feed extension`: dht_rss.html
+.. _`DHT store extension`: dht_store.html
 .. _`UDP tracker protocol`: udp_tracker_protocol.html
 .. _`HTTP seed`: http://www.getright.com/seedtorrent.html
 .. _multitracker: http://bittorrent.org/beps/bep_0012.html
@@ -78,8 +82,7 @@ libtorrent
 .. _archive: http://dir.gmane.org/gmane.network.bit-torrent.libtorrent
 .. _`who's using libtorrent?`: projects.html
 .. _`report bugs`: http://code.google.com/p/libtorrent/issues/entry
-.. _sourceforge page: http://www.sourceforge.net/projects/libtorrent
-.. _wiki: http://code.google.com/p/libtorrent/wiki/index
+.. _sourceforge page: http://sourceforge.net/projects/libtorrent
 .. _blog: http://blog.libtorrent.org
 
 .. _`ruby bindings`: http://libtorrent-ruby.rubyforge.org/
@@ -110,7 +113,7 @@ Support the development of libtorrent
 .. raw:: html
 	
 	<a class="FlattrButton" style="display:none;" href="http://libtorrent.org"></a>
-	<noscript><a href="http://flattr.com/thing/95662/libtorrent" target="_blank">
+	<noscript><a href="https://flattr.com/thing/95662/libtorrent" target="_blank">
 	<img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" /></a></noscript>
 
 
@@ -128,7 +131,7 @@ license
 
 libtorrent is released under the BSD-license_.
 
-.. _BSD-license: http://www.opensource.org/licenses/bsd-license.php
+.. _BSD-license: http://opensource.org/licenses/bsd-license.php
 
 This means that you can use the library in your project without having to
 release its source code. The only requirement is that you give credit
@@ -139,12 +142,12 @@ It is however greatly appreciated if additional features are contributed
 back to the open source project. Patches can be emailed to the mailing
 list or posted to the `bug tracker`_.
 
-.. _`bug tracker`: http://code.google.com/p/libtorrent/issues/entry
+.. _`bug tracker`: https://code.google.com/p/libtorrent/issues/list
 
 Acknowledgements
 ================
 
-Written by Arvid Norberg. Copyright |copy| 2003-2009
+Written by Arvid Norberg. Copyright |copy| 2003-2014
 
 Contributions by Magnus Jonsson, Daniel Wallin and Cory Nelson
 

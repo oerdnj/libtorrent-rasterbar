@@ -43,7 +43,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef TORRENT_DISABLE_ENCRYPTION
 
-char const* pe_policy(libtorrent::pe_settings::enc_policy policy)
+char const* pe_policy(boost::uint8_t policy)
 {
 	using namespace libtorrent;
 	
@@ -67,11 +67,18 @@ void display_pe_settings(libtorrent::pe_settings s)
 		, s.prefer_rc4 ? "true": "false");
 }
 
-void test_transfer(libtorrent::pe_settings::enc_policy policy,
-		   libtorrent::pe_settings::enc_level level = libtorrent::pe_settings::both,
-		   bool pref_rc4 = false)
+void test_transfer(libtorrent::pe_settings::enc_policy policy
+	, int timeout
+	, libtorrent::pe_settings::enc_level level = libtorrent::pe_settings::both
+	, bool pref_rc4 = false)
 {
 	using namespace libtorrent;
+
+	// these are declared before the session objects
+	// so that they are destructed last. This enables
+	// the sessions to destruct in parallel
+	session_proxy p1;
+	session_proxy p2;
 
 	session ses1(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48800, 49000), "0.0.0.0", 0);
 	session ses2(fingerprint("LT", 0, 1, 0, 0), std::make_pair(49800, 50000), "0.0.0.0", 0);
@@ -105,20 +112,24 @@ void test_transfer(libtorrent::pe_settings::enc_policy policy,
 
 	fprintf(stderr, "waiting for transfer to complete\n");
 
-	for (int i = 0; i < 50; ++i)
+	for (int i = 0; i < timeout * 10; ++i)
 	{
 		torrent_status s = tor2.status();
 		print_alerts(ses1, "ses1");
 		print_alerts(ses2, "ses2");
 
 		if (s.is_seeding) break;
-		test_sleep(1000);
+		test_sleep(100);
 	}
 
 	TEST_CHECK(tor2.status().is_seeding);
  	if (tor2.status().is_seeding) fprintf(stderr, "done\n");
 	ses1.remove_torrent(tor1);
 	ses2.remove_torrent(tor2);
+
+	// this allows shutting down the sessions in parallel
+	p1 = ses1.abort();
+	p2 = ses2.abort();
 
 	error_code ec;
 	remove_all("tmp1_pe", ec);
@@ -128,7 +139,11 @@ void test_transfer(libtorrent::pe_settings::enc_policy policy,
 
 void test_enc_handler(libtorrent::encryption_handler* a, libtorrent::encryption_handler* b)
 {
-	int repcount = 128;
+#ifdef TORRENT_USE_VALGRIND
+	const int repcount = 10;
+#else
+	const int repcount = 128;
+#endif
 	for (int rep = 0; rep < repcount; ++rep)
 	{
 		std::size_t buf_len = rand() % (512 * 1024);
@@ -153,10 +168,19 @@ void test_enc_handler(libtorrent::encryption_handler* a, libtorrent::encryption_
 	}
 }
 
+#endif
+
 int test_main()
 {
 	using namespace libtorrent;
-	int repcount = 128;
+
+#ifndef TORRENT_DISABLE_ENCRYPTION
+
+#ifdef TORRENT_USE_VALGRIND
+	const int repcount = 10;
+#else
+	const int repcount = 128;
+#endif
 
 	random_seed(total_microseconds(time_now_hires() - min_time()));
 
@@ -188,28 +212,27 @@ int test_main()
 	rc42.set_outgoing_key(&test2_key[0], 20);
 	test_enc_handler(&rc41, &rc42);
 	
-	test_transfer(pe_settings::disabled);
-
-	test_transfer(pe_settings::forced, pe_settings::plaintext);
-	test_transfer(pe_settings::forced, pe_settings::rc4);
-	test_transfer(pe_settings::forced, pe_settings::both, false);
-	test_transfer(pe_settings::forced, pe_settings::both, true);
-
-	test_transfer(pe_settings::enabled, pe_settings::plaintext);
-	test_transfer(pe_settings::enabled, pe_settings::rc4);
-	test_transfer(pe_settings::enabled, pe_settings::both, false);
-	test_transfer(pe_settings::enabled, pe_settings::both, true);
-
-	return 0;
-}
-
+#ifdef TORRENT_USE_VALGRIND
+	const int timeout = 10;
 #else
+	const int timeout = 5;
+#endif
 
-int test_main()
-{
+	test_transfer(pe_settings::disabled, timeout);
+
+	test_transfer(pe_settings::forced, timeout, pe_settings::plaintext);
+	test_transfer(pe_settings::forced, timeout, pe_settings::rc4);
+	test_transfer(pe_settings::forced, timeout, pe_settings::both, false);
+	test_transfer(pe_settings::forced, timeout, pe_settings::both, true);
+
+	test_transfer(pe_settings::enabled, timeout, pe_settings::plaintext);
+	test_transfer(pe_settings::enabled, timeout, pe_settings::rc4);
+	test_transfer(pe_settings::enabled, timeout, pe_settings::both, false);
+	test_transfer(pe_settings::enabled, timeout, pe_settings::both, true);
+#else
 	fprintf(stderr, "PE test not run because it's disabled\n");
+#endif
+
 	return 0;
 }
-
-#endif
 

@@ -1,3 +1,122 @@
+1.0.5 release
+
+	* improve ip_voter to avoid flapping
+	* fixed bug when max_peerlist_size was set to 0
+	* fix issues with missing exported symbols when building dll
+	* fix division by zero bug in edge case while connecting peers
+
+1.0.4 release
+
+	* fix bug in python binding for file_progress on torrents with no metadata
+	* fix assert when removing a connected web seed
+	* fix bug in tracker timeout logic
+	* switch UPnP post back to HTTP 1.1
+	* support conditional DHT get
+	* OpenSSL build fixes
+	* fix DHT scrape bug
+
+1.0.3 release
+
+	* python binding build fix for boost-1.57.0
+	* add --enable-export-all option to configure script, to export all symbols
+	  from libtorrent
+	* fix if_nametoindex build error on windows
+	* handle overlong utf-8 sequences
+	* fix link order bug in makefile for python binding
+	* fix bug in interest calculation, causing premature disconnects
+	* tweak flag_override_resume_data semantics to make more sense (breaks
+	  backwards compatibility of edge-cases)
+	* improve DHT bootstrapping and periodic refresh
+	* improve DHT maintanence performance (by pinging instead of full lookups)
+	* fix bug in DHT routing table node-id prefix optimization
+	* fix incorrect behavior of flag_use_resume_save_path
+	* fix protocol race-condition in super seeding mode
+	* support read-only DHT nodes
+	* remove unused partial hash DHT lookups
+	* remove potentially privacy leaking extension (non-anonymous mode)
+	* peer-id connection ordering fix in anonymous mode
+	* mingw fixes
+
+1.0.2 release
+
+	* added missing force_proxy to python binding
+	* anonymous_mode defaults to false
+	* make DHT DOS detection more forgiving to bursts
+	* support IPv6 multicast in local service discovery
+	* simplify CAS function in DHT put
+	* support IPv6 traffic class (via the TOS setting)
+	* made uTP re-enter slow-start after time-out
+	* fixed uTP upload performance issue
+	* fix missing support for DHT put salt
+
+1.0.1 release
+
+	* fix alignment issue in bitfield
+	* improved error handling of gzip
+	* fixed crash when web seeds redirect
+	* fix compiler warnings
+
+1.0 release
+
+	* fix bugs in convert_to/from_native() on windows
+	* fix support for web servers not supporting keepalive
+	* support storing save_path in resume data
+	* don't use full allocation on network drives (on windows)
+	* added clear_piece_deadlines() to remove all piece deadlines
+	* improve queuing logic of inactive torrents (dont_count_slow_torrents)
+	* expose optimistic unchoke logic to plugins
+	* fix issue with large UDP packets on windows
+	* remove set_ratio() feature
+	* improve piece_deadline/streaming
+	* honor pieces with priority 7 in sequential download mode
+	* simplified building python bindings
+	* make ignore_non_routers more forgiving in the case there are no UPnP
+	  devices at a known router. Should improve UPnP compatibility.
+	* include reason in peer_blocked_alert
+	* support magnet links wrapped in .torrent files
+	* rate limiter optimization
+	* rate limiter overflow fix (for very high limits)
+	* non-auto-managed torrents no longer count against the torrent limits
+	* handle DHT error responses correctly
+	* allow force_announce to only affect a single tracker
+	* add moving_storage field to torrent_status
+	* expose UPnP and NAT-PMP mapping in session object
+	* DHT refactoring and support for storing arbitrary data with put and get
+	* support building on android
+	* improved support for web seeds that don't support keep-alive
+	* improve DHT routing table to return better nodes (lower RTT and closer
+	  to target)
+	* don't use pointers to resume_data and file_priorities in
+	  add_torrent_params
+	* allow moving files to absolute paths, out of the download directory
+	* make move_storage more generic to allow both overwriting files as well
+	  as taking existing ones
+	* fix choking issue at high upload rates
+	* optimized rate limiter
+	* make disk cache pool allocator configurable
+	* fix library ABI to not depend on logging being enabled
+	* use hex encoding instead of base32 in create_magnet_uri
+	* include name, save_path and torrent_file in torrent_status, for
+	  improved performance
+	* separate anonymous mode and force-proxy mode, and tighten it up a bit
+	* add per-tracker scrape information to announce_entry
+	* report errors in read_piece_alert
+	* DHT memory optimization
+	* improve DHT lookup speed
+	* improve support for windows XP and earlier
+	* introduce global connection priority for improved swarm performance
+	* make files deleted alert non-discardable
+	* make built-in sha functions not conflict with libcrypto
+	* improve web seed hash failure case
+	* improve DHT lookup times
+	* uTP path MTU discovery improvements
+	* optimized the torrent creator optimizer to scale significantly better
+	  with more files
+	* fix uTP edge case where udp socket buffer fills up
+	* fix nagle implementation in uTP
+
+	* fix bug in error handling in protocol encryption
+
 0.16.18 release
 
 	* fix uninitialized values in DHT DOS mitigation

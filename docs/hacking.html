@@ -6,8 +6,7 @@
 <meta name="generator" content="Docutils 0.12: http://docutils.sourceforge.net/" />
 <title>libtorrent hacking</title>
 <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
-<link rel="stylesheet" type="text/css" href="../../css/base.css" />
-<link rel="stylesheet" type="text/css" href="../../css/rst.css" />
+<link rel="stylesheet" type="text/css" href="rst.css" />
 <script type="text/javascript">
 /* <![CDATA[ */
     (function() {
@@ -29,10 +28,10 @@
 <body>
 <div class="document" id="libtorrent-hacking">
     <div id="container">
-    <div id="header">
-    <h1><span>Rasterbar Software</span></h1>
-    <h2><span>Software developement and consulting</span></h2>
-    </div>
+    <table id="header">
+    <tr><td id="orange"></td>
+    <td id="logo">libtorrent</td></tr>
+    </table>
     <div id="main">
 <h1 class="title">libtorrent hacking</h1>
 <table class="docinfo" frame="void" rules="none">
@@ -42,7 +41,7 @@
 <tr><th class="docinfo-name">Author:</th>
 <td>Arvid Norberg, <a class="last reference external" href="mailto:arvid&#64;libtorrent.org">arvid&#64;libtorrent.org</a></td></tr>
 <tr><th class="docinfo-name">Version:</th>
-<td>0.16.18</td></tr>
+<td>1.0.5</td></tr>
 </tbody>
 </table>
 <div class="contents topic" id="table-of-contents">
@@ -63,6 +62,8 @@
 <li><a class="reference internal" href="#threads" id="id11">threads</a></li>
 </ul>
 </div>
+<p>This describe some of the internals of libtorrent. If you're looking for
+something to contribute, please take a look at the <a class="reference external" href="todo.html">todo list</a>.</p>
 <div class="section" id="terminology">
 <h1>terminology</h1>
 <p>This section describes some of the terminology used throughout the
@@ -102,43 +103,7 @@ for a swarm (not necessarily connected).</p>
 <h1>structure</h1>
 <p>This is the high level structure of libtorrent. Bold types are part of the public
 interface:</p>
-<pre class="literal-block">
-+=========+  pimpl     +-------------------+
-| <strong>session</strong> | ---------&gt; | aux::session_impl |
-+=========+            +-------------------+
-                m_torrents[]  |  |
-+================+            |  |
-| <strong>torrent_handle</strong> | ------+    |  |
-+================+       |    |  |
-                         |    |  | m_connections[]
-                         |    |  |
-                         |    |  +---------------------+
-         m_picker        v    v                        |
- +--------------+      +---------+---------+-- . .     |
- | piece_picker | &lt;--+-| torrent | torrent | to        |
- +--------------+    | +---------+---------+-- . .     |
-      m_torrent_file |      | m_connections[]          |
- +==============+    |      |                          |
- | <strong>torrent_info</strong> | &lt;--+      v                          v
- +==============+    |     +-----------------+-----------------+-- . .
-            m_policy |     | peer_connection | peer_connection | pe
- +--------+          |     +-----------------+-----------------+-- . .
- | policy | &lt;--------+      |             | m_socket
- +--------+                 |             |
-   | m_peers[]              |             v
-   |                        |            +-----------------------+
-   |                        |            | socket_type (variant) |
-   v                        |            +-----------------------+
-+--------------+            |
-| policy::peer |            |
-+--------------+            |
-| policy::peer |            |
-+--------------+ m_peer_info|
-| policy::peer | &lt;----------+
-+--------------+
-.              .
-+ - - - - - - -+
-</pre>
+<img alt="hacking.png" src="hacking.png" />
 <div class="section" id="session-impl">
 <h2>session_impl</h2>
 <p>This is the session state object, containing all session global information, such as:</p>
@@ -196,17 +161,41 @@ non-blocking host name resolution to simulate non-blocking getaddrinfo().</li>
 </ul>
 </blockquote>
 </div>
+
     </div>
+    </div>
+    <div id="gradient"></div>
     <div id="footer">
-    <span>Copyright &copy; 2014 Arvid Norberg</span>
+    <table>
+    <tr>
+      <td><a href="index.html">home</a></td>
+      <td><a href="http://blog.libtorrent.org">blog</a></td>
+      <td><a href="utp.html">uTP</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://sourceforge.net/projects/libtorrent/files/libtorrent/">download</a></td>
+      <td><a href="reference.html">documentation</a></td>
+      <td><a href="dht_store.html">DHT put extension</a></td>
+    </tr>
+    <tr>
+      <td><a href="https://sourceforge.net/projects/libtorrent/files/py-libtorrent/">python bindings</a></td>
+      <td><a href="features.html">features</a></td>
+      <td><a href="dht_sec.html">DHT security extension</a></td>
+    </tr>
+    <tr>
+      <td><a href="http://dir.gmane.org/gmane.network.bit-torrent.libtorrent">mailing list archive</a></td>
+      <td><a href="contributing.html">contributing</a></td>
+      <td><a href="streaming.html">streaming</a></td>
+    </tr>
+    <tr>
+      <td><a href="http://code.google.com/p/libtorrent/issues/entry">report a bug</a></td>
+      <td><a href="building.html">building</a></td>
+      <td><a href="bittorrent.pdf">bittorrent slides</a></td>
+    </tr>
+    </table>
     </div>
-    </div>
-    <script src="http://www.google-analytics.com/urchin.js" type="text/javascript">
-    </script>
-    <script type="text/javascript">
-    _uacct = "UA-1599045-1";
-    urchinTracker();
-    </script>
+    <div id="filler"></div>
+
 </div>
 </body>
 </html>
