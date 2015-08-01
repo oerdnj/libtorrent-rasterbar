@@ -25,7 +25,7 @@ override_dh_auto_configure-%:
 		--enable-python-binding --with-boost-python=boost_python-py$(subst .,,$(subst -dbg,,$*)) \
 		$(CONFIGURE_ARGS)
 	mv build-py$*/bindings/python build/bindings/python$*
-	cp -r bindings/python/src build/bindings/python$*
+	cp -r bindings/python/* build/bindings/python$*
 
 override_dh_auto_configure: override_dh_auto_configure-nopy $(ALLPY:%=override_dh_auto_configure-%)
 
