@@ -1,4 +1,4 @@
-libtorrent-rasterbar (1.0.5-1) UNRELEASED; urgency=medium
+libtorrent-rasterbar (1.0.6-1) UNRELEASED; urgency=medium
 
   * New upstream release (Closes: #785676).
    - Bump library soname.

@@ -657,6 +657,7 @@ void bind_session()
         )
         .def("is_dht_running", allow_threads(&session::is_dht_running))
         .def("set_dht_settings", allow_threads(&session::set_dht_settings))
+        .def("get_dht_settings", allow_threads(&session::get_dht_settings))
         .def("start_dht", allow_threads(start_dht0))
         .def("stop_dht", allow_threads(&session::stop_dht))
 #ifndef TORRENT_NO_DEPRECATE
@@ -758,7 +759,14 @@ void bind_session()
         .def("get_cache_status", allow_threads(&session::get_cache_status))
         .def("get_cache_info", get_cache_info)
         .def("set_peer_id", allow_threads(&session::set_peer_id))
+        .def("add_port_mapping", allow_threads(&session::add_port_mapping))
+        .def("delete_port_mapping", allow_threads(&session::delete_port_mapping))
         ;
+
+    enum_<session::protocol_type>("protocol_type")
+        .value("udp", session::udp)
+        .value("tcp", session::tcp)
+    ;
 
     enum_<session::save_state_flags_t>("save_state_flags_t")
         .value("save_settings", session::save_settings)

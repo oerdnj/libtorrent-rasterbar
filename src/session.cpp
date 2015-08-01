@@ -830,6 +830,17 @@ namespace libtorrent
 #endif
 	}
 
+	dht_settings session::get_dht_settings() const
+	{
+#ifndef TORRENT_DISABLE_DHT
+		TORRENT_SYNC_CALL_RET(dht_settings, get_dht_settings);
+#else
+		dht_settings r;
+#endif
+		return r;
+	}
+
+
 #ifndef TORRENT_NO_DEPRECATE
 	void session::start_dht(entry const& startup_state)
 	{
@@ -848,7 +859,7 @@ namespace libtorrent
 #endif
 	}
 #endif // TORRENT_NO_DEPRECATE
-	
+
 	void session::add_dht_node(std::pair<std::string, int> const& node)
 	{
 #ifndef TORRENT_DISABLE_DHT
@@ -1374,11 +1385,11 @@ namespace libtorrent
 		, connections_limit(200)
 		, connections_slack(10)
 		, utp_target_delay(100) // milliseconds
-		, utp_gain_factor(1500) // bytes per rtt
+		, utp_gain_factor(3000) // bytes per rtt
 		, utp_min_timeout(500) // milliseconds
 		, utp_syn_resends(2)
 		, utp_fin_resends(2)
-		, utp_num_resends(6)
+		, utp_num_resends(3)
 		, utp_connect_timeout(3000) // milliseconds
 #ifndef TORRENT_NO_DEPRECATE
 		, utp_delayed_ack(0) // milliseconds
