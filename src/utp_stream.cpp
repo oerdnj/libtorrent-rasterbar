@@ -276,6 +276,7 @@ struct utp_socket_impl
 		, m_deferred_ack(false)
 		, m_subscribe_drained(false)
 		, m_stalled(false)
+		, m_confirmed(false)
 	{
 		TORRENT_ASSERT(m_userdata);
 		for (int i = 0; i != num_delay_hist; ++i)
@@ -387,7 +388,7 @@ struct utp_socket_impl
 	// refer to the unwritten portions of the buffers, and the
 	// ones that fill up are erased from the vector
 	std::vector<iovec_t> m_read_buffer;
-	
+
 	// packets we've received without a read operation
 	// active. Store them here until the client triggers
 	// an async_read_some
@@ -473,7 +474,7 @@ struct utp_socket_impl
 
 	// the sum of all packets stored in m_receive_buffer
 	boost::int32_t m_receive_buffer_size;
-	
+
 	// the sum of all buffers in m_read_buffer
 	boost::int32_t m_read_buffer_size;
 
@@ -623,7 +624,7 @@ struct utp_socket_impl
 	// this is done at startup of a socket in order to find its
 	// link capacity faster. This behaves similar to TCP slow start
 	bool m_slow_start:1;
-	
+
 	// this is true as long as we have as many packets in
 	// flight as allowed by the congestion window (cwnd)
 	bool m_cwnd_full:1;
@@ -644,6 +645,11 @@ struct utp_socket_impl
 	// of sockets in the utp_socket_manager to be notified of
 	// the socket being writable again
 	bool m_stalled:1;
+
+	// this is false by default and set to true once we've received a non-SYN
+	// packet for this connection with a correct ack_nr, confirming that the
+	// other end is not spoofing its source IP
+	bool m_confirmed:1;
 };
 
 #if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_LOGGING || defined TORRENT_ERROR_LOGGING
@@ -1602,7 +1608,9 @@ private:
 // congestion window, false if there is no more space.
 bool utp_socket_impl::send_pkt(int flags)
 {
+#ifdef TORRENT_EXPENSIVE_INVARIANT_CHECKS
 	INVARIANT_CHECK;
+#endif
 
 	bool force = (flags & pkt_ack) || (flags & pkt_fin);
 
@@ -2144,8 +2152,15 @@ void utp_socket_impl::experienced_loss(int seq_nr)
 	// less than or equal to. If we experience loss of the
 	// same packet again, ignore it.
 	if (compare_less_wrap(seq_nr, m_loss_seq_nr + 1, ACK_MASK)) return;
-	
+
+	// cut window size in 2
+	m_cwnd = (std::max)(m_cwnd * m_sm->loss_multiplier() / 100, boost::int64_t(m_mtu << 16));
+	m_loss_seq_nr = m_seq_nr;
+	UTP_LOGV("%8p: Lost packet %d caused cwnd cut\n", this, seq_nr);
+
 	// if we happen to be in slow-start mode, we need to leave it
+	// note that we set ssthres to the window size _after_ reducing it. Next slow
+	// start should end before we over shoot.
 	if (m_slow_start)
 	{
 		m_ssthres = m_cwnd >> 16;
@@ -2153,20 +2168,17 @@ void utp_socket_impl::experienced_loss(int seq_nr)
 		UTP_LOGV("%8p: experienced loss, slow_start -> 0\n", this);
 	}
 
-	// cut window size in 2
-	m_cwnd = (std::max)(m_cwnd * m_sm->loss_multiplier() / 100, boost::int64_t(m_mtu << 16));
-	m_loss_seq_nr = m_seq_nr;
-	UTP_LOGV("%8p: Lost packet %d caused cwnd cut\n", this, seq_nr);
-
 	// the window size could go below one MMS here, if it does,
 	// we'll get a timeout in about one second
-	
+
 	m_sm->inc_stats_counter(utp_socket_manager::packet_loss);
 }
 
 void utp_socket_impl::maybe_inc_acked_seq_nr()
 {
+#ifdef TORRENT_EXPENSIVE_INVARIANT_CHECKS
 	INVARIANT_CHECK;
+#endif
 
 	bool incremented = false;
 	// don't pass m_seq_nr, since we move into sequence
@@ -2198,7 +2210,9 @@ void utp_socket_impl::maybe_inc_acked_seq_nr()
 void utp_socket_impl::ack_packet(packet* p, ptime const& receive_time
 	, boost::uint32_t& min_rtt, boost::uint16_t seq_nr)
 {
+#ifdef TORRENT_EXPENSIVE_INVARIANT_CHECKS
 	INVARIANT_CHECK;
+#endif
 
 	TORRENT_ASSERT(p);
 
@@ -2244,7 +2258,9 @@ void utp_socket_impl::ack_packet(packet* p, ptime const& receive_time
 
 void utp_socket_impl::incoming(boost::uint8_t const* buf, int size, packet* p, ptime now)
 {
+#ifdef TORRENT_EXPENSIVE_INVARIANT_CHECKS
 	INVARIANT_CHECK;
+#endif
 
 	while (!m_read_buffer.empty())
 	{
@@ -2598,11 +2614,14 @@ bool utp_socket_impl::incoming_packet(boost::uint8_t const* buf, int size
 	if (m_state == UTP_STATE_SYN_SENT && ph->get_type() == ST_STATE)
 		cmp_seq_nr = m_seq_nr;
 #endif
-	if (m_state != UTP_STATE_NONE
-		&& compare_less_wrap(cmp_seq_nr, ph->ack_nr, ACK_MASK))
+	if ((m_state != UTP_STATE_NONE || ph->get_type() != ST_SYN)
+		&& (compare_less_wrap(cmp_seq_nr, ph->ack_nr, ACK_MASK)
+			|| compare_less_wrap(ph->ack_nr, m_acked_seq_nr
+				- dup_ack_limit, ACK_MASK)))
 	{
-		UTP_LOG("%8p: ERROR: incoming packet ack_nr:%d our seq_nr:%d (ignored)\n"
-			, this, int(ph->ack_nr), m_seq_nr);
+		UTP_LOG("%8p: ERROR: incoming packet ack_nr:%d our seq_nr:%d our "
+			"acked_seq_nr:%d (ignored)\n"
+			, this, int(ph->ack_nr), m_seq_nr, m_acked_seq_nr);
 		m_sm->inc_stats_counter(utp_socket_manager::redundant_pkts_in);
 		return true;
 	}
@@ -2665,12 +2684,6 @@ bool utp_socket_impl::incoming_packet(boost::uint8_t const* buf, int size
 		{
 			UTP_LOG("%8p: ERROR: invalid RESET packet, ack_nr:%d our seq_nr:%d (ignored)\n"
 				, this, int(ph->ack_nr), m_seq_nr);
-			return true;
-		}
-		if (compare_less_wrap(ph->ack_nr, m_acked_seq_nr , ACK_MASK))
-		{
-			UTP_LOG("%8p: ERROR: invalid RESET packet, ack_nr:%d our acked_seq_nr:%d (ignored)\n"
-				, this, int(ph->ack_nr), m_acked_seq_nr);
 			return true;
 		}
 		UTP_LOGV("%8p: incoming packet type:RESET\n", this);
@@ -2786,7 +2799,7 @@ bool utp_socket_impl::incoming_packet(boost::uint8_t const* buf, int size
 		ptr += len;
 		extension = next_extension;
 	}
-	
+
 	// the send operation in parse_sack() may have set the socket to an error
 	// state, in which case we shouldn't continue
 	if (m_state == UTP_STATE_ERROR_WAIT || m_state == UTP_STATE_DELETE) return true;
@@ -2976,6 +2989,10 @@ bool utp_socket_impl::incoming_packet(boost::uint8_t const* buf, int size
 			// received a FIN packet, we need to ack that as well
 			bool has_ack = ph->get_type() == ST_DATA || ph->get_type() == ST_FIN || ph->get_type() == ST_SYN;
 			boost::uint32_t prev_out_packets = m_out_packets;
+
+			// the connection is connected and this packet made it past all the
+			// checks. We can now assume the other end is not spoofing it's IP.
+			if (ph->get_type() != ST_SYN) m_confirmed = true;
 
 			// try to send more data as long as we can
 			// if send_pkt returns true
@@ -3213,7 +3230,7 @@ void utp_socket_impl::do_ledbat(int acked_bytes, int delay, int in_flight, ptime
 	boost::int64_t window_factor = (boost::int64_t(acked_bytes) << 16) / in_flight;
 	boost::int64_t delay_factor = (boost::int64_t(target_delay - delay) << 16) / target_delay;
 	boost::int64_t scaled_gain;
-  
+
 	if (delay >= target_delay)
 	{
 		if (m_slow_start)
@@ -3354,7 +3371,10 @@ void utp_socket_impl::tick(ptime const& now)
 
 		if (m_outbuf.size()) ++m_num_timeouts;
 
-		if (m_num_timeouts > m_sm->num_resends())
+		// a socket that has not been confirmed to actually have a live remote end
+		// (the IP may have been spoofed) fail on the first timeout. If we had
+		// heard anything from this peer, it would have been confirmed.
+		if (m_num_timeouts > m_sm->num_resends() || !m_confirmed)
 		{
 			// the connection is dead
 			m_error = asio::error::timed_out;
@@ -3391,7 +3411,7 @@ void utp_socket_impl::tick(ptime const& now)
 		TORRENT_ASSERT(m_cwnd >= 0);
 
 		m_timeout = now + milliseconds(packet_timeout());
-	
+
 		UTP_LOGV("%8p: timeout resetting cwnd:%d\n"
 			, this, int(m_cwnd >> 16));
 
@@ -3502,15 +3522,15 @@ void utp_socket_impl::check_receive_buffers() const
 void utp_socket_impl::check_invariant() const
 {
 	for (int i = m_outbuf.cursor();
-		i != int((m_outbuf.cursor() + m_outbuf.span()) & ACK_MASK); 
+		i != int((m_outbuf.cursor() + m_outbuf.span()) & ACK_MASK);
 		i = (i + 1) & ACK_MASK)
 	{
 		packet* p = (packet*)m_outbuf.at(i);
-		if (m_mtu_seq == i && m_mtu_seq != 0 && p)
+		if (!p) continue;
+		if (m_mtu_seq == i && m_mtu_seq != 0)
 		{
 			TORRENT_ASSERT(p->mtu_probe);
 		}
-		if (!p) continue;
 		TORRENT_ASSERT(((utp_header*)p->buf)->seq_nr == i);
 	}
 

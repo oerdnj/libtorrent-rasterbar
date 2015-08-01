@@ -2320,6 +2320,10 @@ namespace libtorrent
 		if (!m_bitfield_received) incoming_have_none();
 		if (is_disconnecting()) return;
 
+		// slow-start
+		if (m_slow_start)
+			m_desired_queue_size += 1;
+
 		update_desired_queue_size();
 
 #ifndef TORRENT_DISABLE_EXTENSIONS
@@ -4319,6 +4323,22 @@ namespace libtorrent
 
 		m_ignore_bandwidth_limits = m_ses.settings().ignore_limits_on_local_network
 			&& on_local_network();
+
+		// if our download rate isn't increasing significantly anymore, end slow
+		// start. The 10kB is to have some slack here.
+		// we can't dp this when we're choked, because we aren't sending any
+		// requests yet, so there hasn't been an opportunity to ramp up the
+		// connection yet.
+		if (m_slow_start
+			&& !m_peer_choked
+			&& m_downloaded_last_second > 0
+			&& m_downloaded_last_second + 5000
+				>= m_statistics.last_payload_downloaded())
+		{
+			m_slow_start = false;
+		}
+		m_downloaded_last_second = m_statistics.last_payload_downloaded();
+		m_uploaded_last_second = m_statistics.last_payload_uploaded();
 
 		m_statistics.second_tick(tick_interval_ms);
 

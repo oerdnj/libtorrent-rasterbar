@@ -35,6 +35,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/torrent_info.hpp"
 #include "libtorrent/random.hpp"
 #include "libtorrent/create_torrent.hpp"
+#include "libtorrent/alert_types.hpp"
+#include "libtorrent/bencode.hpp"
 
 #include "test.hpp"
 #include "setup_transfer.hpp"
@@ -71,7 +73,7 @@ std::vector<char> generate_resume_data(torrent_info* ti)
 	rd["file-version"] = 1;
 	rd["info-hash"] = ti->info_hash().to_string();
 	rd["blocks per piece"] = (std::max)(1, ti->piece_length() / 0x4000);
-	rd["pieces"] = std::string(ti->num_pieces(), '\0');
+	rd["pieces"] = std::string(ti->num_pieces(), '\x01');
 
 	rd["total_uploaded"] = 1337;
 	rd["total_downloaded"] = 1338;
@@ -126,7 +128,7 @@ torrent_status test_resume_flags(int flags)
 	boost::intrusive_ptr<torrent_info> ti = generate_torrent();
 
 	add_torrent_params p;
-	
+
 	p.ti = ti;
 	p.flags = flags;
 #ifdef TORRENT_WINDOWS
@@ -164,8 +166,108 @@ void default_tests(torrent_status const& s)
 	TEST_EQUAL(s.completed_time, 1348);
 }
 
+void test_piece_priorities()
+{
+	session ses;
+	boost::intrusive_ptr<torrent_info> ti = generate_torrent();
+	add_torrent_params p;
+	p.ti = ti;
+	p.save_path = ".";
+	torrent_handle h = ses.add_torrent(p);
+
+	h.piece_priority(0, 0);
+	h.piece_priority(ti->num_pieces()-1, 0);
+
+	h.save_resume_data();
+	std::auto_ptr<alert> a = wait_for_alert(ses, save_resume_data_alert::alert_type);
+
+	TEST_CHECK(a.get());
+	if (save_resume_data_alert* ra = alert_cast<save_resume_data_alert>(a.get()))
+	{
+		fprintf(stderr, "%s\n", ra->resume_data->to_string().c_str());
+		entry::string_type prios = (*ra->resume_data)["piece_priority"].string();
+		TEST_EQUAL(prios.size(), ti->num_pieces());
+		TEST_EQUAL(prios[0], '\0');
+		TEST_EQUAL(prios[1], '\x01');
+		TEST_EQUAL(prios[ti->num_pieces()-1], '\0');
+
+		bencode(std::back_inserter(p.resume_data), *ra->resume_data);
+	}
+
+	ses.remove_torrent(h);
+
+	// now, make sure the piece priorities are loaded correctly
+	h = ses.add_torrent(p);
+	TEST_EQUAL(h.piece_priority(0), 0);
+	TEST_EQUAL(h.piece_priority(1), 1);
+	TEST_EQUAL(h.piece_priority(ti->num_pieces()-1), 0);
+}
+
+void test_seed_mode(bool file_prio, bool pieces_have, bool piece_prio)
+{
+	fprintf(stderr, "test_seed_mode file_prio: %d pieces_have: %d piece_prio: %d\n"
+		, file_prio, pieces_have, piece_prio);
+
+	session ses;
+	boost::intrusive_ptr<torrent_info> ti = generate_torrent();
+	add_torrent_params p;
+	p.ti = ti;
+	p.save_path = ".";
+
+	entry rd;
+
+	rd["file-format"] = "libtorrent resume file";
+	rd["file-version"] = 1;
+	rd["info-hash"] = ti->info_hash().to_string();
+	rd["blocks per piece"] = (std::max)(1, ti->piece_length() / 0x4000);
+
+	if (file_prio)
+	{
+		// this should take it out of seed_mode
+		entry::list_type& file_prio = rd["file_priority"].list();
+		file_prio.push_back(entry(0));
+	}
+
+	std::string pieces(ti->num_pieces(), '\x01');
+	if (pieces_have)
+	{
+		pieces[0] = '\0';
+	}
+	rd["pieces"] = pieces;
+
+	std::string pieces_prio(ti->num_pieces(), '\x01');
+	if (piece_prio)
+	{
+		pieces_prio[0] = '\0';
+	}
+	rd["piece_priority"] = pieces_prio;
+
+	rd["seed_mode"] = 1;
+
+	bencode(back_inserter(p.resume_data), rd);
+
+	torrent_handle h = ses.add_torrent(p);
+
+	torrent_status s = h.status();
+	if (file_prio || piece_prio || pieces_have)
+	{
+		TEST_EQUAL(s.seed_mode, false);
+	}
+	else
+	{
+		TEST_EQUAL(s.seed_mode, true);
+	}
+}
+
 int test_main()
 {
+	test_seed_mode(true, false, false);
+	test_seed_mode(false, true, false);
+	test_seed_mode(false, false, true);
+	test_seed_mode(false, false, false);
+
+	test_piece_priorities();
+
 	torrent_status s;
 
 	fprintf(stderr, "flags: 0\n");

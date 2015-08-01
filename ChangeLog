@@ -1,3 +1,21 @@
+1.0.6 release
+
+	* fixed uTP vulnerability
+	* make utf8 conversions more lenient
+	* fix loading of piece priorities from resume data
+	* improved seed-mode handling (seed-mode will now automatically be left when
+	  performing operations implying it's not a seed)
+	* fixed issue with file priorities and override resume data
+	* fix request queue size performance issue
+	* slightly improve UDP tracker performance
+	* fix http scrapes
+	* add missing port mapping functions to python binding
+	* fix bound-checking issue in bdecoder
+	* expose missing dht_settings fields to python
+	* add function to query the DHT settings
+	* fix bug in 'dont_count_slow_torrents' feature, which would start too many
+	  torrents
+
 1.0.5 release
 
 	* improve ip_voter to avoid flapping

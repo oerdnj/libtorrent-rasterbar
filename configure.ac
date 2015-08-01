@@ -1,11 +1,11 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-# $Id: configure.ac 11072 2015-05-11 04:16:49Z arvidn $
+# $Id$
 
 AC_PREREQ([2.63])
 
-AC_INIT([libtorrent-rasterbar],[1.0.5],[arvid@libtorrent.org],
+AC_INIT([libtorrent-rasterbar],[1.0.6],[arvid@libtorrent.org],
         [libtorrent-rasterbar],[http://www.libtorrent.org])
 AC_CONFIG_SRCDIR([src/torrent.cpp])
 AC_CONFIG_AUX_DIR([build-aux])
