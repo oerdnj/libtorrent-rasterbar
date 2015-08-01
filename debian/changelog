@@ -3,6 +3,8 @@ libtorrent-rasterbar (1.0.5-1) UNRELEASED; urgency=medium
   * New upstream release (Closes: #785676).
    - Bump library soname.
   * Drop fix-python-build-missing-byteshpp.patch, applied upstream.
+  * python-clean-without-bjam.patch: Only use bjam when '--bjam'
+    is passed explicitly.
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Sat, 01 Aug 2015 12:56:07 -0400
 
