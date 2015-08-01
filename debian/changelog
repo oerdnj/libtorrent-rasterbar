@@ -1,4 +1,4 @@
-libtorrent-rasterbar (1.0.6-1) UNRELEASED; urgency=medium
+libtorrent-rasterbar (1.0.6-1) experimental; urgency=medium
 
   * New upstream release (Closes: #785676).
    - Bump library soname.
@@ -8,7 +8,7 @@ libtorrent-rasterbar (1.0.6-1) UNRELEASED; urgency=medium
   * Bump Standards-Version to 3.9.6, no changes.
   * Point debian/watch at GitHub.
 
- -- Andrew Starr-Bochicchio <asb@debian.org>  Sat, 01 Aug 2015 12:56:07 -0400
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Sat, 01 Aug 2015 18:03:37 -0400
 
 libtorrent-rasterbar (0.16.18-1) unstable; urgency=medium
 
