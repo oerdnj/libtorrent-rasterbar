@@ -6,8 +6,8 @@ Author: Andrew Starr-Bochicchio <asb@debian.org>
 
 Index: libtorrent-rasterbar/bindings/python/setup.py
 ===================================================================
---- libtorrent-rasterbar.orig/bindings/python/setup.py	2015-08-01 13:49:28.648535593 -0400
-+++ libtorrent-rasterbar/bindings/python/setup.py	2015-08-01 13:55:35.162311913 -0400
+--- libtorrent-rasterbar.orig/bindings/python/setup.py	2015-08-01 18:10:21.001621173 -0400
++++ libtorrent-rasterbar/bindings/python/setup.py	2015-08-01 18:10:20.997621106 -0400
 @@ -51,7 +51,7 @@
  ext = None
  packages = None
@@ -42,4 +42,4 @@ Index: libtorrent-rasterbar/bindings/python/setup.py
 +			libraries = ['torrent-rasterbar'] + parse_cmd(extra_cmd, '-l'))]
  
  setup(name = 'python-libtorrent',
- 	version = '1.0.5',
+ 	version = '1.0.6',
