@@ -5,6 +5,7 @@ libtorrent-rasterbar (1.0.5-1) UNRELEASED; urgency=medium
   * Drop fix-python-build-missing-byteshpp.patch, applied upstream.
   * python-clean-without-bjam.patch: Only use bjam when '--bjam'
     is passed explicitly.
+  * Bump Standards-Version to 3.9.6, no changes.
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Sat, 01 Aug 2015 12:56:07 -0400
 
