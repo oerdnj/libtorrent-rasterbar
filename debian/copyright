@@ -3,7 +3,7 @@ Packaged-By: Cristian Greco <cristian.debian@gmail.com>
 Packaged-Date: Wed, 02 Jul 2008 10:46:21 +0200
 Upstream-Name: libtorrent
 Upstream-Contact: Arvid Norberg <arvid@rasterbar.com>
-Source: http://code.google.com/p/libtorrent/downloads/list
+Source: https://github.com/arvidn/libtorrent/releases
 
 
 Files: debian/*

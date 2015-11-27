@@ -1,6 +1,7 @@
 libtorrent-rasterbar (1.0.7-1) UNRELEASED; urgency=medium
 
   * New upstream release (Closes: #806396).
+  * Update Source link in debian/copyright.
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Fri, 27 Nov 2015 11:26:46 -0500
 
