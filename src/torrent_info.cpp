@@ -812,7 +812,7 @@ namespace libtorrent
 		if (ret < 0) return;
 
 		lazy_entry e;
-		if (buf.size() == 0 || lazy_bdecode(&buf[0], &buf[0] + buf.size(), e, ec) != 0)
+		if (lazy_bdecode(&buf[0], &buf[0] + buf.size(), e, ec) != 0)
 			return;
 		parse_torrent_file(e, ec, flags);
 
@@ -932,6 +932,13 @@ namespace libtorrent
 		std::pair<char const*, int> section = info.data_section();
 		h.update(section.first, section.second);
 		m_info_hash = h.final();
+
+		// the internal metadata size is only 24 bits
+		if (section.second >= (2<<24))
+		{
+			ec = errors::metadata_too_large;
+			return false;
+		}
 
 		// copy the info section
 		m_info_section_size = section.second;

@@ -193,6 +193,14 @@ POSSIBILITY OF SUCH DAMAGE.
 #else
 #define TORRENT_USE_IFADDRS 1
 #define TORRENT_USE_POSIX_MEMALIGN 1
+
+// posix_fallocate() is available under this condition
+#if _XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L
+#define TORRENT_HAS_FALLOCATE 1
+#else
+#define TORRENT_HAS_FALLOCATE 0
+#endif
+
 #endif
 
 #if __amd64__ || __i386__
@@ -315,7 +323,7 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #endif
 
-#if defined TORRENT_WINDOWS && !defined TORRENT_MINGW
+#if (defined _MSC_VER && _MSC_VER < 1900) && !defined TORRENT_MINGW
 
 #include <stdarg.h>
 
@@ -337,8 +345,6 @@ int snprintf(char* buf, int len, char const* fmt, ...)
 }
 
 #define strtoll _strtoi64
-#else
-#include <limits.h>
 #endif
 
 #if (defined(TORRENT_LOGGING) || defined(TORRENT_VERBOSE_LOGGING)) \

@@ -1125,7 +1125,8 @@ namespace libtorrent
 				// as part of DHT traffic. The fact that we got an incoming
 				// connection on this info-hash, means the other end, making this
 				// connection fished it out of the DHT chatter. That's suspicious.
-				m_ses.m_ip_filter.add_rule(m_remote.address(), m_remote.address(), 0);
+				m_ses.m_ip_filter.add_rule(m_remote.address(), m_remote.address()
+					, ip_filter::blocked);
 			}
 #endif
 			disconnect(errors::invalid_info_hash, 1);
@@ -4010,6 +4011,9 @@ namespace libtorrent
 
 	void peer_connection::superseed_piece(int replace_piece, int new_piece)
 	{
+		if (is_connecting()) return;
+		if (in_handshake()) return;
+
 		if (new_piece == -1)
 		{
 			if (m_superseed_piece[0] == -1) return;
@@ -4206,6 +4210,7 @@ namespace libtorrent
 		}
 
 		if (t->super_seeding()
+			&& t->ready_for_connections()
 			&& !m_peer_interested
 			&& m_became_uninterested + seconds(10) < now)
 		{
@@ -4561,7 +4566,7 @@ namespace libtorrent
 
 		// only add new piece-chunks if the send buffer is small enough
 		// otherwise there will be no end to how large it will be!
-		
+
 		boost::uint64_t upload_rate = int(m_statistics.upload_rate());
 
 		int buffer_size_watermark = int(upload_rate
@@ -4587,9 +4592,10 @@ namespace libtorrent
 		{
 			TORRENT_ASSERT(t->ready_for_connections());
 			peer_request& r = m_requests.front();
-			
+
 			TORRENT_ASSERT(r.piece >= 0);
 			TORRENT_ASSERT(r.piece < (int)m_have_piece.size());
+			TORRENT_ASSERT(r.piece < t->torrent_file().num_pieces());
 			TORRENT_ASSERT(t->have_piece(r.piece));
 			TORRENT_ASSERT(r.start + r.length <= t->torrent_file().piece_size(r.piece));
 			TORRENT_ASSERT(r.length > 0 && r.start >= 0);

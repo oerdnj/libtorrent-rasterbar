@@ -29,7 +29,6 @@ test_programs = \
   test_primitives            \
   test_http_parser           \
   test_magnet                \
-  test_natpmp                \
   test_packet_buffer         \
   test_read_piece            \
   test_resume                \
@@ -57,6 +56,7 @@ test_programs = \
   test_web_seed_redirect     \
   test_web_seed_socks4       \
   test_web_seed_socks5       \
+  test_web_seed_socks5_no_peers \
   test_web_seed_socks5_pw    \
   test_url_seed              \
   test_remap_files           \
@@ -121,7 +121,8 @@ EXTRA_DIST = Jamfile \
   pb.xml \
   upnp.xml \
   zeroes.gz \
-  utf8_test.txt
+  utf8_test.txt \
+  test_natpmp.cpp
 
 EXTRA_PROGRAMS = $(test_programs)
 
@@ -163,7 +164,6 @@ test_string_SOURCES = test_string.cpp
 test_primitives_SOURCES = test_primitives.cpp
 test_http_parser_SOURCES = test_http_parser.cpp
 test_magnet_SOURCES = test_magnet.cpp
-test_natpmp_SOURCES = test_natpmp.cpp
 test_packet_buffer_SOURCES = test_packet_buffer.cpp
 test_read_piece_SOURCES = test_read_piece.cpp
 test_storage_SOURCES = test_storage.cpp
@@ -191,6 +191,7 @@ test_web_seed_http_pw_SOURCES = test_web_seed_http_pw.cpp
 test_web_seed_redirect_SOURCES = test_web_seed_redirect.cpp
 test_web_seed_socks4_SOURCES = test_web_seed_socks4.cpp
 test_web_seed_socks5_SOURCES = test_web_seed_socks5.cpp
+test_web_seed_socks5_no_peers_SOURCES = test_web_seed_socks5_no_peers.cpp
 test_web_seed_socks5_pw_SOURCES = test_web_seed_socks5_pw.cpp
 test_url_seed_SOURCES = test_url_seed.cpp
 test_remap_files_SOURCES = test_remap_files.cpp

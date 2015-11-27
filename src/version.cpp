@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2008-2013, Arvid Norberg
+Copyright (c) 2015, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,14 +30,14 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#include "test.hpp"
+#include "libtorrent/version.hpp"
 
-int EXPORT run_http_suite(int proxy, char const* protocol
-	, bool test_url_seed, bool chunked_encoding = false, bool test_ban = false
-	, bool keepalive = true, bool test_rename = false, bool proxy_peers = true);
+namespace libtorrent {
 
-void EXPORT test_transfer(libtorrent::session& ses
-	, boost::intrusive_ptr<libtorrent::torrent_info> torrent_file
-	, int proxy = 0, int port = 0, char const* protocol = "http"
-	, bool url_seed = true, bool chunked_encoding = false
-	, bool test_ban = false, bool keepalive = true, bool proxy_peers = true);
+char const* version()
+{
+	return LIBTORRENT_VERSION;
+}
+
+}
+

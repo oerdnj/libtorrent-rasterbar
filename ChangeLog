@@ -1,3 +1,27 @@
+1.0.7 release
+
+	* fix bug where loading settings via load_state() would not trigger all
+	  appropriate actions
+	* fix bug where 32 bit builds could use more disk cache than the virtual
+	  address space (when set to automatic)
+	* fix support for torrents with > 500'000 pieces
+	* fix ip filter bug when banning peers
+	* fix IPv6 IP address resolution in URLs
+	* introduce run-time check for torrent info-sections beeing too large
+	* fix web seed bug when using proxy and proxy-peer-connections=false
+	* fix bug in magnet link parser
+	* introduce add_torrent_params flags to merge web seeds with resume data
+	  (similar to trackers)
+	* fix bug where dont_count_slow_torrents could not be disabled
+	* fix fallocate hack on linux (fixes corruption on some architectures)
+	* fix auto-manage bug with announce to tracker/lsd/dht limits
+	* improve DHT routing table to not create an unbalanced tree
+	* fix bug in uTP that would cause any connection taking more than one second
+	  to connect be timed out (introduced in the vulnerability path)
+	* fixed falling back to sending UDP packets direct when socks proxy fails
+	* fixed total_wanted bug (when setting file priorities in add_torrent_params)
+	* fix python3 compatibility with sha1_hash
+
 1.0.6 release
 
 	* fixed uTP vulnerability

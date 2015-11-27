@@ -271,7 +271,7 @@ namespace aux {
 		tu->system_time = min_time() + microsec(stime / 10);
 #endif
 	}
-#endif //TORRENT_STATS	
+#endif //TORRENT_STATS
 
 	struct seed_random_generator
 	{
@@ -331,8 +331,8 @@ namespace aux {
 #endif
 		TORRENT_SETTING(boolean, free_torrent_hashes)
 		TORRENT_SETTING(boolean, upnp_ignore_nonrouters)
- 		TORRENT_SETTING(integer, send_buffer_low_watermark)
- 		TORRENT_SETTING(integer, send_buffer_watermark)
+		TORRENT_SETTING(integer, send_buffer_low_watermark)
+		TORRENT_SETTING(integer, send_buffer_watermark)
 		TORRENT_SETTING(integer, send_buffer_watermark_factor)
 #ifndef TORRENT_NO_DEPRECATE
 		TORRENT_SETTING(boolean, auto_upload_slots)
@@ -733,9 +733,20 @@ namespace aux {
 #endif
 
 		error_code ec;
-		if (!listen_interface) listen_interface = "0.0.0.0";
+		if (!listen_interface || listen_interface[0] == '\0') listen_interface = "0.0.0.0";
 		m_listen_interface = tcp::endpoint(address::from_string(listen_interface, ec), listen_port_range.first);
-		TORRENT_ASSERT_VAL(!ec, ec);
+
+		if (ec)
+		{
+			m_listen_interface = tcp::endpoint(address_v4::any(), listen_port_range.first);
+			if (m_alerts.should_post<listen_failed_alert>())
+				m_alerts.post_alert(listen_failed_alert(m_listen_interface
+					, listen_failed_alert::parse_addr, ec, listen_failed_alert::tcp));
+#if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_LOGGING || defined TORRENT_ERROR_LOGGING
+			session_log("failed to parse listen interface: \"%s\": (%d) %s"
+				, listen_interface ? listen_interface : "", ec.value(), ec.message().c_str());
+#endif
+		}
 
 		// ---- generate a peer id ----
 		static seed_random_generator seeder;
@@ -1341,7 +1352,7 @@ namespace aux {
 		TORRENT_ASSERT(is_network_thread());
 
 		lazy_entry const* settings;
-	  
+
 		if (e->type() != lazy_entry::dict_t) return;
 
 		for (int i = 0; i < int(sizeof(all_settings)/sizeof(all_settings[0])); ++i)
@@ -1349,13 +1360,19 @@ namespace aux {
 			session_category const& c = all_settings[i];
 			settings = e->dict_find_dict(c.name);
 			if (!settings) continue;
-			load_struct(*settings, reinterpret_cast<char*>(this) + c.offset, c.map, c.num_entries);
+			if (c.offset == offsetof(session_impl, m_settings))
+			{
+				// load settings into a local variable so we can update the settings
+				// via the normal set_settings() path
+				session_settings sett;
+				load_struct(*settings, reinterpret_cast<char*>(&sett), c.map, c.num_entries);
+				set_settings(sett);
+			}
+			else
+			{
+				load_struct(*settings, reinterpret_cast<char*>(this) + c.offset, c.map, c.num_entries);
+			}
 		}
-		
-		update_rate_settings();
-		update_connections_limit();
-		update_unchoke_limit();
-		m_alerts.set_alert_queue_size_limit(m_settings.alert_queue_size);
 
 		// in case we just set a socks proxy, we might have to
 		// open the socks incoming connection
@@ -4194,7 +4211,7 @@ retry:
 			boost::shared_ptr<torrent> t;
 			do
 			{
-		  		t = m_dht_torrents.front().lock();
+				t = m_dht_torrents.front().lock();
 				m_dht_torrents.pop_front();
 			}
 			while (!t && !m_dht_torrents.empty());
@@ -4212,7 +4229,7 @@ retry:
 		++m_next_dht_torrent;
 		if (m_next_dht_torrent == m_torrents.end())
 			m_next_dht_torrent = m_torrents.begin();
-  	}
+	}
 #endif
 
 	void session_impl::on_lsd_announce(error_code const& e)
@@ -4262,23 +4279,25 @@ retry:
 				|| t->state() == torrent_status::queued_for_checking))
 				continue;
 
-			--dht_limit;
-			--lsd_limit;
-			--tracker_limit;
-			t->set_announce_to_dht(dht_limit >= 0);
-			t->set_announce_to_trackers(tracker_limit >= 0);
-			t->set_announce_to_lsd(lsd_limit >= 0);
-   
 			if (!t->is_paused() && t->is_inactive()
 				&& hard_limit > 0)
 			{
 				// the hard limit takes inactive torrents into account, but the
 				// download and seed limits don't.
+
+				t->set_announce_to_dht(--dht_limit >= 0);
+				t->set_announce_to_trackers(--tracker_limit >= 0);
+				t->set_announce_to_lsd(--lsd_limit >= 0);
+
 				continue;
 			}
 
 			if (type_limit > 0 && hard_limit > 0)
 			{
+				t->set_announce_to_dht(--dht_limit >= 0);
+				t->set_announce_to_trackers(--tracker_limit >= 0);
+				t->set_announce_to_lsd(--lsd_limit >= 0);
+
 				--hard_limit;
 				--type_limit;
 #if defined TORRENT_VERBOSE_LOGGING || defined TORRENT_LOGGING
@@ -4293,6 +4312,9 @@ retry:
 #endif
 				// use graceful pause for auto-managed torrents
 				t->set_allow_peers(false, true);
+				t->set_announce_to_dht(false);
+				t->set_announce_to_trackers(false);
+				t->set_announce_to_lsd(false);
 			}
 		}
 	}
@@ -4330,7 +4352,7 @@ retry:
 			lsd_limit = (std::numeric_limits<int>::max)();
 		if (tracker_limit == -1)
 			tracker_limit = (std::numeric_limits<int>::max)();
-            
+
 		for (torrent_map::iterator i = m_torrents.begin()
 			, end(m_torrents.end()); i != end; ++i)
 		{
@@ -4397,7 +4419,7 @@ retry:
 	{
 		TORRENT_ASSERT(is_network_thread());
 		if (m_allowed_upload_slots == 0) return;
-	
+
 		std::vector<policy::peer*> opt_unchoke;
 
 		for (connection_map::iterator i = m_connections.begin()

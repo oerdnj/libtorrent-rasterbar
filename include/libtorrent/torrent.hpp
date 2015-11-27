@@ -740,7 +740,10 @@ namespace libtorrent
 		}
 
 		bool is_inactive() const
-		{ return m_inactive; }
+		{
+			if (!settings().dont_count_slow_torrents) return false;
+			return m_inactive;
+		}
 
 		std::string save_path() const;
 		alert_manager& alerts() const;
@@ -1425,6 +1428,11 @@ namespace libtorrent
 		// if this is set, accept the save path saved in the resume data, if
 		// present
 		bool m_use_resume_save_path:1;
+
+		// if set to true, add web seed URLs loaded from resume
+		// data into this torrent instead of replacing the ones from the .torrent
+		// file
+		bool m_merge_resume_http_seeds:1;
 
 #if TORRENT_USE_ASSERTS
 	public:
