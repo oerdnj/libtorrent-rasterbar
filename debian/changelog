@@ -2,6 +2,8 @@ libtorrent-rasterbar (1.0.7-1) UNRELEASED; urgency=medium
 
   * New upstream release (Closes: #806396).
   * Update Source link in debian/copyright.
+  * debian/patches/missing_rst_file.patch: Add file missing
+    from upstream distribution.
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Fri, 27 Nov 2015 11:26:46 -0500
 
