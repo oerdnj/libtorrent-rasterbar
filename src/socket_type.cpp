@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2009, Arvid Norberg
+Copyright (c) 2009-2014, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -142,7 +142,7 @@ namespace libtorrent
 	s.get<ssl_stream<t> >()->async_shutdown(boost::bind(&on_close_socket, &s, holder)); \
 	break;
 
-		switch(s.type())
+		switch (s.type())
 		{
 			CASE(stream_socket)
 			CASE(socks5_stream)
@@ -171,8 +171,8 @@ namespace libtorrent
 				get<http_stream>()->~http_stream();
 				break;
 			case socket_type_int_impl<utp_stream>::value:
-					  get<utp_stream>()->~utp_stream();
-					  break;
+				get<utp_stream>()->~utp_stream();
+				break;
 #if TORRENT_USE_I2P
 			case socket_type_int_impl<i2p_stream>::value:
 				get<i2p_stream>()->~i2p_stream();

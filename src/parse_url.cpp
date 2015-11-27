@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2008, Arvid Norberg
+Copyright (c) 2008-2014, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@ namespace libtorrent
 		std::string hostname; // hostname only
 		std::string auth; // user:pass
 		std::string protocol; // http or https for instance
-		int port = 80;
+		int port = -1;
 
 		std::string::iterator at;
 		std::string::iterator colon;
@@ -57,8 +57,6 @@ namespace libtorrent
 		std::string::iterator end
 			= std::find(url.begin(), url.end(), ':');
 		protocol.assign(start, end);
-
-		if (protocol == "https") port = 443;
 
 		if (end == url.end())
 		{
@@ -103,16 +101,19 @@ namespace libtorrent
 				ec = errors::expected_close_bracket_in_address;
 				goto exit;
 			}
+			// strip the brackets
+			hostname.assign(start + 1, port_pos);
 			port_pos = std::find(port_pos, url.end(), ':');
 		}
 		else
 		{
 			port_pos = std::find(start, url.end(), ':');
+			if (port_pos < end) hostname.assign(start, port_pos);
+			else hostname.assign(start, end);
 		}
 
 		if (port_pos < end)
 		{
-			hostname.assign(start, port_pos);
 			++port_pos;
 			for (std::string::iterator i = port_pos; i < end; ++i)
 			{
@@ -121,10 +122,6 @@ namespace libtorrent
 				goto exit;
 			}
 			port = std::atoi(std::string(port_pos, end).c_str());
-		}
-		else
-		{
-			hostname.assign(start, end);
 		}
 
 		start = end;

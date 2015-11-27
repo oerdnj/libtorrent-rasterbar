@@ -3,7 +3,7 @@ libtorrent manual
 =================
 
 :Author: Arvid Norberg, arvid@libtorrent.org
-:Version: 0.16.18
+:Version: 1.0.7
 
 .. contents:: Table of contents
   :depth: 2
@@ -254,7 +254,7 @@ Build features:
 |                          | * ``verbose`` - verbose peer wire logging.         |
 |                          | * ``errors`` - like verbose, but limited to errors.|
 +--------------------------+----------------------------------------------------+
-| ``dht-support``          | * ``on`` - build with support for tracker less     |
+| ``dht``                  | * ``on`` - build with support for tracker less     |
 |                          |   torrents and DHT support.                        |
 |                          | * ``logging`` - build with DHT support and verbose |
 |                          |   logging of the DHT protocol traffic.             |
@@ -272,6 +272,11 @@ Build features:
 |                          | * ``production`` - assertion failures are logged   |
 |                          |   to ``asserts.log`` in the current working        |
 |                          |   directory, but won't abort the process.          |
+|                          |   The file they are logged to can be customized    |
+|                          |   by setting the global pointer ``extern char      |
+|                          |   const* libtorrent_assert_log`` to a different    |
+|                          |   filename.                                        |
+|                          | * ``system`` use the libc assert macro             |
 +--------------------------+----------------------------------------------------+
 | ``geoip``                | * ``off`` - geo ip lookups disabled                |
 |                          | * ``static`` - MaxMind_ geo ip lookup code linked  |
@@ -298,11 +303,13 @@ Build features:
 |                          |   connections. The shipped public domain SHA-1     |
 |                          |   implementation is used.                          |
 +--------------------------+----------------------------------------------------+
-| ``pool-allocators``      | * ``on`` - default, uses pool allocators for send  |
-|                          |   buffers.                                         |
-|                          | * ``off`` - uses ``malloc()`` and ``free()``       |
+| ``allocator``            | * ``pool`` - default, uses pool allocators for     |
+|                          |   send buffers.                                    |
+|                          | * ``system`` - uses ``malloc()`` and ``free()``    |
 |                          |   instead. Might be useful to debug buffer issues  |
 |                          |   with tools like electric fence or libgmalloc.    |
+|                          | * ``debug`` - instruments buffer usage to catch    |
+|                          |   bugs in libtorrent.                              |
 +--------------------------+----------------------------------------------------+
 | ``link``                 | * ``static`` - builds libtorrent as a static       |
 |                          |   library (.a / .lib)                              |
@@ -363,15 +370,6 @@ Build features:
 |                          | * ``on`` - force use of iconv                      |
 |                          | * ``off`` - force not using iconv (disables locale |
 |                          |   awareness except on windows).                    |
-+--------------------------+----------------------------------------------------+
-| ``asserts``              | * ``off`` - disable all asserts                    |
-|                          | * ``peoduction`` - enable asserts in release       |
-|                          |   builds, but don't abort, just log them to        |
-|                          |   ``extern char const* libtorrent_assert_log``.    |
-|                          | * ``on`` - enable asserts in debug builds (this is |
-|                          |   the default). On GNU systems, print a stack      |
-|                          |   trace of the assert and some more information.   |
-|                          | * ``system`` use the libc assert macro             |
 +--------------------------+----------------------------------------------------+
 | ``i2p``                  | * ``on`` - build with I2P support                  |
 |                          | * ``off`` - build without I2P support              |
@@ -625,6 +623,10 @@ defines you can use to control the build.
 |                                        | ``TORRENT_USE_OPENSSL`` or                      |
 |                                        | ``TORRENT_USE_GCRYPT`` must be defined.         |
 +----------------------------------------+-------------------------------------------------+
+| ``TORRENT_DISABLE_EXTENSIONS``         | When defined, libtorrent plugin support is      |
+|                                        | disabled along with support for the extension   |
+|                                        | handskake (BEP 10).                             |
++----------------------------------------+-------------------------------------------------+
 | ``_UNICODE``                           | On windows, this will cause the file IO         |
 |                                        | use wide character API, to properly support     |
 |                                        | non-ansi characters.                            |
@@ -649,7 +651,7 @@ defines you can use to control the build.
 | ``TORRENT_PRODUCTION_ASSERTS``         | Define to either 0 or 1. Enables assert logging |
 |                                        | in release builds.                              |
 +----------------------------------------+-------------------------------------------------+
-| ``TORRENT_NO_ASSERTS``                 | Disables all asserts.                           |
+| ``TORRENT_USE_ASSERTS``                | Define as 0 to disable asserts unconditionally. |
 +----------------------------------------+-------------------------------------------------+
 | ``TORRENT_USE_SYSTEM_ASSERTS``         | Uses the libc assert macro rather then the      |
 |                                        | custom one.                                     |

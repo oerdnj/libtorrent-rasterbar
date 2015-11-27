@@ -58,7 +58,7 @@ void test_running_torrent(boost::intrusive_ptr<torrent_info> info, size_type fil
 
 	// make sure we correctly handle the case where we pass in
 	// more values than there are files
-	p.file_priorities = &zeroes;
+	p.file_priorities = zeroes;
 
 	error_code ec;
 	torrent_handle h = ses.add_torrent(p, ec);
@@ -122,7 +122,7 @@ void test_running_torrent(boost::intrusive_ptr<torrent_info> info, size_type fil
 			std::auto_ptr<alert> al = ses.pop_alert();
 			assert(al.get());
 			std::cout << "  " << al->message() << std::endl;
-			if (read_piece_alert* rpa = dynamic_cast<read_piece_alert*>(al.get()))
+			if (read_piece_alert* rpa = alert_cast<read_piece_alert>(al.get()))
 			{
 				std::cout << "SUCCEEDED!" << std::endl;
 				passed = true;
@@ -138,24 +138,62 @@ void test_running_torrent(boost::intrusive_ptr<torrent_info> info, size_type fil
 	}
 }
 
+void test_total_wanted()
+{
+	file_storage fs;
+
+	fs.add_file("test_torrent_dir4/tmp1", 1024);
+	fs.add_file("test_torrent_dir4/tmp2", 1024);
+	fs.add_file("test_torrent_dir4/tmp3", 1024);
+	fs.add_file("test_torrent_dir4/tmp4", 1024);
+
+	libtorrent::create_torrent t(fs, 1024);
+	std::vector<char> tmp;
+	bencode(std::back_inserter(tmp), t.generate());
+	error_code ec;
+	boost::intrusive_ptr<torrent_info> info(new torrent_info(&tmp[0], tmp.size(), ec));
+
+	session ses(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48130, 48140), "0.0.0.0", 0);
+
+	add_torrent_params p;
+	p.ti = info;
+	p.save_path = ".";
+
+	// we just want 1 out of 4 files, 1024 out of 4096 bytes
+	p.file_priorities.resize(4, 0);
+	p.file_priorities[1] = 1;
+
+	p.ti = info;
+
+	torrent_handle h = ses.add_torrent(p);
+
+	torrent_status st = h.status();
+	std::cout << "total_wanted: " << st.total_wanted << " : " << 1024 << std::endl;
+	TEST_EQUAL(st.total_wanted, 1024);
+	std::cout << "total_wanted_done: " << st.total_wanted_done << " : 0" << std::endl;
+	TEST_EQUAL(st.total_wanted_done, 0);
+}
+
 int test_main()
 {
+	test_total_wanted();
+
 	{
 		remove("test_torrent_dir2/tmp1");
 		remove("test_torrent_dir2/tmp2");
 		remove("test_torrent_dir2/tmp3");
 		file_storage fs;
-		size_type file_size = 1 * 1024 * 1024 * 1024;
+		size_type file_size = 256 * 1024;
 		fs.add_file("test_torrent_dir2/tmp1", file_size);
 		fs.add_file("test_torrent_dir2/tmp2", file_size);
 		fs.add_file("test_torrent_dir2/tmp3", file_size);
-		libtorrent::create_torrent t(fs, 4 * 1024 * 1024);
+		libtorrent::create_torrent t(fs, 128 * 1024);
 		t.add_tracker("http://non-existing.com/announce");
 
-		std::vector<char> piece(4 * 1024 * 1024);
+		std::vector<char> piece(128 * 1024);
 		for (int i = 0; i < int(piece.size()); ++i)
 			piece[i] = (i % 26) + 'A';
-		
+
 		// calculate the hash for all pieces
 		sha1_hash ph = hasher(&piece[0], piece.size()).final();
 		int num = t.num_pieces();
@@ -177,8 +215,7 @@ int test_main()
 		file_storage fs;
 
 		fs.add_file("test_torrent_dir2/tmp1", 0);
-		libtorrent::create_torrent t(fs, 4 * 1024 * 1024);
-		t.add_tracker("http://non-existing.com/announce");
+		libtorrent::create_torrent t(fs, 128 * 1024, 6);
 
 		std::vector<char> tmp;
 		std::back_insert_iterator<std::vector<char> > out(tmp);

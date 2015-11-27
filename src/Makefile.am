@@ -1,3 +1,5 @@
+AUTOMAKE_OPTIONS = subdir-objects
+
 lib_LTLIBRARIES = libtorrent-rasterbar.la
 
 if ENABLE_DHT
@@ -9,7 +11,21 @@ KADEMLIA_SOURCES = \
   kademlia/refresh.cpp          \
   kademlia/routing_table.cpp    \
   kademlia/rpc_manager.cpp      \
-  kademlia/traversal_algorithm.cpp
+  kademlia/logging.cpp          \
+  kademlia/traversal_algorithm.cpp \
+  kademlia/get_peers.cpp        \
+  kademlia/get_item.cpp         \
+  kademlia/item.cpp             \
+  ../ed25519/src/add_scalar.cpp \
+  ../ed25519/src/fe.cpp         \
+  ../ed25519/src/ge.cpp         \
+  ../ed25519/src/key_exchange.cpp \
+  ../ed25519/src/keypair.cpp    \
+  ../ed25519/src/sc.cpp         \
+  ../ed25519/src/seed.cpp       \
+  ../ed25519/src/sha512.cpp     \
+  ../ed25519/src/sign.cpp       \
+  ../ed25519/src/verify.cpp
 endif
 
 if WITH_SHIPPED_GEOIP
@@ -23,6 +39,7 @@ endif
 libtorrent_rasterbar_la_SOURCES = \
   web_connection_base.cpp     \
   alert.cpp                       \
+  alert_manager.cpp               \
   allocator.cpp                   \
   asio.cpp                        \
   assert.cpp                      \
@@ -47,6 +64,7 @@ libtorrent_rasterbar_la_SOURCES = \
   file_pool.cpp                   \
   file_storage.cpp                \
   gzip.cpp                        \
+  hasher.cpp                      \
   http_connection.cpp             \
   http_parser.cpp                 \
   http_seed_connection.cpp        \
@@ -56,6 +74,7 @@ libtorrent_rasterbar_la_SOURCES = \
   identify_client.cpp             \
   instantiate_connection.cpp      \
   ip_filter.cpp                   \
+  ip_voter.cpp                    \
   lazy_bdecode.cpp                \
   logger.cpp                      \
   lsd.cpp                         \
@@ -72,7 +91,6 @@ libtorrent_rasterbar_la_SOURCES = \
   policy.cpp                      \
   puff.cpp                        \
   random.cpp                      \
-  rsa.cpp                         \
   rss.cpp                         \
   session.cpp                     \
   session_impl.cpp                \
@@ -101,6 +119,8 @@ libtorrent_rasterbar_la_SOURCES = \
   utp_socket_manager.cpp          \
   utp_stream.cpp                  \
   web_peer_connection.cpp         \
+  xml_parse.cpp                   \
+  version.cpp                     \
   \
   $(KADEMLIA_SOURCES)             \
   $(GEOIP_SOURCES)                \
@@ -113,8 +133,8 @@ libtorrent_rasterbar_la_LDFLAGS = -version-info $(INTERFACE_VERSION_INFO)
 libtorrent_rasterbar_la_LIBADD = @BOOST_SYSTEM_LIB@ @OPENSSL_LIBS@
 
 #AM_CXXFLAGS= -ftemplate-depth-100 -I$(top_srcdir)/include @DEBUGFLAGS@ @OPENSSL_INCLUDES@
-#AM_CPPFLAGS = -ftemplate-depth-100 -I$(top_srcdir)/include @DEBUGFLAGS@ @OPENSSL_INCLUDES@
-AM_CPPFLAGS = -ftemplate-depth-100 -I$(top_srcdir)/include @DEBUGFLAGS@ @OPENSSL_INCLUDES@
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/ed25519/src @DEBUGFLAGS@ @OPENSSL_INCLUDES@
+AM_CFLAGS = -I$(top_srcdir)/ed25519/src -std=c99
 
 #AM_CFLAGS= -I$(top_srcdir)/include @DEBUGFLAGS@
 #AM_LDFLAGS = $(LDFLAGS) @BOOST_SYSTEM_LIB@ @BOOST_FILESYSTEM_LIB@ @BOOST_THREAD_LIB@ @OPENSSL_LDFLAGS@ @OPENSSL_LIBS@

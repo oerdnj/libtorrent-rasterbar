@@ -11,9 +11,7 @@
 using namespace boost::python;
 using namespace libtorrent;
 
-extern void dict_to_add_torrent_params(dict params
-    , add_torrent_params& p, std::vector<char>& rd
-	 , std::vector<boost::uint8_t>& fp);
+extern void dict_to_add_torrent_params(dict params, add_torrent_params& p);
 
 namespace {
 
@@ -22,17 +20,17 @@ namespace {
     {
         add_torrent_params p;
 
-        std::vector<char> resume_buf;
-        std::vector<boost::uint8_t> files_buf;
-        dict_to_add_torrent_params(params, p, resume_buf, files_buf);
+        dict_to_add_torrent_params(params, p);
 
         allow_threading_guard guard;
 
+		  p.url = uri;
+
 #ifndef BOOST_NO_EXCEPTIONS
-        return add_magnet_uri(s, uri, p);
+        return s.add_torrent(p);
 #else
         error_code ec;
-        return add_magnet_uri(s, uri, p, ec);
+        return s.add_torrent(p, ec);
 #endif
     }
 #endif
@@ -57,7 +55,7 @@ namespace {
 		list nodes_list;
 		for (std::vector<std::pair<std::string, int> >::const_iterator i = p.dht_nodes.begin()
 			, end(p.dht_nodes.end()); i != end; ++i)
-			tracker_list.append(make_tuple(i->first, i->second));
+			tracker_list.append(boost::python::make_tuple(i->first, i->second));
 		ret["dht_nodes"] =  nodes_list;
 		ret["info_hash"] = p.info_hash;
 		ret["name"] = p.name;

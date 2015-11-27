@@ -36,6 +36,67 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/lazy_entry.hpp"
 #include "libtorrent/magnet_uri.hpp"
 
+int load_file(std::string const& filename, std::vector<char>& v, libtorrent::error_code& ec, int limit = 8000000)
+{
+	ec.clear();
+	FILE* f = fopen(filename.c_str(), "rb");
+	if (f == NULL)
+	{
+		ec.assign(errno, boost::system::get_generic_category());
+		return -1;
+	}
+
+	int r = fseek(f, 0, SEEK_END);
+	if (r != 0)
+	{
+		ec.assign(errno, boost::system::get_generic_category());
+		fclose(f);
+		return -1;
+	}
+	long s = ftell(f);
+	if (s < 0)
+	{
+		ec.assign(errno, boost::system::get_generic_category());
+		fclose(f);
+		return -1;
+	}
+
+	if (s > limit)
+	{
+		fclose(f);
+		return -2;
+	}
+
+	r = fseek(f, 0, SEEK_SET);
+	if (r != 0)
+	{
+		ec.assign(errno, boost::system::get_generic_category());
+		fclose(f);
+		return -1;
+	}
+
+	v.resize(s);
+	if (s == 0)
+	{
+		fclose(f);
+		return 0;
+	}
+
+	r = fread(&v[0], 1, v.size(), f);
+	if (r < 0)
+	{
+		ec.assign(errno, boost::system::get_generic_category());
+		fclose(f);
+		return -1;
+	}
+
+	fclose(f);
+
+	if (r != s) return -3;
+
+	return 0;
+}
+
 int main(int argc, char* argv[])
 {
 	using namespace libtorrent;
@@ -52,15 +113,15 @@ int main(int argc, char* argv[])
 	if (argc > 2) item_limit = atoi(argv[2]);
 	if (argc > 3) depth_limit = atoi(argv[3]);
 
-	int size = file_size(argv[1]);
-	if (size > 40 * 1000000)
-	{
-		fprintf(stderr, "file too big (%d), aborting\n", size);
-		return 1;
-	}
-	std::vector<char> buf(size);
+	std::vector<char> buf;
 	error_code ec;
 	int ret = load_file(argv[1], buf, ec, 40 * 1000000);
+	if (ret == -1)
+	{
+		fprintf(stderr, "file too big, aborting\n");
+		return 1;
+	}
+
 	if (ret != 0)
 	{
 		fprintf(stderr, "failed to load file: %s\n", ec.message().c_str());
@@ -127,24 +188,25 @@ int main(int argc, char* argv[])
 		, make_magnet_uri(t).c_str()
 		, t.name().c_str()
 		, t.num_files());
-	int index = 0;
-	for (torrent_info::file_iterator i = t.begin_files();
-		i != t.end_files(); ++i, ++index)
+	file_storage const& st = t.files();
+	for (int i = 0; i < st.num_files(); ++i)
 	{
-		int first = t.map_file(index, 0, 0).piece;
-		int last = t.map_file(index, (std::max)(size_type(i->size)-1, size_type(0)), 0).piece;
-		printf("  %11" PRId64 " %c%c%c%c [ %4d, %4d ] %7u %s %s %s%s\n"
-			, i->size
-			, (i->pad_file?'p':'-')
-			, (i->executable_attribute?'x':'-')
-			, (i->hidden_attribute?'h':'-')
-			, (i->symlink_attribute?'l':'-')
+		int first = st.map_file(i, 0, 0).piece;
+		int last = st.map_file(i, (std::max)(size_type(st.file_size(i))-1, size_type(0)), 0).piece;
+		int flags = st.file_flags(i);
+		printf(" %8" PRIx64 " %11" PRId64 " %c%c%c%c [ %5d, %5d ] %7u %s %s %s%s\n"
+			, st.file_offset(i)
+			, st.file_size(i)
+			, ((flags & file_storage::flag_pad_file)?'p':'-')
+			, ((flags & file_storage::flag_executable)?'x':'-')
+			, ((flags & file_storage::flag_hidden)?'h':'-')
+			, ((flags & file_storage::flag_symlink)?'l':'-')
 			, first, last
-			, boost::uint32_t(t.files().mtime(*i))
-			, t.files().hash(*i) != sha1_hash(0) ? to_hex(t.files().hash(*i).to_string()).c_str() : ""
-			, t.files().file_path(*i).c_str()
-			, i->symlink_attribute ? "-> ": ""
-			, i->symlink_attribute && i->symlink_index != -1 ? t.files().symlink(*i).c_str() : "");
+			, boost::uint32_t(st.mtime(i))
+			, st.hash(i) != sha1_hash(0) ? to_hex(st.hash(i).to_string()).c_str() : ""
+			, st.file_path(i).c_str()
+			, (flags & file_storage::flag_symlink) ? "-> " : ""
+			, (flags & file_storage::flag_symlink) ? st.symlink(i).c_str() : "");
 	}
 
 	return 0;

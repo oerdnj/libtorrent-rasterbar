@@ -67,6 +67,9 @@ void test_remap_files_gather(storage_mode_t storage_mode = storage_mode_sparse)
 		& ~alert::progress_notification
 		& ~alert::stats_notification;
 
+	session_proxy p1;
+	session_proxy p2;
+
 	session ses1(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48075, 49000), "0.0.0.0", 0, alert_mask);
 	session ses2(fingerprint("LT", 0, 1, 0, 0), std::make_pair(49075, 50000), "0.0.0.0", 0, alert_mask);
 
@@ -140,17 +143,7 @@ void test_remap_files_gather(storage_mode_t storage_mode = storage_mode_sparse)
 
 		if (i % 10 == 0)
 		{
-			std::cerr
-				<< "\033[32m" << int(st1.download_payload_rate / 1000.f) << "kB/s "
-				<< "\033[33m" << int(st1.upload_payload_rate / 1000.f) << "kB/s "
-				<< "\033[0m" << int(st1.progress * 100) << "% "
-				<< st1.num_peers
-				<< ": "
-				<< "\033[32m" << int(st2.download_payload_rate / 1000.f) << "kB/s "
-				<< "\033[31m" << int(st2.upload_payload_rate / 1000.f) << "kB/s "
-				<< "\033[0m" << int(st2.progress * 100) << "% "
-				<< st2.num_peers
-				<< std::endl;
+			print_ses_rate(i / 10.f, &st1, &st2);
 		}
 
 		if (st2.is_finished) break;
@@ -191,9 +184,7 @@ void test_remap_files_gather(storage_mode_t storage_mode = storage_mode_sparse)
 
 		if (i % 10 == 0)
 		{
-			std::cerr
-				<< "\033[0m" << int(st2.progress * 100) << "% "
-				<< std::endl;
+			print_ses_rate(i / 10.f, NULL, &st2);
 		}
 
 		if (st2.state != torrent_status::checking_files)
@@ -211,6 +202,9 @@ void test_remap_files_gather(storage_mode_t storage_mode = storage_mode_sparse)
 
 	st2 = tor2.status();
 	TEST_CHECK(st2.is_seeding);
+
+	p1 = ses1.abort();
+	p2 = ses2.abort();
 }
 
 void test_remap_files_scatter(storage_mode_t storage_mode = storage_mode_sparse)
@@ -223,6 +217,9 @@ void test_remap_files_scatter(storage_mode_t storage_mode = storage_mode_sparse)
 	int const alert_mask = alert::all_categories
 		& ~alert::progress_notification
 		& ~alert::stats_notification;
+
+	session_proxy p1;
+	session_proxy p2;
 
 	session ses1(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48075, 49000), "0.0.0.0", 0, alert_mask);
 	session ses2(fingerprint("LT", 0, 1, 0, 0), std::make_pair(49075, 50000), "0.0.0.0", 0, alert_mask);
@@ -279,17 +276,7 @@ void test_remap_files_scatter(storage_mode_t storage_mode = storage_mode_sparse)
 
 		if (i % 10 == 0)
 		{
-			std::cerr
-				<< "\033[32m" << int(st1.download_payload_rate / 1000.f) << "kB/s "
-				<< "\033[33m" << int(st1.upload_payload_rate / 1000.f) << "kB/s "
-				<< "\033[0m" << int(st1.progress * 100) << "% "
-				<< st1.num_peers
-				<< ": "
-				<< "\033[32m" << int(st2.download_payload_rate / 1000.f) << "kB/s "
-				<< "\033[31m" << int(st2.upload_payload_rate / 1000.f) << "kB/s "
-				<< "\033[0m" << int(st2.progress * 100) << "% "
-				<< st2.num_peers
-				<< std::endl;
+			print_ses_rate(i / 10.f, &st1, &st2);
 		}
 
 		if (st2.is_finished) break;
@@ -330,9 +317,7 @@ void test_remap_files_scatter(storage_mode_t storage_mode = storage_mode_sparse)
 
 		if (i % 10 == 0)
 		{
-			std::cerr
-				<< "\033[0m" << int(st2.progress * 100) << "% "
-				<< std::endl;
+			print_ses_rate(i / 10.f, NULL, &st2);
 		}
 
 		if (st2.state != torrent_status::checking_files)
@@ -350,6 +335,9 @@ void test_remap_files_scatter(storage_mode_t storage_mode = storage_mode_sparse)
 
 	st2 = tor2.status();
 	TEST_CHECK(st2.is_seeding);
+
+	p1 = ses1.abort();
+	p2 = ses2.abort();
 }
 
 void test_remap_files_prio(storage_mode_t storage_mode = storage_mode_sparse)
@@ -360,6 +348,9 @@ void test_remap_files_prio(storage_mode_t storage_mode = storage_mode_sparse)
 	int const alert_mask = alert::all_categories
 		& ~alert::progress_notification
 		& ~alert::stats_notification;
+
+	session_proxy p1;
+	session_proxy p2;
 
 	session ses1(fingerprint("LT", 0, 1, 0, 0), std::make_pair(48075, 49000), "0.0.0.0", 0, alert_mask);
 	session ses2(fingerprint("LT", 0, 1, 0, 0), std::make_pair(49075, 50000), "0.0.0.0", 0, alert_mask);
@@ -415,7 +406,7 @@ void test_remap_files_prio(storage_mode_t storage_mode = storage_mode_sparse)
 
 	add_torrent_params params;
 	params.storage_mode = storage_mode;
-	params.flags &= ~add_torrent_params::flag_paused;
+	params.flags |= add_torrent_params::flag_paused;
 	params.flags &= ~add_torrent_params::flag_auto_managed;
 
 	wait_for_listen(ses1, "ses1");
@@ -423,14 +414,20 @@ void test_remap_files_prio(storage_mode_t storage_mode = storage_mode_sparse)
 
 	peer_disconnects = 0;
 
-	std::vector<boost::uint8_t> file_prio(2, 1);
-	file_prio[0] = 0;
-	params.file_priorities = &file_prio;
-
 	// test using piece sizes smaller than 16kB
 	boost::tie(tor1, tor2, ignore) = setup_transfer(&ses1, &ses2, 0
 		, true, false, true, "_remap3", 8 * 1024, &t, false, &params
 		, true, false, &t2);
+
+	std::vector<int> file_prio(3, 1);
+	file_prio[0] = 0;
+	tor2.prioritize_files(file_prio);
+
+	// torrent1 will attempt to connect to torrent2
+	// make sure torrent2 is up and running by then
+	tor2.resume();
+	test_sleep(500);
+	tor1.resume();
 
 	fprintf(stderr, "\ntesting remap scatter prio\n\n");
 
@@ -467,8 +464,7 @@ void test_remap_files_prio(storage_mode_t storage_mode = storage_mode_sparse)
 			std::cerr << "st2 state: " << state_str[st2.state] << std::endl;
 		}
 
-		TEST_CHECK(st1.state == torrent_status::seeding
-			|| st1.state == torrent_status::checking_files);
+		TEST_CHECK(st1.state == torrent_status::seeding);
 		TEST_CHECK(st2.state == torrent_status::downloading
 			|| st2.state == torrent_status::checking_resume_data);
 
@@ -479,6 +475,9 @@ void test_remap_files_prio(storage_mode_t storage_mode = storage_mode_sparse)
 
 	torrent_status st2 = tor2.status();
 	TEST_CHECK(st2.is_finished);
+
+	p1 = ses1.abort();
+	p2 = ses2.abort();
 }
 
 int test_main()

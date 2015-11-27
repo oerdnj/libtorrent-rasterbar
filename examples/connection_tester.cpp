@@ -40,11 +40,20 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/thread.hpp"
 #include "libtorrent/create_torrent.hpp"
 #include "libtorrent/hasher.hpp"
+#include "libtorrent/file_pool.hpp"
 #include <cstring>
 #include <boost/bind.hpp>
 #include <iostream>
 #include <boost/array.hpp>
 #include <boost/detail/atomic_count.hpp>
+
+#if BOOST_ASIO_DYN_LINK
+#if BOOST_VERSION >= 104500
+#include <boost/asio/impl/src.hpp>
+#elif BOOST_VERSION >= 104400
+#include <boost/asio/impl/src.cpp>
+#endif
+#endif
 
 using namespace libtorrent;
 using namespace libtorrent::detail; // for write_* and read_*
@@ -66,16 +75,21 @@ void generate_block(boost::uint32_t* buffer, int piece, int start, int length)
 int local_if_counter = 0;
 bool local_bind = false;
 
+// if this is true, one block in 1000 will be sent corrupt.
+// this only applies to dual and upload tests
+bool test_corruption = false;
+
 // number of seeds we've spawned. The test is terminated
 // when this reaches zero, for dual tests
-boost::detail::atomic_count num_seeds(0);
+static boost::detail::atomic_count num_seeds(0);
 
 // the kind of test to run. Upload sends data to a
 // bittorrent client, download requests data from
 // a client and dual uploads and downloads from a client
 // at the same time (this is presumably the most realistic
 // test)
-enum { none, upload_test, download_test, dual_test } test_mode = none;
+enum test_mode_t{ none, upload_test, download_test, dual_test };
+test_mode_t test_mode = none;
 
 // the number of suggest messages received (total across all peers)
 boost::detail::atomic_count num_suggest(0);
@@ -96,11 +110,14 @@ struct peer_conn
 		, info_hash(ih)
 		, outstanding_requests(0)
 		, seed(seed_)
+		, fast_extension(false)
+		, choked(true)
 		, blocks_received(0)
 		, blocks_sent(0)
 		, num_pieces(num_pieces)
 		, start_time(time_now_hires())
 	{
+		corruption_counter = rand() % 1000;
 		if (seed) ++num_seeds;
 		pieces.reserve(num_pieces);
 		if (local_bind)
@@ -132,6 +149,7 @@ struct peer_conn
 	boost::uint32_t write_buffer[17*1024/4];
 	boost::uint32_t buffer[17*1024/4];
 	int read_pos;
+	int corruption_counter;
 
 	enum state_t
 	{
@@ -150,6 +168,7 @@ struct peer_conn
 	// if this is true, this connection is a seed
 	bool seed;
 	bool fast_extension;
+	bool choked;
 	int blocks_received;
 	int blocks_sent;
 	int num_pieces;
@@ -263,6 +282,7 @@ struct peer_conn
 
 	bool write_request()
 	{
+		if (choked) return false;
 		if (pieces.empty() && suggested_pieces.empty() && current_piece == -1) return false;
 
 		if (current_piece == -1)
@@ -439,7 +459,7 @@ struct peer_conn
 			{
 				pieces.reserve(num_pieces);
 				int piece = 0;
-				for (int i = 0; i < bytes_transferred; ++i)
+				for (int i = 0; i < int(bytes_transferred); ++i)
 				{
 					int mask = 0x80;
 					for (int k = 0; k < 8; ++k)
@@ -466,7 +486,7 @@ struct peer_conn
 				--outstanding_requests;
 				int piece = detail::read_int32(ptr);
 				int start = detail::read_int32(ptr);
-				if ((start + bytes_transferred) / 0x4000 == blocks_per_piece)
+				if (int((start + bytes_transferred) / 0x4000) == blocks_per_piece)
 				{
 					write_have(piece);
 					return;
@@ -482,6 +502,14 @@ struct peer_conn
 					suggested_pieces.push_back(piece);
 					++num_suggest;
 				}
+			}
+			else if (msg == 1) // unchoke
+			{
+				choked = false;
+			}
+			else if (msg == 0) // choke
+			{
+				choked = true;
 			}
 			work_download();
 		}
@@ -506,6 +534,16 @@ struct peer_conn
 	void write_piece(int piece, int start, int length)
 	{
 		generate_block(write_buffer, piece, start, length);
+
+		if (test_corruption)
+		{
+			--corruption_counter;
+			if (corruption_counter == 0)
+			{
+				corruption_counter = 1000;
+				memset(write_buffer, 0, 10);
+			}
+		}
 		char* ptr = write_buf_proto;
 		write_uint32(9 + length, ptr);
 		assert(length == 0x4000);
@@ -531,33 +569,38 @@ struct peer_conn
 
 void print_usage()
 {
-	fprintf(stderr, "usage: connection_tester command ...\n\n"
+	fprintf(stderr, "usage: connection_tester command [options]\n\n"
 		"command is one of:\n"
-		"  gen-torrent         generate a test torrent\n"
-		"    this command takes two extra arguments:\n"
-		"    1. the size of the torrent in megabytes\n"
-		"    2. the file to save the .torrent file to\n\n"
-		"  gen-data            generate the data file(s) for the test torrent\n"
-		"    this command takes two extra arguments:\n"
-		"    1. the torrent file that was previously generated\n"
-		"    2. the path to where the data should be stored\n"
-		"  gen-test-torrents   generate many test torrents (cannot be used for up/down tests)\n"
-		"    1. number of torrents to generate\n"
-		"    2. number of files in each torrent\n"
-		"    3. base name of torrent files (index is appended)\n"
-		"  upload              start an uploader test\n"
-		"  download            start a downloader test\n"
-		"  dual                start a download and upload test\n"
-		"    these commands set takes 4 additional arguments:\n"
-		"    1. num-connections - the number of connections to make to the target\n"
-		"    2. destination-IP - the IP address of the target\n"
-		"    3. destination-port - the port the target listens on\n"
-		"    4. torrent-file - the torrent file previously generated by gen-torrent\n\n"
+		"  gen-torrent        generate a test torrent\n"
+		"    options for this command:\n"
+		"    -s <size>          the size of the torrent in megabytes\n"
+		"    -n <num-files>     the number of files in the test torrent\n"
+		"    -t <file>          the file to save the .torrent file to\n"
+		"    -T <name>          the name of the torrent (and directory\n"
+		"                       its files are saved in)\n\n"
+		"  gen-data             generate the data file(s) for the test torrent\n"
+		"    options for this command:\n"
+		"    -t <file>          the torrent file that was previously generated\n"
+		"    -P <path>          the path to where the data should be stored\n\n"
+		"  gen-test-torrents    generate many test torrents (cannot be used for up/down tests)\n"
+		"    options for this command:\n"
+		"    -N <num-torrents>  number of torrents to generate\n"
+		"    -n <num-files>     number of files in each torrent\n"
+		"    -t <name>          base name of torrent files (index is appended)\n\n"
+		"  upload               start an uploader test\n"
+		"  download             start a downloader test\n"
+		"  dual                 start a download and upload test\n"
+		"    options for these commands:\n"
+		"    -c <num-conns>     the number of connections to make to the target\n"
+		"    -d <dst>           the IP address of the target\n"
+		"    -p <dst-port>      the port the target listens on\n"
+		"    -t <torrent-file>  the torrent file previously generated by gen-torrent\n\n"
+		"    -C                 send corrupt pieces sometimes (applies to upload and dual)\n\n"
 		"examples:\n\n"
-		"connection_tester gen-torrent 1024 test.torrent\n"
-		"connection_tester upload 200 127.0.0.1 6881 test.torrent\n"
-		"connection_tester download 200 127.0.0.1 6881 test.torrent\n"
-		"connection_tester dual 200 127.0.0.1 6881 test.torrent\n");
+		"connection_tester gen-torrent -s 1024 -n 4 -t test.torrent\n"
+		"connection_tester upload -c 200 -d 127.0.0.1 -p 6881 -t test.torrent\n"
+		"connection_tester download -c 200 -d 127.0.0.1 -p 6881 -t test.torrent\n"
+		"connection_tester dual -c 200 -d 127.0.0.1 -p 6881 -t test.torrent\n");
 	exit(1);
 }
 
@@ -580,7 +623,8 @@ void hasher_thread(libtorrent::create_torrent* t, int start_piece, int end_piece
 }
 
 // size is in megabytes
-void generate_torrent(std::vector<char>& buf, int size)
+void generate_torrent(std::vector<char>& buf, int size, int num_files
+	, char const* torrent_name)
 {
 	file_storage fs;
 	// 1 MiB piece size
@@ -590,13 +634,13 @@ void generate_torrent(std::vector<char>& buf, int size)
 
 	size_type s = total_size;
 	int i = 0;
-	size_type file_size = total_size / 9;
+	size_type file_size = total_size / num_files;
 	while (s > 0)
 	{
-		char buf[100];
-		snprintf(buf, sizeof(buf), "t/stress_test%d", i);
+		char b[100];
+		snprintf(b, sizeof(b), "%s/stress_test%d", torrent_name, i);
 		++i;
-		fs.add_file(buf, (std::min)(s, size_type(file_size)));
+		fs.add_file(b, (std::min)(s, size_type(file_size)));
 		s -= file_size;
 		file_size += 200;
 	}
@@ -620,28 +664,27 @@ void generate_torrent(std::vector<char>& buf, int size)
 	bencode(out, t.generate());
 }
 
-void generate_data(char const* path, int num_pieces, int piece_size)
+void generate_data(char const* path, torrent_info const& ti)
 {
-	FILE* f;
+	file_storage const& fs = ti.files();
+	file_pool fp;
 
-	if ( (f = fopen(path, "w+")) == 0)
-	{
-		fprintf(stderr, "Could not open file '%s' for writing: %s\n", path, strerror(errno));
-		exit(2);
-	}
+	boost::scoped_ptr<storage_interface> st(
+		default_storage_constructor(const_cast<file_storage&>(fs), 0, path, fp
+		, std::vector<boost::uint8_t>()));
+
+	st->initialize(true);
 
 	boost::uint32_t piece[0x4000 / 4];
-	for (int i = 0; i < num_pieces; ++i)
+	for (int i = 0; i < ti.num_pieces(); ++i)
 	{
-		for (int j = 0; j < piece_size; j += 0x4000)
+		for (int j = 0; j < ti.piece_size(i); j += 0x4000)
 		{
 			generate_block(piece, i, j, 0x4000);
-			fwrite(piece, 0x4000, 1, f);
+			st->write((char const*)piece, i, j, 0x4000);
 		}
-		if (i & 1) fprintf(stderr, "\r%.1f %% ", float(i * 100) / float(num_pieces));
+		if (i & 1) fprintf(stderr, "\r%.1f %% ", float(i * 100) / float(ti.num_pieces()));
 	}
-
-	fclose(f);
 }
 
 void io_thread(io_service* ios)
@@ -655,54 +698,110 @@ int main(int argc, char* argv[])
 {
 	if (argc <= 1) print_usage();
 
-	if (strcmp(argv[1], "gen-torrent") == 0)
-	{
-		if (argc != 4) print_usage();
+	char const* command = argv[1];
+	int size = 1000;
+	int num_files = 10;
+	int num_torrents = 1;
+	char const* torrent_file = "benchmark.torrent";
+	char const* data_path = ".";
+	int num_connections = 50;
+	char const* destination_ip = "127.0.0.1";
+	int destination_port = 6881;
+	char const* out_torrent_name = "t";
 
-		int size = atoi(argv[2]);
+	argv += 2;
+	argc -= 2;
+
+	while (argc > 0)
+	{
+		char const* optname = argv[0];
+		++argv;
+		--argc;
+
+		if (optname[0] != '-' || strlen(optname) != 2)
+		{
+			fprintf(stderr, "unknown option: %s\n", optname);
+			continue;
+		}
+
+		// options with no arguments
+		switch (optname[1])
+		{
+			case 'C': test_corruption = true; continue;
+		}
+
+		if (argc == 0)
+		{
+			fprintf(stderr, "missing argument for option: %s\n", optname);
+			break;
+		}
+
+		char const* optarg = argv[0];
+		++argv;
+		--argc;
+
+		switch (optname[1])
+		{
+			case 's': size = atoi(optarg); break;
+			case 'n': num_files = atoi(optarg); break;
+			case 'N': num_torrents = atoi(optarg); break;
+			case 't': torrent_file = optarg; break;
+			case 'P': data_path = optarg; break;
+			case 'c': num_connections = atoi(optarg); break;
+			case 'p': destination_port = atoi(optarg); break;
+			case 'd': destination_ip = optarg; break;
+			case 'T': out_torrent_name = optarg; break;
+			default: fprintf(stderr, "unknown option: %s\n", optname);
+		}
+	}
+
+	if (strcmp(command, "gen-torrent") == 0)
+	{
 		std::vector<char> tmp;
-		generate_torrent(tmp, size ? size : 1024);
+		generate_torrent(tmp, size ? size : 1024, num_files ? num_files : 1
+			, out_torrent_name);
 
 		FILE* output = stdout;
-		if (strcmp("-", argv[3]) != 0)
-			output = fopen(argv[3], "wb+");
+		if (strcmp("-", torrent_file) != 0)
+		{
+			if( (output = fopen(torrent_file, "wb+")) == 0)
+			{
+				fprintf(stderr, "Could not open file '%s' for writing: %s\n", torrent_file, strerror(errno));
+				exit(2);
+			}
+		}
+		fprintf(stderr, "writing file to: %s\n", torrent_file);
 		fwrite(&tmp[0], 1, tmp.size(), output);
 		if (output != stdout)
 			fclose(output);
 
 		return 0;
 	}
-	else if (strcmp(argv[1], "gen-data") == 0)
+	else if (strcmp(command, "gen-data") == 0)
 	{
-		if (argc != 4) print_usage();
 		error_code ec;
-		torrent_info ti(argv[2], ec);
+		torrent_info ti(torrent_file, ec);
 		if (ec)
 		{
 			fprintf(stderr, "ERROR LOADING .TORRENT: %s\n", ec.message().c_str());
 			return 1;
 		}
-		generate_data(argv[3], ti.num_pieces(), ti.piece_length());
+		generate_data(data_path, ti);
 		return 0;
 	}
-	else if (strcmp(argv[1], "gen-test-torrents") == 0)
+	else if (strcmp(command, "gen-test-torrents") == 0)
 	{
-		if (argc != 5) print_usage();
-	
-		int num_torrents = atoi(argv[2]);
-		int num_files = atoi(argv[3]);
-		char const* name = argv[4];
 		std::vector<char> buf;
 		for (int i = 0; i < num_torrents; ++i)
 		{
 			char torrent_name[100];
-			snprintf(torrent_name, sizeof(torrent_name), "%s-%d.torrent", name, i);
+			snprintf(torrent_name, sizeof(torrent_name), "%s-%d.torrent", torrent_file, i);
 
 			file_storage fs;
 			for (int j = 0; j < num_files; ++j)
 			{
 				char file_name[100];
-				snprintf(file_name, sizeof(file_name), "%s-%d/file-%d", name, i, j);
+				snprintf(file_name, sizeof(file_name), "%s-%d/file-%d", torrent_file, i, j);
 				fs.add_file(file_name, size_type(j + i + 1) * 251);
 			}
 			// 1 MiB piece size
@@ -733,33 +832,32 @@ int main(int argc, char* argv[])
 		}
 		return 0;
 	}
-	else if (strcmp(argv[1], "upload") == 0)
+	else if (strcmp(command, "upload") == 0)
 	{
-		if (argc != 6) print_usage();
 		test_mode = upload_test;
 	}
-	else if (strcmp(argv[1], "download") == 0)
+	else if (strcmp(command, "download") == 0)
 	{
-		if (argc != 6) print_usage();
 		test_mode = download_test;
 	}
-	else if (strcmp(argv[1], "dual") == 0)
+	else if (strcmp(command, "dual") == 0)
 	{
-		if (argc != 6) print_usage();
 		test_mode = dual_test;
 	}
-	else print_usage();
+	else
+	{
+		fprintf(stderr, "unknown command: %s\n\n", command);
+		print_usage();
+	}
 
-	int num_connections = atoi(argv[2]);
 	error_code ec;
-	address_v4 addr = address_v4::from_string(argv[3], ec);
+	address_v4 addr = address_v4::from_string(destination_ip, ec);
 	if (ec)
 	{
-		fprintf(stderr, "ERROR RESOLVING %s: %s\n", argv[3], ec.message().c_str());
+		fprintf(stderr, "ERROR RESOLVING %s: %s\n", destination_ip, ec.message().c_str());
 		return 1;
 	}
-	int port = atoi(argv[4]);
-	tcp::endpoint ep(addr, port);
+	tcp::endpoint ep(addr, destination_port);
 	
 #if !defined __APPLE__
 	// apparently darwin doesn't seems to let you bind to
@@ -771,7 +869,7 @@ int main(int argc, char* argv[])
 	}
 #endif
 
-	torrent_info ti(argv[5], ec);
+	torrent_info ti(torrent_file, ec);
 	if (ec)
 	{
 		fprintf(stderr, "ERROR LOADING .TORRENT: %s\n", ec.message().c_str());
@@ -814,7 +912,6 @@ int main(int argc, char* argv[])
 	{
 		peer_conn* p = *i;
 		int time = total_milliseconds(p->end_time - p->start_time);
-		if (time == 0) time = 1;
 		if (time == 0) time = 1;
 		total_sent += p->blocks_sent;
 		up += (boost::int64_t(p->blocks_sent) * 0x4000) / time / 1000.f;
