@@ -1,3 +1,14 @@
+
+1.0.8 release
+
+	* fix web seed request size
+	* fix bug where web seeds were not used for torrents added by URL
+	* fix support for symlinks on windows
+	* fix long filename issue (on unixes)
+	* fixed performance bug in DHT torrent eviction
+	* fixed win64 build (GetFileAttributesEx)
+	* fixed bug when deleting files for magnet links before they had metadata
+
 1.0.7 release
 
 	* fix bug where loading settings via load_state() would not trigger all

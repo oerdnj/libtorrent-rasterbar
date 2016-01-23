@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2006-2014, Arvid Norberg
+Copyright (c) 2006-2016, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -1122,7 +1122,10 @@ void node_impl::incoming_request(msg const& m, entry& e)
 					dht_mutable_table_t::iterator j = std::min_element(m_mutable_table.begin()
 						, m_mutable_table.end()
 						, boost::bind(&dht_immutable_item::num_announcers
-							, boost::bind(&dht_mutable_table_t::value_type::second, _1)));
+							, boost::bind(&dht_mutable_table_t::value_type::second, _1))
+						< boost::bind(&dht_immutable_item::num_announcers
+							, boost::bind(&dht_mutable_table_t::value_type::second, _2))
+						);
 					TORRENT_ASSERT(j != m_mutable_table.end());
 					free(j->second.value);
 					free(j->second.salt);
