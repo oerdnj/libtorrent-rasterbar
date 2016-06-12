@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2007-2014, Arvid Norberg
+Copyright (c) 2007-2016, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -31,13 +31,19 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "libtorrent/config.hpp"
+#include "libtorrent/assert.hpp"
 
-#if TORRENT_PRODUCTION_ASSERTS
-#include <boost/detail/atomic_count.hpp>
+#include "libtorrent/aux_/disable_warnings_push.hpp"
+
+#ifdef TORRENT_PRODUCTION_ASSERTS
+#include <boost/atomic.hpp>
 #endif
 
-#if defined TORRENT_DEBUG || defined TORRENT_ASIO_DEBUGGING \
-	|| TORRENT_RELEASE_ASSERTS || defined TORRENT_DEBUG_BUFFERS
+#if (defined TORRENT_DEBUG && TORRENT_USE_ASSERTS) \
+	|| defined TORRENT_ASIO_DEBUGGING \
+	|| defined TORRENT_PROFILE_CALLS \
+	|| defined TORRENT_RELEASE_ASSERTS \
+	|| defined TORRENT_DEBUG_BUFFERS
 
 #ifdef __APPLE__
 #include <AvailabilityMacros.h>
@@ -46,6 +52,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <cstring>
 #include <stdlib.h>
+#include <stdarg.h>
+
+#include "libtorrent/aux_/disable_warnings_pop.hpp"
 
 // uClibc++ doesn't have cxxabi.h
 #if defined __GNUC__ && __GNUC__ >= 3 \
@@ -92,14 +101,11 @@ std::string demangle(char const* name)
 }
 #elif defined WIN32
 
-#undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0501 // XP
-
 #include "windows.h"
 #include "dbghelp.h"
 
-std::string demangle(char const* name) 
-{ 
+std::string demangle(char const* name)
+{
 	char demangled_name[256];
 	if (UnDecorateSymbolName(name, demangled_name, sizeof(demangled_name), UNDNAME_NO_THROW_SIGNATURES) == 0)
 		demangled_name[0] = 0;
@@ -137,9 +143,6 @@ TORRENT_EXPORT void print_backtrace(char* out, int len, int max_depth)
 
 // visual studio 9 and up appears to support this
 #elif defined WIN32 && _MSC_VER >= 1500
-
-#undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0501 // XP
 
 #include "windows.h"
 #include "libtorrent/utf8.hpp"
@@ -201,7 +204,11 @@ TORRENT_EXPORT void print_backtrace(char* out, int len, int max_depth)
 
 #else
 
-TORRENT_EXPORT void print_backtrace(char* out, int len, int max_depth) {}
+TORRENT_EXPORT void print_backtrace(char* out, int len, int max_depth)
+{
+	out[0] = 0;
+	strncat(out, "<not supported>", len);
+}
 
 #endif
 
@@ -209,23 +216,44 @@ TORRENT_EXPORT void print_backtrace(char* out, int len, int max_depth) {}
 
 #if TORRENT_USE_ASSERTS || defined TORRENT_ASIO_DEBUGGING
 
-#if TORRENT_PRODUCTION_ASSERTS
+#ifdef TORRENT_PRODUCTION_ASSERTS
 char const* libtorrent_assert_log = "asserts.log";
+namespace {
 // the number of asserts we've printed to the log
-boost::detail::atomic_count assert_counter(0);
+boost::atomic<int> assert_counter(0);
+}
 #endif
 
-TORRENT_EXPORT void assert_fail(char const* expr, int line, char const* file
-	, char const* function, char const* value, int kind)
+TORRENT_FORMAT(1,2)
+TORRENT_EXPORT void assert_print(char const* fmt, ...)
 {
-#if TORRENT_PRODUCTION_ASSERTS
-	// no need to flood the assert log with infinite number of asserts
-	if (++assert_counter > 500) return;
+#ifdef TORRENT_PRODUCTION_ASSERTS
+	if (assert_counter > 500) return;
 
 	FILE* out = fopen(libtorrent_assert_log, "a+");
 	if (out == 0) out = stderr;
 #else
 	FILE* out = stderr;
+#endif
+	va_list va;
+	va_start(va, fmt);
+	vfprintf(out, fmt, va);
+	va_end(va);
+
+#ifdef TORRENT_PRODUCTION_ASSERTS
+	if (out != stderr) fclose(out);
+#endif
+}
+
+#ifndef TORRENT_PRODUCTION_ASSERTS
+TORRENT_NO_RETURN
+#endif
+TORRENT_EXPORT void assert_fail(char const* expr, int line
+	, char const* file, char const* function, char const* value, int kind)
+{
+#ifdef TORRENT_PRODUCTION_ASSERTS
+	// no need to flood the assert log with infinite number of asserts
+	if (assert_counter.fetch_add(1) + 1 > 500) return;
 #endif
 
 	char stack[8192];
@@ -235,8 +263,7 @@ TORRENT_EXPORT void assert_fail(char const* expr, int line, char const* file
 	char const* message = "assertion failed. Please file a bugreport at "
 		"https://github.com/arvidn/libtorrent/issues\n"
 		"Please include the following information:\n\n"
-		"version: " LIBTORRENT_VERSION "\n"
-		LIBTORRENT_REVISION "\n";
+		"version: " LIBTORRENT_VERSION "-" LIBTORRENT_REVISION "\n";
 
 	switch (kind)
 	{
@@ -245,7 +272,10 @@ TORRENT_EXPORT void assert_fail(char const* expr, int line, char const* file
 				"This indicates a bug in the client application using libtorrent\n";
 	}
 
-	fprintf(out, "%s\n"
+	assert_print("%s\n"
+#ifdef TORRENT_PRODUCTION_ASSERTS
+		"#: %d\n"
+#endif
 		"file: '%s'\n"
 		"line: %d\n"
 		"function: %s\n"
@@ -253,14 +283,16 @@ TORRENT_EXPORT void assert_fail(char const* expr, int line, char const* file
 		"%s%s\n"
 		"stack:\n"
 		"%s\n"
-		, message, file, line, function, expr
+		, message
+#ifdef TORRENT_PRODUCTION_ASSERTS
+		, assert_counter.load()
+#endif
+		, file, line, function, expr
 		, value ? value : "", value ? "\n" : ""
 		, stack);
 
 	// if production asserts are defined, don't abort, just print the error
-#if TORRENT_PRODUCTION_ASSERTS
-	if (out != stderr) fclose(out);
-#else
+#ifndef TORRENT_PRODUCTION_ASSERTS
 	// send SIGINT to the current process
 	// to break into the debugger
 	raise(SIGINT);
@@ -268,10 +300,15 @@ TORRENT_EXPORT void assert_fail(char const* expr, int line, char const* file
 #endif
 }
 
-#else
+#elif !TORRENT_USE_ASSERTS
 
-TORRENT_EXPORT void assert_fail(char const* expr, int line, char const* file
-	, char const* function, char const* value, int kind) {}
+// these are just here to make it possible for a client that built with debug
+// enable to be able to link against a release build (just possible, not
+// necessarily supported)
+TORRENT_FORMAT(1,2)
+TORRENT_EXPORT void assert_print(char const*, ...) {}
+TORRENT_EXPORT void assert_fail(char const*, int, char const*
+	, char const*, char const*, int) {}
 
 #endif
 

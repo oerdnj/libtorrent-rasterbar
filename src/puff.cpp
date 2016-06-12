@@ -70,6 +70,10 @@ All "short" has been replaced with boost::int16_t
 and all "long" with boost::int32_t according to the
 type width assuptions in the comment above.
 */
+
+// this whole file is just preserved and warnings are suppressed
+#include "libtorrent/aux_/disable_warnings_push.hpp"
+
 #include <setjmp.h>             /* for setjmp(), longjmp(), and jmp_buf */
 #include <boost/cstdint.hpp>    /* for types with size guarantees */
 #include "libtorrent/puff.hpp"  /* prototype for puff() */
@@ -95,7 +99,7 @@ struct state {
     boost::uint32_t outcnt;       /* bytes written to out so far */
 
     /* input state */
-    unsigned char *in;          /* input buffer */
+    const unsigned char *in;          /* input buffer */
     boost::uint32_t inlen;        /* available input at in */
     boost::uint32_t incnt;        /* bytes read so far */
     int bitbuf;                 /* bit buffer */
@@ -744,7 +748,7 @@ local int dynamic(struct state *s)
  */
 int puff(unsigned char *dest,           /* pointer to destination pointer */
          boost::uint32_t *destlen,        /* amount of output space */
-         unsigned char *source,         /* pointer to source data pointer */
+         const unsigned char *source,         /* pointer to source data pointer */
          boost::uint32_t *sourcelen)      /* amount of input available */
 {
     struct state s;             /* input/output state */
@@ -840,3 +844,6 @@ int main(int argc, char **argv)
     return ret;
 }
 #endif
+
+#include "libtorrent/aux_/disable_warnings_pop.hpp"
+

@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2008, Arvid Norberg
+Copyright (c) 2008-2016, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -35,26 +35,23 @@ POSSIBILITY OF SUCH DAMAGE.
 
 #ifndef TORRENT_DISABLE_EXTENSIONS
 
-#ifdef _MSC_VER
-#pragma warning(push, 1)
-#endif
-
-#include <boost/shared_ptr.hpp>
 #include "libtorrent/config.hpp"
 
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+#include "libtorrent/aux_/disable_warnings_push.hpp"
+
+#include <boost/shared_ptr.hpp>
+
+#include "libtorrent/aux_/disable_warnings_pop.hpp"
 
 namespace libtorrent
 {
 	struct torrent_plugin;
-	class torrent;
+	struct torrent_handle;
 
 	// constructor function for the trackers exchange extension. This can
 	// either be passed in the add_torrent_params::extensions field, or
 	// via torrent_handle::add_extension().
-	boost::shared_ptr<torrent_plugin> TORRENT_EXPORT create_lt_trackers_plugin(torrent*, void*);
+	boost::shared_ptr<torrent_plugin> TORRENT_EXPORT create_lt_trackers_plugin(torrent_handle const&, void*);
 }
 
 #endif // TORRENT_DISABLE_EXTENSIONS

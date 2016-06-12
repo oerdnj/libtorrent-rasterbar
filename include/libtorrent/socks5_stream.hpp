@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2007-2014, Arvid Norberg
+Copyright (c) 2007-2016, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -33,10 +33,15 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifndef TORRENT_SOCKS5_STREAM_HPP_INCLUDED
 #define TORRENT_SOCKS5_STREAM_HPP_INCLUDED
 
-#include <boost/function/function1.hpp>
+#include "libtorrent/aux_/disable_warnings_push.hpp"
+
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
+
+#include "libtorrent/aux_/disable_warnings_pop.hpp"
+
 #include "libtorrent/proxy_base.hpp"
+#include "libtorrent/assert.hpp"
 #if defined TORRENT_ASIO_DEBUGGING
 #include "libtorrent/debug.hpp"
 #endif
@@ -75,16 +80,27 @@ class socks5_stream : public proxy_base
 {
 public:
 
+	// commands
+	enum {
+		socks5_connect = 1,
+		socks5_bind = 2,
+		socks5_udp_associate = 3
+	};
+
 	explicit socks5_stream(io_service& io_service)
 		: proxy_base(io_service)
 		, m_version(5)
-		, m_command(1)
+		, m_command(socks5_connect)
 		, m_listen(0)
 	{}
 
 	void set_version(int v) { m_version = v; }
 
-	void set_command(int c) { m_command = c; }
+	void set_command(int c)
+	{
+		TORRENT_ASSERT(c >= socks5_connect && c <=socks5_udp_associate);
+		m_command = c;
+	}
 
 	void set_username(std::string const& user
 		, std::string const& password)
@@ -95,6 +111,17 @@ public:
 
 	void set_dst_name(std::string const& host)
 	{
+		// TODO: 3 enable this assert and fix remaining causes of it triggering
+/*
+#if TORRENT_USE_ASSERTS
+		error_code ec;
+		address::from_string(host, ec);
+		// if this assert trips, set_dst_name() is called wth an IP address rather
+		// than a hostname. Instead, resolve the IP into an address and pass it to
+		// async_connect instead
+		TORRENT_ASSERT(ec);
+#endif
+*/
 		m_dst_name = host;
 		if (m_dst_name.size() > 255)
 			m_dst_name.resize(255);
@@ -102,7 +129,6 @@ public:
 
 	void close(error_code& ec)
 	{
-		m_hostname.clear();
 		m_dst_name.clear();
 		proxy_base::close(ec);
 	}
@@ -110,19 +136,21 @@ public:
 #ifndef BOOST_NO_EXCEPTIONS
 	void close()
 	{
-		m_hostname.clear();
 		m_dst_name.clear();
 		proxy_base::close();
 	}
 #endif
 
-	typedef boost::function<void(error_code const&)> handler_type;
-
-//#error fix error messages to use custom error_code category
-//#error add async_connect() that takes a hostname and port as well
+	// TODO: 2 add async_connect() that takes a hostname and port as well
 	template <class Handler>
 	void async_connect(endpoint_type const& endpoint, Handler const& handler)
 	{
+		// make sure we don't try to connect to INADDR_ANY. binding is fine,
+		// and using a hostname is fine on SOCKS version 5.
+		TORRENT_ASSERT(m_command == socks5_bind
+			|| endpoint.address() != address()
+			|| (!m_dst_name.empty() && m_version == 5));
+
 		m_remote_endpoint = endpoint;
 
 		// the connect is split up in the following steps:
@@ -167,15 +195,17 @@ private:
 	std::string m_password;
 	std::string m_dst_name;
 	int m_version;
+
+	// the socks command to send for this connection (connect, bind,
+	// udp associate)
 	int m_command;
+
 	// set to one when we're waiting for the
 	// second message to accept an incoming connection
 	int m_listen;
 };
 
 }
-
-#if BOOST_VERSION >= 103500
 
 namespace boost { namespace system {
 
@@ -185,8 +215,6 @@ namespace boost { namespace system {
 	template<> struct is_error_condition_enum<libtorrent::socks_error::socks_error_code>
 	{ static const bool value = true; };
 } }
-
-#endif // BOOST_VERSION
 
 #endif
 

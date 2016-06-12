@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2008-2014, Arvid Norberg
+Copyright (c) 2008-2016, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -52,7 +52,7 @@ namespace libtorrent
 		// PARSE URL
 		std::string::iterator start = url.begin();
 		// remove white spaces in front of the url
-		while (start != url.end() && (*start == ' ' || *start == '\t'))
+		while (start != url.end() && is_space(*start))
 			++start;
 		std::string::iterator end
 			= std::find(url.begin(), url.end(), ':');

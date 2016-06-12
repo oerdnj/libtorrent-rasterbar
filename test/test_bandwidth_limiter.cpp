@@ -39,10 +39,12 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/socket.hpp"
 #include "libtorrent/stat.hpp"
 #include "libtorrent/time.hpp"
-#include "libtorrent/session_settings.hpp"
+#include "libtorrent/aux_/session_settings.hpp"
 
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <iostream>
 #include <math.h>
 
@@ -57,7 +59,7 @@ const float sample_time = 20.f; // seconds
 
 bandwidth_channel global_bwc;
 
-struct peer_connection: bandwidth_socket
+struct peer_connection: bandwidth_socket, boost::enable_shared_from_this<peer_connection>
 {
 	peer_connection(bandwidth_manager& bwm
 		, bandwidth_channel& torrent_bwc, int prio, bool ignore_limits, std::string name)
@@ -101,14 +103,17 @@ void peer_connection::assign_bandwidth(int channel, int amount)
 
 void peer_connection::start()
 {
-	m_bwm.request_bandwidth(self(), 400000000, m_priority
-		, &m_bandwidth_channel
+	bandwidth_channel* channels[] = {
+		&m_bandwidth_channel
 		, &m_torrent_bandwidth_channel
-		, &global_bwc);
+		, &global_bwc
+	};
+
+	m_bwm.request_bandwidth(shared_from_this(), 400000000, m_priority, channels, 3);
 }
 
 
-typedef std::vector<boost::intrusive_ptr<peer_connection> > connections_t;
+typedef std::vector<boost::shared_ptr<peer_connection> > connections_t;
 
 void do_change_rate(bandwidth_channel& t1, bandwidth_channel& t2, int limit)
 {
@@ -141,7 +146,7 @@ void do_change_peer_rate(connections_t& v, int limit)
 		i->get()->throttle(limit + limit / 2 * ((c & 1)?-1:1));
 }
 
-void nop() {}
+static void nop() {}
 
 void run_test(connections_t& v
 	, bandwidth_manager& manager
@@ -152,7 +157,9 @@ void run_test(connections_t& v
 	std::for_each(v.begin(), v.end()
 		, boost::bind(&peer_connection::start, _1));
 
-	int tick_interval = session_settings().tick_interval;
+	libtorrent::aux::session_settings s;
+	initialize_default_settings(s);
+	int tick_interval = s.get_int(settings_pack::tick_interval);
 
 	for (int i = 0; i < int(sample_time * 1000 / tick_interval); ++i)
 	{
@@ -173,7 +180,7 @@ void spawn_connections(connections_t& v, bandwidth_manager& bwm
 	{
 		char name[200];
 		snprintf(name, sizeof(name), "%s%d", prefix, i);
-		v.push_back(new peer_connection(bwm, bwc, 200, false, name));
+		v.push_back(boost::shared_ptr<peer_connection>(new peer_connection(bwm, bwc, 200, false, name)));
 	}
 }
 
@@ -393,7 +400,7 @@ void test_peer_priority(int limit, bool torrent_limit)
 	spawn_connections(v1, manager, t1, 10, "p");
 	connections_t v;
 	std::copy(v1.begin(), v1.end(), std::back_inserter(v));
-	boost::intrusive_ptr<peer_connection> p(
+	boost::shared_ptr<peer_connection> p(
 		new peer_connection(manager, t1, 1, false, "no-priority"));
 	v.push_back(p);
 	run_test(v, manager);
@@ -429,7 +436,7 @@ void test_no_starvation(int limit)
 	spawn_connections(v1, manager, t1, num_peers, "p");
 	connections_t v;
 	std::copy(v1.begin(), v1.end(), std::back_inserter(v));
-	boost::intrusive_ptr<peer_connection> p(
+	boost::shared_ptr<peer_connection> p(
 		new peer_connection(manager, t2, 1, false, "no-priority"));
 	v.push_back(p);
 	run_test(v, manager);
@@ -450,10 +457,8 @@ void test_no_starvation(int limit)
 	TEST_CHECK(close_to(p->m_quota / sample_time, limit / 200 / num_peers, 5));
 }
 
-int test_main()
+TORRENT_TEST(equal_connection)
 {
-	using namespace libtorrent;
-
 	test_equal_connections(2, 20);
 	test_equal_connections(2, 2000);
 	test_equal_connections(2, 20000);
@@ -463,11 +468,19 @@ int test_main()
 	test_equal_connections(33, 60000);
 	test_equal_connections(33, 500000);
 	test_equal_connections(1, 100000000);
+}
+
+TORRENT_TEST(conn_var_rate)
+{
 	test_connections_variable_rate(2, 20, 0);
 	test_connections_variable_rate(5, 20000, 0);
 	test_connections_variable_rate(3, 2000, 6000);
 	test_connections_variable_rate(5, 2000, 30000);
 	test_connections_variable_rate(33, 500000, 0);
+}
+
+TORRENT_TEST(torrents)
+{
 	test_torrents(2, 400, 400, 0);
 	test_torrents(2, 100, 500, 0);
 	test_torrents(2, 3000, 3000, 6000);
@@ -476,15 +489,29 @@ int test_main()
 	test_torrents(5, 6000, 6000, 3000);
 	test_torrents(5, 6000, 5000, 4000);
 	test_torrents(5, 20000, 20000, 30000);
+}
+
+TORRENT_TEST(torrent_var_rate)
+{
 	test_torrents_variable_rate(5, 6000, 3000);
 	test_torrents_variable_rate(5, 20000, 30000);
+}
+
+TORRENT_TEST(bandwidth_limiter)
+{
 	test_single_peer(40000, true);
 	test_single_peer(40000, false);
+}
+
+TORRENT_TEST(peer_priority)
+{
 	test_peer_priority(40000, false);
 	test_peer_priority(40000, true);
-	test_no_starvation(40000);
+}
 
-	return 0;
+TORRENT_TEST(no_starvation)
+{
+	test_no_starvation(40000);
 }
 
 

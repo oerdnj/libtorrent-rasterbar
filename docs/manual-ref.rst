@@ -3,7 +3,7 @@ libtorrent API Documentation
 ============================
 
 :Author: Arvid Norberg, arvid@libtorrent.org
-:Version: 1.0.7
+:Version: 1.1.0
 
 .. contents:: Table of contents
   :depth: 1
@@ -37,7 +37,10 @@ The basic usage is as follows:
 * save `session`__ state (see `save_state()`__)
 * destruct `session`__ object
 
-Each class and function is described in this manual.
+Each class and function is described in this manual, you may want to have a
+look at the tutorial_ as well.
+
+.. _tutorial: tutorial.html
 
 For a description on how to create torrent files, see `create_torrent`__.
 
@@ -394,10 +397,6 @@ The file format is a bencoded dictionary containing the following fields:
 |                          | means it is free, that there's no piece there. If it is -1,  |
 |                          | means the slot isn't allocated on disk yet. The pieces have  |
 |                          | to meet the following requirement:                           |
-|                          |                                                              |
-|                          | If there's a slot at the position of the piece index,        |
-|                          | the piece must be located in that slot.                      |
-|                          |                                                              |
 +--------------------------+--------------------------------------------------------------+
 | ``total_uploaded``       | integer. The number of bytes that have been uploaded in      |
 |                          | total for this torrent.                                      |
@@ -472,21 +471,29 @@ The file format is a bencoded dictionary containing the following fields:
 |                          | especially useful when moving torrents with move_storage()   |
 |                          | since this will be updated.                                  |
 +--------------------------+--------------------------------------------------------------+
-| ``peers``                | list of dictionaries. Each dictionary has the following      |
-|                          | layout:                                                      |
-|                          |                                                              |
-|                          | +----------+-----------------------------------------------+ |
-|                          | | ``ip``   | string, the ip address of the peer. This is   | |
-|                          | |          | not a binary representation of the ip         | |
-|                          | |          | address, but the string representation. It    | |
-|                          | |          | may be an IPv6 string or an IPv4 string.      | |
-|                          | +----------+-----------------------------------------------+ |
-|                          | | ``port`` | integer, the listen port of the peer          | |
-|                          | +----------+-----------------------------------------------+ |
-|                          |                                                              |
-|                          | These are the local peers we were connected to when this     |
-|                          | fast-resume data was saved.                                  |
-|                          |                                                              |
+| ``peers``                | string. This string contains IPv4 and port pairs of peers we |
+|                          | were connected to last session. The endpoints are in compact |
+|                          | representation. 4 bytes IPv4 address followed by 2 bytes     |
+|                          | port. Hence, the length of this string should be divisible   |
+|                          | by 6.                                                        |
++--------------------------+--------------------------------------------------------------+
+| ``banned_peers``         | string. This string has the same format as ``peers`` but     |
+|                          | instead represent IPv4 peers that we have banned.            |
++--------------------------+--------------------------------------------------------------+
+| ``peers6``               | string. This string contains IPv6 and port pairs of peers we |
+|                          | were connected to last session. The endpoints are in compact |
+|                          | representation. 16 bytes IPv6 address followed by 2 bytes    |
+|                          | port. The length of this string should be divisible by 18.   |
++--------------------------+--------------------------------------------------------------+
+| ``banned_peers6``        | string. This string has the same format as ``peers6`` but    |
+|                          | instead represent IPv6 peers that we have banned.            |
++--------------------------+--------------------------------------------------------------+
+| ``info``                 | If this field is present, it should be the info-dictionary   |
+|                          | of the torrent this resume data is for. Its SHA-1 hash must  |
+|                          | match the one in the ``info-hash`` field. When present,      |
+|                          | the torrent is loaded from here, meaning the torrent can be  |
+|                          | added purely from resume data (no need to load the .torrent  |
+|                          | file separately). This may have performance advantages.      |
 +--------------------------+--------------------------------------------------------------+
 | ``unfinished``           | list of dictionaries. Each dictionary represents an          |
 |                          | piece, and has the following layout:                         |
@@ -515,7 +522,7 @@ The file format is a bencoded dictionary containing the following fields:
 |                          | re-check is issued.                                          |
 +--------------------------+--------------------------------------------------------------+
 | ``allocation``           | The allocation mode for the storage. Can be either ``full``  |
-|                          | or ``compact``. If this is full, the file sizes and          |
+|                          | or ``sparse``. If this is full, the file sizes and           |
 |                          | timestamps are disregarded. Pieces are assumed not to have   |
 |                          | moved around even if the files have been modified after the  |
 |                          | last resume data checkpoint.                                 |
@@ -533,16 +540,6 @@ There are two modes in which storage (files on disk) are allocated in libtorrent
 
 2. The *sparse allocation*, sparse files are used, and pieces are downloaded
    directly to where they belong. This is the recommended (and default) mode.
-
-In previous versions of libtorrent, a 3rd mode was supported, *compact
-allocation*. Support for this is deprecated and will be removed in future
-versions of libtorrent. It's still described in here for completeness.
-
-The allocation mode is selected when a torrent is started. It is passed as an
-argument to session::add_torrent() or session::async_add_torrent().
-
-The decision to use full allocation or compact allocation typically depends on
-whether any files have priority 0 and if the filesystem supports sparse files.
 
 sparse allocation
 -----------------
@@ -578,61 +575,6 @@ The benefits of this mode are:
 
  * No risk of a download failing because of a full disk during download, once
    all files have been created.
-
-compact allocation
-------------------
-
-.. note::
-	Support for compact allocation has been removed from libttorrent
-
-The compact allocation will only allocate as much storage as it needs to keep
-the pieces downloaded so far. This means that pieces will be moved around to be
-placed at their final position in the files while downloading (to make sure the
-completed download has all its pieces in the correct place). So, the main
-drawbacks are:
-
- * More disk operations while downloading since pieces are moved around.
-
- * Potentially more fragmentation in the filesystem.
-
- * Cannot be used while having files with priority 0.
-
-The benefits though, are:
-
- * No startup delay, since the files don't need allocating.
-
- * The download will not use unnecessary disk space.
-
- * Disk caches perform much better than in full allocation and raises the
-   download speed limit imposed by the disk.
-
- * Works well on filesystems that don't support sparse files.
-
-The algorithm that is used when allocating pieces and slots isn't very
-complicated. For the interested, a description follows.
-
-storing a piece:
-
-1. let **A** be a newly downloaded piece, with index **n**.
-2. let **s** be the number of slots allocated in the file we're
-   downloading to. (the number of pieces it has room for).
-3. if **n** >= **s** then allocate a new slot and put the piece there.
-4. if **n** < **s** then allocate a new slot, move the data at
-   slot **n** to the new slot and put **A** in slot **n**.
-
-allocating a new slot:
-
-1. if there's an unassigned slot (a slot that doesn't
-   contain any piece), return that slot index.
-2. append the new slot at the end of the file (or find an unused slot).
-3. let **i** be the index of newly allocated slot
-4. if we have downloaded piece index **i** already (to slot **j**) then
-
-   1. move the data at slot **j** to slot **i**.
-   2. return slot index **j** as the newly allocated free slot.
-
-5. return **i** as the newly allocated slot.
-
 
 HTTP seeding
 ============

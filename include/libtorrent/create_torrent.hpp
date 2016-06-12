@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2008-2014, Arvid Norberg
+Copyright (c) 2008-2016, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -43,20 +43,16 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/allocator.hpp"
 #include "libtorrent/file.hpp" // for combine_path etc.
 
+#include "libtorrent/aux_/disable_warnings_push.hpp"
+
 #include <vector>
 #include <string>
 #include <utility>
 
-#ifdef _MSC_VER
-#pragma warning(push, 1)
-#endif
-
 #include <boost/scoped_ptr.hpp>
 #include <boost/config.hpp>
 
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+#include "libtorrent/aux_/disable_warnings_pop.hpp"
 
 // OVERVIEW
 //
@@ -114,8 +110,14 @@ namespace libtorrent
 		enum flags_t
 		{
 			// This will insert pad files to align the files to piece boundaries, for
-			// optimized disk-I/O.
-			optimize = 1
+			// optimized disk-I/O. This will minimize the number of bytes of pad-
+			// files, to keep the impact down for clients that don't support
+			// them.
+			optimize_alignment = 1,
+#ifndef TORRENT_NO_DEPRECATE
+			// same as optimize_alignment, for backwards compatibility
+			optimize = 1,
+#endif
 
 			// This will create a merkle hash tree torrent. A merkle torrent cannot
 			// be opened in clients that don't specifically support merkle torrents.
@@ -125,7 +127,7 @@ namespace libtorrent
 			// When creating merkle torrents, the full hash tree is also generated
 			// and should be saved off separately. It is accessed through the
 			// create_torrent::merkle_tree() function.
-			, merkle = 2
+			merkle = 2,
 
 			// This will include the file modification time as part of the torrent.
 			// This is not enabled by default, as it might cause problems when you
@@ -133,19 +135,20 @@ namespace libtorrent
 			// yield the same info-hash. If the files have different modification times,
 			// with this option enabled, you would get different info-hashes for the
 			// files.
-			, modification_time = 4
+			modification_time = 4,
 
 			// If this flag is set, files that are symlinks get a symlink attribute
 			// set on them and their data will not be included in the torrent. This
 			// is useful if you need to reconstruct a file hierarchy which contains
 			// symlinks.
-			, symlinks = 8
+			symlinks = 8,
 
-			// If this is set, the set_piece_hashes() function will, as it calculates
-			// the piece hashes, also calculate the file hashes and add those associated
-			// with each file. Note that unless you use the set_piece_hashes() function,
-			// this flag will have no effect.
-			, calculate_file_hashes = 16
+			// to create a torrent that can be updated via a *mutable torrent*
+			// (see BEP38_). This also needs to be enabled for torrents that update
+			// another torrent.
+			// 
+			// .. _BEP38: http://www.bittorrent.org/beps/bep_0038.html
+			mutable_torrent_support = 16
 		};
 
 		// The ``piece_size`` is the size of each piece in bytes. It must
@@ -155,8 +158,8 @@ namespace libtorrent
 		// If a ``pad_size_limit`` is specified (other than -1), any file larger than
 		// the specified number of bytes will be preceeded by a pad file to align it
 		// with the start of a piece. The pad_file_limit is ignored unless the
-		// ``optimize`` flag is passed. Typically it doesn't make sense to set this
-		// any lower than 4kiB.
+		// ``optimize_alignment`` flag is passed. Typically it doesn't make sense
+		// to set this any lower than 4kiB.
 		// 
 		// The overload that takes a ``torrent_info`` object will make a verbatim
 		// copy of its info dictionary (to preserve the info-hash). The copy of
@@ -172,7 +175,8 @@ namespace libtorrent
 		// eligible files are aligned to. The default is -1, which means the
 		// piece size of the torrent.
 		create_torrent(file_storage& fs, int piece_size = 0
-			, int pad_file_limit = -1, int flags = optimize, int alignment = -1);
+			, int pad_file_limit = -1, int flags = optimize_alignment
+			, int alignment = -1);
 		create_torrent(torrent_info const& ti);
 
 		// internal
@@ -277,9 +281,6 @@ namespace libtorrent
 		int piece_length() const { return m_files.piece_length(); }
 		int piece_size(int i) const { return m_files.piece_size(i); }
 
-		// internal
-		bool should_add_file_hashes() const { return m_calculate_file_hashes; }
-
 		// This function returns the merkle hash tree, if the torrent was created as a merkle
 		// torrent. The tree is created by ``generate()`` and won't be valid until that function
 		// has been called. When creating a merkle tree torrent, the actual tree itself has to
@@ -288,10 +289,21 @@ namespace libtorrent
 		// tree will be saved in the resume data.
 		std::vector<sha1_hash> const& merkle_tree() const { return m_merkle_tree; }
 
+		// Add similar torrents (by info-hash) or collections of similar torrents.
+		// Similar torrents are expected to share some files with this torrent.
+		// Torrents sharing a collection name with this torrent are also expected
+		// to share files with this torrent. A torrent may have more than one
+		// collection and more than one similar torrents. For more information,
+		// see `BEP 38`_.
+		// 
+		// .. _`BEP 38`: http://www.bittorrent.org/beps/bep_0038.html
+		void add_similar_torrent(sha1_hash ih);
+		void add_collection(std::string c);
+
 	private:
 
 		file_storage& m_files;
-		// if m_info_dict is initialized, it is 
+		// if m_info_dict is initialized, it is
 		// used instead of m_files to generate
 		// the info dictionary
 		entry m_info_dict;
@@ -306,6 +318,9 @@ namespace libtorrent
 		std::vector<sha1_hash> m_piece_hash;
 
 		std::vector<sha1_hash> m_filehashes;
+
+		std::vector<sha1_hash> m_similar;
+		std::vector<std::string> m_collections;
 
 		// if we're generating a merkle torrent, this is the
 		// merkle tree we got. This should be saved in fast-resume
@@ -359,29 +374,11 @@ namespace libtorrent
 		// the torrent file. The full data of the pointed-to
 		// file is still included
 		bool m_include_symlinks:1;
-
-		// this is only used by set_piece_hashes(). It will
-		// calculate sha1 hashes for each file and add it
-		// to the file list
-		bool m_calculate_file_hashes:1;
 	};
 
 	namespace detail
 	{
-		inline bool default_pred(std::string const&) { return true; }
-
-		inline bool ignore_subdir(std::string const& leaf)
-		{ return leaf == ".." || leaf == "."; }
-
 		inline void nop(int) {}
-
-		int get_file_attributes(std::string const& p);
-		std::string get_symlink_path(std::string const& p);
-
-		// internal
-		TORRENT_EXPORT void add_files_impl(file_storage& fs, std::string const& p
-			, std::string const& l, boost::function<bool(std::string)> pred
-			, boost::uint32_t flags);
 	}
 
 	// Adds the file specified by ``path`` to the file_storage object. In case ``path``
@@ -401,15 +398,10 @@ namespace libtorrent
 	// 
 	// The ``flags`` argument should be the same as the flags passed to the `create_torrent`_
 	// constructor.
-	template <class Pred> void add_files(file_storage& fs, std::string const& file, Pred p, boost::uint32_t flags = 0)
-	{
-		detail::add_files_impl(fs, parent_path(complete(file)), filename(file), p, flags);
-	}
-	inline void add_files(file_storage& fs, std::string const& file, boost::uint32_t flags = 0)
-	{
-		detail::add_files_impl(fs, parent_path(complete(file)), filename(file)
-			, detail::default_pred, flags);
-	}
+	TORRENT_EXPORT void add_files(file_storage& fs, std::string const& file
+		, boost::function<bool(std::string)> p, boost::uint32_t flags = 0);
+	TORRENT_EXPORT void add_files(file_storage& fs, std::string const& file
+		, boost::uint32_t flags = 0);
 	
 	// This function will assume that the files added to the torrent file exists at path
 	// ``p``, read those files and hash the content and set the hashes in the ``create_torrent``
@@ -421,7 +413,7 @@ namespace libtorrent
 	// The overloads that don't take an ``error_code&`` may throw an exception in case of a
 	// file error, the other overloads sets the error code to reflect the error, if any.
 	TORRENT_EXPORT void set_piece_hashes(create_torrent& t, std::string const& p
-		, boost::function<void(int)> f, error_code& ec);
+		, boost::function<void(int)> const& f, error_code& ec);
 	inline void set_piece_hashes(create_torrent& t, std::string const& p, error_code& ec)
 	{
 		set_piece_hashes(t, p, detail::nop, ec);
@@ -450,51 +442,48 @@ namespace libtorrent
 	// and pass in utf8 strings
 #ifndef TORRENT_NO_DEPRECATE
 
-	template <class Pred>
-	TORRENT_DEPRECATED_PREFIX
-	void TORRENT_DEPRECATED add_files(file_storage& fs, std::wstring const& wfile, Pred p, boost::uint32_t flags = 0)
-	{
-		std::string utf8;
-		wchar_utf8(wfile, utf8);
-		detail::add_files_impl(fs, parent_path(complete(utf8))
-			, filename(utf8), p, flags);
-	}
+	TORRENT_DEPRECATED
+	TORRENT_EXPORT void add_files(file_storage& fs, std::wstring const& wfile
+		, boost::function<bool(std::string)> p, boost::uint32_t flags = 0);
 
-	TORRENT_DEPRECATED_PREFIX
-	inline void TORRENT_DEPRECATED add_files(file_storage& fs, std::wstring const& wfile, boost::uint32_t flags = 0)
-	{
-		std::string utf8;
-		wchar_utf8(wfile, utf8);
-		detail::add_files_impl(fs, parent_path(complete(utf8))
-			, filename(utf8), detail::default_pred, flags);
-	}
+	TORRENT_DEPRECATED
+	TORRENT_EXPORT void add_files(file_storage& fs, std::wstring const& wfile
+		, boost::uint32_t flags = 0);
 	
-	void TORRENT_EXPORT set_piece_hashes(create_torrent& t, std::wstring const& p
-		, boost::function<void(int)> const& f, error_code& ec);
+	TORRENT_DEPRECATED
+	TORRENT_EXPORT void set_piece_hashes(create_torrent& t, std::wstring const& p
+		, boost::function<void(int)> f, error_code& ec);
+
+	TORRENT_EXPORT void set_piece_hashes_deprecated(create_torrent& t
+		, std::wstring const& p
+		, boost::function<void(int)> f, error_code& ec);
 
 #ifndef BOOST_NO_EXCEPTIONS
 	template <class Fun>
-	TORRENT_DEPRECATED_PREFIX
-	void TORRENT_DEPRECATED set_piece_hashes(create_torrent& t, std::wstring const& p, Fun f)
+	TORRENT_DEPRECATED
+	void set_piece_hashes(create_torrent& t
+		, std::wstring const& p, Fun f)
 	{
 		error_code ec;
-		set_piece_hashes(t, p, f, ec);
+		set_piece_hashes_deprecated(t, p, f, ec);
 		if (ec) throw libtorrent_exception(ec);
 	}
 
-	TORRENT_DEPRECATED_PREFIX
-	inline void TORRENT_DEPRECATED set_piece_hashes(create_torrent& t, std::wstring const& p)
+	TORRENT_DEPRECATED
+	inline void set_piece_hashes(create_torrent& t
+		, std::wstring const& p)
 	{
 		error_code ec;
-		set_piece_hashes(t, p, detail::nop, ec);
+		set_piece_hashes_deprecated(t, p, detail::nop, ec);
 		if (ec) throw libtorrent_exception(ec);
 	}
 #endif
 
-	TORRENT_DEPRECATED_PREFIX
-	inline void TORRENT_DEPRECATED set_piece_hashes(create_torrent& t, std::wstring const& p, error_code& ec)
+	TORRENT_DEPRECATED
+	inline void set_piece_hashes(create_torrent& t
+		, std::wstring const& p, error_code& ec)
 	{
-		set_piece_hashes(t, p, detail::nop, ec);
+		set_piece_hashes_deprecated(t, p, detail::nop, ec);
 	} 
 #endif // TORRENT_NO_DEPRECATE
 #endif // TORRENT_USE_WSTRING

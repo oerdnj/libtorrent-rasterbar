@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2003-2014, Arvid Norberg
+Copyright (c) 2003-2016, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,13 +39,14 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/config.hpp"
 #include "libtorrent/peer_id.hpp"
 #include "libtorrent/assert.hpp"
+#include "libtorrent/export.hpp"
 
 namespace libtorrent
 {
 
 	// The fingerprint class represents information about a client and its version. It is used
 	// to encode this information into the client's peer id.
-	struct fingerprint
+	struct TORRENT_DEPRECATED_EXPORT fingerprint
 	{
 
 		// The constructor takes a ``char const*`` that should point to a string constant containing
@@ -97,7 +98,7 @@ namespace libtorrent
 		{
 			char s[100];
 			snprintf(s, 100, "-%c%c%c%c%c%c-"
-				,  name[0], name[1]
+				, name[0], name[1]
 				, version_to_char(major_version)
 				, version_to_char(minor_version)
 				, version_to_char(revision_version)
@@ -115,8 +116,8 @@ namespace libtorrent
 
 		char version_to_char(int v) const
 		{
-			if (v >= 0 && v < 10) return '0' + v;
-			else if (v >= 10) return 'A' + (v - 10);
+			if (v >= 0 && v < 10) return char('0' + v);
+			else if (v >= 10) return char('A' + (v - 10));
 			TORRENT_ASSERT(false);
 			return '0';
 		}

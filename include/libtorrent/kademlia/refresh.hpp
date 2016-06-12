@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2006-2014, Arvid Norberg & Daniel Wallin
+Copyright (c) 2006-2016, Arvid Norberg & Daniel Wallin
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -48,7 +48,7 @@ class bootstrap : public get_peers
 public:
 	typedef get_peers::nodes_callback done_callback;
 
-	bootstrap(node_impl& node, node_id target
+	bootstrap(node& dht_node, node_id target
 		, done_callback const& callback);
 	virtual char const* name() const;
 
