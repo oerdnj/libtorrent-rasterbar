@@ -30,13 +30,18 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#include <boost/bind.hpp>
-#include <list>
-#include "libtorrent/thread.hpp"
-#include <boost/smart_ptr/detail/atomic_count.hpp>
-#include "test.hpp"
+#include "libtorrent/aux_/disable_warnings_push.hpp"
 
-using boost::detail::atomic_count;
+#include <boost/bind.hpp>
+#include <boost/atomic.hpp>
+#include <list>
+
+#include "libtorrent/aux_/disable_warnings_pop.hpp"
+
+#include "libtorrent/thread.hpp"
+#include "test.hpp"
+#include "setup_transfer.hpp" // for test_sleep
+
 using namespace libtorrent;
 
 void fun(condition_variable* s, libtorrent::mutex* m, int* waiting, int i)
@@ -48,7 +53,7 @@ void fun(condition_variable* s, libtorrent::mutex* m, int* waiting, int i)
 	fprintf(stderr, "thread %d done\n", i);
 }
 
-void increment(condition_variable* s, libtorrent::mutex* m, int* waiting, atomic_count* c)
+void increment(condition_variable* s, libtorrent::mutex* m, int* waiting, boost::atomic<int>* c)
 {
 	libtorrent::mutex::scoped_lock l(*m);
 	*waiting += 1;
@@ -58,7 +63,7 @@ void increment(condition_variable* s, libtorrent::mutex* m, int* waiting, atomic
 		++*c;
 }
 
-void decrement(condition_variable* s, libtorrent::mutex* m, int* waiting, atomic_count* c)
+void decrement(condition_variable* s, libtorrent::mutex* m, int* waiting, boost::atomic<int>* c)
 {
 	libtorrent::mutex::scoped_lock l(*m);
 	*waiting += 1;
@@ -68,7 +73,7 @@ void decrement(condition_variable* s, libtorrent::mutex* m, int* waiting, atomic
 		--*c;
 }
 
-int test_main()
+TORRENT_TEST(threads)
 {
 	condition_variable cond;
 	libtorrent::mutex m;
@@ -84,7 +89,7 @@ int test_main()
 	while (waiting < 20)
 	{
 		l.unlock();
-		sleep(10);
+		test_sleep(10);
 		l.lock();
 	}
 
@@ -99,7 +104,7 @@ int test_main()
 	threads.clear();
 
 	waiting = 0;
-	atomic_count c(0);
+	boost::atomic<int> c(0);
 	for (int i = 0; i < 3; ++i)
 	{
 		threads.push_back(new thread(boost::bind(&increment, &cond, &m, &waiting, &c)));
@@ -111,7 +116,7 @@ int test_main()
 	while (waiting < 6)
 	{
 		l.unlock();
-		sleep(10);
+		test_sleep(10);
 		l.lock();
 	}
 
@@ -125,7 +130,5 @@ int test_main()
 	}
 
 	TEST_CHECK(c == 0);
-
-	return 0;
 }
 

@@ -4,7 +4,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="Docutils 0.12: http://docutils.sourceforge.net/" />
-<title>Filter</title>
+<title></title>
 <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
 <meta name=viewport content="width=device-width, initial-scale=1">
 <script type="text/javascript">
@@ -27,14 +27,14 @@
 </style>
 </head>
 <body>
-<div class="document" id="filter">
+<div class="document">
     <div id="container">
     <table id="header">
     <tr><td id="orange"></td>
     <td id="logo">libtorrent</td></tr>
     </table>
     <div id="main">
-<h1 class="title">Filter</h1>
+
 <table class="docinfo" frame="void" rules="none">
 <col class="docinfo-name" />
 <col class="docinfo-content" />
@@ -42,18 +42,23 @@
 <tr><th class="docinfo-name">Author:</th>
 <td>Arvid Norberg, <a class="last reference external" href="mailto:arvid&#64;libtorrent.org">arvid&#64;libtorrent.org</a></td></tr>
 <tr><th class="docinfo-name">Version:</th>
-<td>1.0.7</td></tr>
+<td>1.1.0</td></tr>
 </tbody>
 </table>
+<div class="section" id="filter">
+<h1>Filter</h1>
 <div class="contents topic" id="table-of-contents">
 <p class="topic-title first">Table of contents</p>
 <ul class="simple">
-<li><a class="reference internal" href="#ip-filter" id="id10">ip_filter</a></li>
-<li><a class="reference internal" href="#port-filter" id="id11">port_filter</a></li>
+<li><a class="reference internal" href="#filter" id="id10">Filter</a><ul>
+<li><a class="reference internal" href="#ip-filter" id="id11">ip_filter</a></li>
+<li><a class="reference internal" href="#port-filter" id="id12">port_filter</a></li>
+</ul>
+</li>
 </ul>
 </div>
 <a name="ip_filter"></a><div class="section" id="ip-filter">
-<h1>ip_filter</h1>
+<h2>ip_filter</h2>
 <p>Declared in &quot;<a class="reference external" href="../include/libtorrent/ip_filter.hpp">libtorrent/ip_filter.hpp</a>&quot;</p>
 <p>The <tt class="docutils literal">ip_filter</tt> class is a set of rules that uniquely categorizes all
 ip addresses as allowed or disallowed. The default constructor creates
@@ -64,7 +69,7 @@ IPv6 range).</p>
 <pre class="literal-block">
 struct ip_filter
 {
-   void <strong>add_rule</strong> (address first, address last, int flags);
+   void <strong>add_rule</strong> (address first, address last, boost::uint32_t flags);
    int <strong>access</strong> (address const&amp; addr) const;
    filter_tuple_t <strong>export_filter</strong> () const;
 
@@ -75,9 +80,9 @@ struct ip_filter
 };
 </pre>
 <a name="add_rule()"></a><div class="section" id="add-rule">
-<h2>add_rule()</h2>
+<h3>add_rule()</h3>
 <pre class="literal-block">
-void <strong>add_rule</strong> (address first, address last, int flags);
+void <strong>add_rule</strong> (address first, address last, boost::uint32_t flags);
 </pre>
 <p>Adds a rule to the filter. <tt class="docutils literal">first</tt> and <tt class="docutils literal">last</tt> defines a range of
 ip addresses that will be marked with the given flags. The <tt class="docutils literal">flags</tt>
@@ -91,7 +96,7 @@ means disallowed.</p>
 precedence.</p>
 <a name="access()"></a></div>
 <div class="section" id="access">
-<h2>access()</h2>
+<h3>access()</h3>
 <pre class="literal-block">
 int <strong>access</strong> (address const&amp; addr) const;
 </pre>
@@ -101,7 +106,7 @@ is O(<tt class="docutils literal">log</tt> n), where n is the minimum number of 
 the current filter.</p>
 <a name="export_filter()"></a></div>
 <div class="section" id="export-filter">
-<h2>export_filter()</h2>
+<h3>export_filter()</h3>
 <pre class="literal-block">
 filter_tuple_t <strong>export_filter</strong> () const;
 </pre>
@@ -113,7 +118,7 @@ ranges possible. They are sorted from ranges in low addresses to high addresses.
 and one for IPv6 addresses.</p>
 <a name="access_flags"></a></div>
 <div class="section" id="enum-access-flags">
-<h2>enum access_flags</h2>
+<h3>enum access_flags</h3>
 <p>Declared in &quot;<a class="reference external" href="../include/libtorrent/ip_filter.hpp">libtorrent/ip_filter.hpp</a>&quot;</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -138,7 +143,7 @@ to nor accepted as incoming connections</td>
 <a name="port_filter"></a></div>
 </div>
 <div class="section" id="port-filter">
-<h1>port_filter</h1>
+<h2>port_filter</h2>
 <p>Declared in &quot;<a class="reference external" href="../include/libtorrent/ip_filter.hpp">libtorrent/ip_filter.hpp</a>&quot;</p>
 <p>the port filter maps non-overlapping port ranges to flags. This
 is primarily used to indicate whether a range of ports should
@@ -147,7 +152,7 @@ range (0-65535) set to flag 0.</p>
 <pre class="literal-block">
 class port_filter
 {
-   void <strong>add_rule</strong> (boost::uint16_t first, boost::uint16_t last, int flags);
+   void <strong>add_rule</strong> (boost::uint16_t first, boost::uint16_t last, boost::uint32_t flags);
    int <strong>access</strong> (boost::uint16_t port) const;
 
    enum access_flags
@@ -157,16 +162,16 @@ class port_filter
 };
 </pre>
 <a name="add_rule()"></a><div class="section" id="id6">
-<h2>add_rule()</h2>
+<h3>add_rule()</h3>
 <pre class="literal-block">
-void <strong>add_rule</strong> (boost::uint16_t first, boost::uint16_t last, int flags);
+void <strong>add_rule</strong> (boost::uint16_t first, boost::uint16_t last, boost::uint32_t flags);
 </pre>
 <p>set the flags for the specified port range (<tt class="docutils literal">first</tt>, <tt class="docutils literal">last</tt>) to
 <tt class="docutils literal">flags</tt> overwriting any existing rule for those ports. The range
 is inclusive, i.e. the port <tt class="docutils literal">last</tt> also has the flag set on it.</p>
 <a name="access()"></a></div>
 <div class="section" id="id7">
-<h2>access()</h2>
+<h3>access()</h3>
 <pre class="literal-block">
 int <strong>access</strong> (boost::uint16_t port) const;
 </pre>
@@ -175,7 +180,7 @@ or not. The returned value is the flags set for this port.
 see acces_flags.</p>
 <a name="access_flags"></a></div>
 <div class="section" id="id8">
-<h2>enum access_flags</h2>
+<h3>enum access_flags</h3>
 <p>Declared in &quot;<a class="reference external" href="../include/libtorrent/ip_filter.hpp">libtorrent/ip_filter.hpp</a>&quot;</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -197,6 +202,7 @@ range should not be connected to</td>
 </tr>
 </tbody>
 </table>
+</div>
 </div>
 </div>
 

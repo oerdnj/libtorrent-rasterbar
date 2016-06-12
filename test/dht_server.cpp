@@ -37,7 +37,9 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/io_service.hpp"
 #include "libtorrent/error_code.hpp"
 #include "libtorrent/socket.hpp"
+#include "libtorrent/aux_/time.hpp"
 #include "dht_server.hpp"
+#include "test_utils.hpp"
 
 #include <boost/detail/atomic_count.hpp>
 #include <boost/shared_ptr.hpp>
@@ -52,7 +54,7 @@ using namespace libtorrent;
 struct dht_server
 {
 
-	boost::asio::io_service m_ios;
+	libtorrent::io_service m_ios;
 	boost::detail::atomic_count m_dht_requests;
 	udp::socket m_socket;
 	int m_port;
@@ -111,7 +113,7 @@ struct dht_server
 	void thread_fun()
 	{
 		char buffer[2000];
-	
+
 		for (;;)
 		{
 			error_code ec;
@@ -119,11 +121,11 @@ struct dht_server
 			size_t bytes_transferred;
 			bool done = false;
 			m_socket.async_receive_from(
-				asio::buffer(buffer, sizeof(buffer)), from, 0
+				boost::asio::buffer(buffer, sizeof(buffer)), from, 0
 				, boost::bind(&incoming_packet, _1, _2, &bytes_transferred, &ec, &done));
 			while (!done)
 			{
-				m_ios.run_one();
+				m_ios.poll_one();
 				m_ios.reset();
 			}
 
@@ -170,8 +172,6 @@ int num_dht_hits()
 
 void stop_dht()
 {
-	fprintf(stderr, "%s: stop_dht()\n", time_now_string());
 	g_dht.reset();
-	fprintf(stderr, "%s: stop_dht() done\n", time_now_string());
 }
 

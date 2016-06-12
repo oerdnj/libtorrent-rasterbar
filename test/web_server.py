@@ -1,9 +1,12 @@
+#!/usr/bin/env python
+
 import BaseHTTPServer
 import SimpleHTTPServer
 import sys
 import os
 import ssl
 import gzip
+import base64
 
 chunked_encoding = False
 keepalive = True
@@ -40,6 +43,23 @@ class http_handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 			s.path = s.path[s.path.find('/'):]
 
 		file_path = os.path.normpath(s.path)
+		print file_path
+		print s.path
+
+		if s.path == '/password_protected':
+			passed = False
+			if 'Authorization' in s.headers:
+				auth = s.headers['Authorization']
+				passed = auth == 'Basic %s' % base64.b64encode('testuser:testpass')
+
+			if not passed:
+				s.send_response(401)
+				s.send_header("Connection", "close")
+				s.end_headers()
+				return
+
+			s.path = '/test_file'
+			file_path = os.path.normpath('/test_file')
 
 		if s.path == '/redirect':
 			s.send_response(301)
@@ -58,7 +78,10 @@ class http_handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 			s.end_headers()
 		elif s.path.startswith('/announce'):
 			s.send_response(200)
-			response = 'd8:intervali1800e8:completei1e10:incompletei1e5:peers0:e'
+			response = 'd8:intervali1800e8:completei1e10:incompletei1e' + \
+				'5:peers12:AAAABBCCCCDD' + \
+				'6:peers618:EEEEEEEEEEEEEEEEFF' + \
+				'e'
 			s.send_header("Content-Length", "%d" % len(response))
 			s.send_header("Connection", "close")
 			s.end_headers()
@@ -73,11 +96,12 @@ class http_handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 			piece = int(args['piece'])
 			ranges = args['ranges'].split('-')
 
+			filename = ''
 			try:
-				filename = s.path[1:s.path.find('seed?') + 4]
-				#print 'filename = %s' % filename
+				filename = os.path.normpath(s.path[1:s.path.find('seed?') + 4])
+				print 'filename = %s' % filename
 				f = open(filename, 'rb')
-				f.seek(piece * 64 * 1024 + int(ranges[0]))
+				f.seek(piece * 32 * 1024 + int(ranges[0]))
 				data = f.read(int(ranges[1]) - int(ranges[0]) + 1)
 				f.close()
 
@@ -87,13 +111,14 @@ class http_handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 				s.end_headers()
 				s.wfile.write(data);
 			except Exception, e:
-				print 'FILE NOT FOUND: ', os.getcwd(), filename
+				print 'FILE ERROR: ', filename, e
 				s.send_response(404)
 				s.send_header("Content-Length", "0")
 				s.end_headers()
 		else:
+			filename = ''
 			try:
-				filename = file_path[1:]
+				filename = os.path.normpath(file_path[1:])
 				# serve file by invoking default handler
 				f = open(filename, 'rb')
 				size = int(os.stat(filename).st_size)
@@ -124,9 +149,13 @@ class http_handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 					s.send_header('Content-Encoding', 'gzip')
 				if not keepalive:
 					s.send_header("Connection", "close")
+					try:
+						s.request.shutdown();
+					except Exception, e:
+						print 'Failed to shutdown read-channel of socket: ', e
 
 				s.end_headers()
-   
+
 				f.seek(start_range)
 				length = end_range - start_range
 				while length > 0:
@@ -134,18 +163,19 @@ class http_handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 					if chunked_encoding:
 						s.wfile.write('%x\r\n' % to_send)
 					data = f.read(to_send)
+					print 'read %d bytes' % to_send
 					s.wfile.write(data)
 					if chunked_encoding:
 						s.wfile.write('\r\n')
 					length -= to_send
+					print 'sent %d bytes (%d bytes left)' % (len(data), length)
 				if chunked_encoding:
 					s.wfile.write('0\r\n\r\n')
 			except Exception, e:
-				print 'FILE NOT FOUND: ', os.getcwd(), e
+				print 'FILE ERROR: ', filename, e
 				s.send_response(404)
 				s.send_header("Content-Length", "0")
 				s.end_headers()
-
 
 if __name__ == '__main__':
 	port = int(sys.argv[1])

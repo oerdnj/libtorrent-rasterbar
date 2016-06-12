@@ -31,11 +31,13 @@ POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "test.hpp"
+#include "setup_transfer.hpp"
+#include "test_utils.hpp"
+
 #include "libtorrent/socket.hpp"
 #include "libtorrent/socket_io.hpp" // print_endpoint
-#include "libtorrent/connection_queue.hpp"
 #include "libtorrent/http_connection.hpp"
-#include "setup_transfer.hpp"
+#include "libtorrent/resolver.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -44,7 +46,7 @@ POSSIBILITY OF SUCH DAMAGE.
 using namespace libtorrent;
 
 io_service ios;
-connection_queue cq(ios);
+resolver res(ios);
 
 int connect_handler_called = 0;
 int handler_called = 0;
@@ -104,7 +106,8 @@ void reset_globals()
 }
 
 void run_test(std::string const& url, int size, int status, int connected
-	, boost::optional<error_code> ec, proxy_settings const& ps)
+	, boost::optional<error_code> ec, aux::proxy_settings const& ps
+	, std::string const& auth = std::string())
 {
 	reset_globals();
 
@@ -116,9 +119,10 @@ void run_test(std::string const& url, int size, int status, int connected
 		<< " connected: " << connected
 		<< " error: " << (ec?ec->message():"no error") << std::endl;
 
-	boost::shared_ptr<http_connection> h(new http_connection(ios, cq
-		, &::http_handler, true, 1024*1024, &::http_connect_handler));
-	h->get(url, seconds(1), 0, &ps);
+	boost::shared_ptr<http_connection> h(new http_connection(ios
+		, res, &::http_handler, true, 1024*1024, &::http_connect_handler));
+	h->get(url, seconds(1), 0, &ps, 5, "test/user-agent", address_v4::any()
+		, 0, auth);
 	ios.reset();
 	error_code e;
 	ios.run(e);
@@ -131,27 +135,55 @@ void run_test(std::string const& url, int size, int status, int connected
 	std::cerr << time_now_string() << " expected-size: " << size << std::endl;
 	std::cerr << time_now_string() << " error_code: " << g_error_code.message() << std::endl;
 	TEST_CHECK(connect_handler_called == connected);
-	TEST_CHECK(handler_called == 1);	
+	TEST_CHECK(handler_called == 1);
 	TEST_CHECK(data_size == size || size == -1);
 	TEST_CHECK(!ec || g_error_code == *ec);
 	TEST_CHECK(http_status == status || status == -1);
 }
 
-void run_suite(std::string const& protocol, proxy_settings ps, int port)
+void write_test_file()
 {
-	if (ps.type != proxy_settings::none)
-	{
-		ps.port = start_proxy(ps.type);
-	}
-	char const* test_name[] = {"no", "SOCKS4", "SOCKS5"
-		, "SOCKS5 password protected", "HTTP", "HTTP password protected"};
+	std::srand(std::time(0));
+	std::generate(data_buffer, data_buffer + sizeof(data_buffer), &std::rand);
+	error_code ec;
+	file test_file("test_file", file::write_only, ec);
+	TEST_CHECK(!ec);
+	if (ec) fprintf(stderr, "file error: %s\n", ec.message().c_str());
+	file::iovec_t b = { data_buffer, 3216};
+	test_file.writev(0, &b, 1, ec);
+	TEST_CHECK(!ec);
+	if (ec) fprintf(stderr, "file error: %s\n", ec.message().c_str());
+	test_file.close();
+}
 
-	printf("\n\n********************** using %s proxy **********************\n"
-		, test_name[ps.type]);
+enum suite_flags_t
+{
+	flag_chunked_encoding = 1,
+	flag_keepalive = 2
+};
+
+void run_suite(std::string const& protocol
+	, settings_pack::proxy_type_t proxy_type
+	, int flags = flag_keepalive)
+{
+	write_test_file();
+
+	// starting the web server will also generate test_file.gz (from test_file)
+	// so it has to happen after we write test_file
+	int port = start_web_server(protocol == "https"
+		, flags & flag_chunked_encoding
+		, flags & flag_keepalive);
+
+	aux::proxy_settings ps;
+	ps.hostname = "127.0.0.1";
+	ps.username = "testuser";
+	ps.password = "testpass";
+	ps.type = proxy_type;
+
+	if (ps.type != settings_pack::none)
+		ps.port = start_proxy(ps.type);
 
 	typedef boost::optional<error_code> err;
-	// this requires the hosts file to be modified
-//	run_test(protocol + "://test.dns.ts:8001/test_file", 3216, 200, 1, error_code(), ps);
 
 	char url[256];
 	snprintf(url, sizeof(url), "%s://127.0.0.1:%d/", protocol.c_str(), port);
@@ -166,6 +198,8 @@ void run_suite(std::string const& protocol, proxy_settings ps, int port)
 	run_test(url_base + "test_file", 3216, 200, 1, error_code(), ps);
 	run_test(url_base + "test_file.gz", 3216, 200, 1, error_code(), ps);
 	run_test(url_base + "non-existing-file", -1, 404, 1, err(), ps);
+	run_test(url_base + "password_protected", 3216, 200, 1, error_code(), ps
+		, "testuser:testpass");
 
 	// only run the tests to handle NX_DOMAIN if we have a proper internet
 	// connection that doesn't inject false DNS responses (like Comcast does)
@@ -173,64 +207,21 @@ void run_suite(std::string const& protocol, proxy_settings ps, int port)
 	printf("gethostbyname(\"non-existent-domain.se\") = %p. h_errno = %d\n", h, h_errno);
 	if (h == 0 && h_errno == HOST_NOT_FOUND)
 	{
-		// if we're going through an http proxy, we won't get the same error as if the hostname
-		// resolution failed
-		if ((ps.type == proxy_settings::http || ps.type == proxy_settings::http_pw) && protocol != "https")
-			run_test(protocol + "://non-existent-domain.se/non-existing-file", -1, 502, 1, err(), ps);
-		else
-			run_test(protocol + "://non-existent-domain.se/non-existing-file", -1, -1, 0, err(), ps);
+		run_test(protocol + "://non-existent-domain.se/non-existing-file", -1, -1, 0, err(), ps);
 	}
-	if (ps.type != proxy_settings::none)
+	if (ps.type != settings_pack::none)
 		stop_proxy(ps.port);
+	stop_web_server();
 }
 
-int test_main()
-{
-	std::srand(std::time(0));
-	std::generate(data_buffer, data_buffer + sizeof(data_buffer), &std::rand);
-	error_code ec;
-	file test_file("test_file", file::write_only, ec);
-	TEST_CHECK(!ec);
-	if (ec) fprintf(stderr, "file error: %s\n", ec.message().c_str());
-	file::iovec_t b = { data_buffer, 3216};
-	test_file.writev(0, &b, 1, ec);
-	TEST_CHECK(!ec);
-	if (ec) fprintf(stderr, "file error: %s\n", ec.message().c_str());
-	test_file.close();
-	
-	proxy_settings ps;
-	ps.hostname = "127.0.0.1";
-	ps.port = 8034;
-	ps.username = "testuser";
-	ps.password = "testpass";
-	int port = 0;
-	
-	port = start_web_server();
-
-	for (int i = 0; i < 5; ++i)
-	{
-		ps.type = (proxy_settings::proxy_type)i;
-		run_suite("http", ps, port);
-	}
-	stop_web_server();
-
 #ifdef TORRENT_USE_OPENSSL
-	port = start_web_server(true);
-	for (int i = 0; i < 5; ++i)
-	{
-		ps.type = (proxy_settings::proxy_type)i;
-		run_suite("https", ps, port);
-	}
-	stop_web_server();
-#endif
+TORRENT_TEST(no_proxy_ssl) { run_suite("https", settings_pack::none); }
+TORRENT_TEST(http_ssl) { run_suite("https", settings_pack::http); }
+TORRENT_TEST(http_pw_ssl) { run_suite("https", settings_pack::http_pw); }
+#endif // USE_OPENSSL
 
-	// test chunked encoding
-	port = start_web_server(false, true);
-	ps.type = proxy_settings::none;
-	run_suite("http", ps, port);
-
-	stop_web_server();
-	std::remove("test_file");
-	return 0;
+TORRENT_TEST(no_keepalive)
+{
+	run_suite("http", settings_pack::none, 0);
 }
 

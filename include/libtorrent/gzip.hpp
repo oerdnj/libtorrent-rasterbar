@@ -53,7 +53,7 @@ namespace libtorrent
 	namespace gzip_errors
 	{
 		// libtorrent uses boost.system's ``error_code`` class to represent errors. libtorrent has
-		// its own error category get_gzip_category() whith the error codes defined by error_code_enum.
+		// its own error category get_gzip_category() with the error codes defined by error_code_enum.
 		enum error_code_enum
 		{
 			// Not an error
@@ -73,11 +73,11 @@ namespace libtorrent
 			space_exhausted,
 
 			// invalid block type (type == 3)
- 			invalid_block_type,
+			invalid_block_type,
 
 			// stored block length did not match one's complement
 			invalid_stored_block_length,
-			
+
 			// dynamic block code description: too many length or distance codes
 			too_many_length_or_distance_codes,
 
@@ -115,7 +115,6 @@ namespace libtorrent
 
 }
 
-#if BOOST_VERSION >= 103500
 namespace boost { namespace system {
 
 template<>
@@ -127,7 +126,6 @@ struct is_error_condition_enum<libtorrent::gzip_errors::error_code_enum>
 { static const bool value = true; };
 
 } }
-#endif // BOOST_VERSION
 
 #endif
 

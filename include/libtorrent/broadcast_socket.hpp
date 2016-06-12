@@ -38,9 +38,14 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "libtorrent/socket.hpp"
 #include "libtorrent/address.hpp"
 #include "libtorrent/error_code.hpp"
+
+#include "libtorrent/aux_/disable_warnings_push.hpp"
+
 #include <boost/shared_ptr.hpp>
 #include <boost/function/function3.hpp>
 #include <list>
+
+#include "libtorrent/aux_/disable_warnings_pop.hpp"
 
 namespace libtorrent
 {
@@ -58,36 +63,34 @@ namespace libtorrent
 	TORRENT_EXTRA_EXPORT int common_bits(unsigned char const* b1
 		, unsigned char const* b2, int n);
 
-	TORRENT_EXTRA_EXPORT address guess_local_address(io_service&);
-
 	typedef boost::function<void(udp::endpoint const& from
 		, char* buffer, int size)> receive_handler_t;
 
 	class TORRENT_EXTRA_EXPORT broadcast_socket
 	{
 	public:
-		broadcast_socket(udp::endpoint const& multicast_endpoint
-			, receive_handler_t const& handler);
+		broadcast_socket(udp::endpoint const& multicast_endpoint);
 		~broadcast_socket() { close(); }
 
-		void open(io_service& ios, error_code& ec, bool loopback = true);
+		void open(receive_handler_t const& handler, io_service& ios
+			, error_code& ec, bool loopback = true);
 
 		enum flags_t { broadcast = 1 };
 		void send(char const* buffer, int size, error_code& ec, int flags = 0);
 
 		void close();
-		int num_send_sockets() const { return m_unicast_sockets.size(); }
+		int num_send_sockets() const { return int(m_unicast_sockets.size()); }
 		void enable_ip_broadcast(bool e);
 
 	private:
 
 		struct socket_entry
 		{
-			socket_entry(boost::shared_ptr<datagram_socket> const& s)
+			socket_entry(boost::shared_ptr<udp::socket> const& s)
 				: socket(s), broadcast(false) {}
-			socket_entry(boost::shared_ptr<datagram_socket> const& s
+			socket_entry(boost::shared_ptr<udp::socket> const& s
 				, address_v4 const& mask): socket(s), netmask(mask), broadcast(false) {}
-			boost::shared_ptr<datagram_socket> socket;
+			boost::shared_ptr<udp::socket> socket;
 			char buffer[1500];
 			udp::endpoint remote;
 			address_v4 netmask;
