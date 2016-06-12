@@ -1,3 +1,11 @@
+libtorrent-rasterbar (1.1.0-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+   - Fixes CVE-2016-5301, crash while parsing invalid
+     chunked HTTP or UPnP response (Closes: #826380).
+
+ -- Andrew Starr-Bochicchio <asb@debian.org>  Sun, 12 Jun 2016 14:01:35 -0400
+
 libtorrent-rasterbar (1.0.7-1) unstable; urgency=medium
 
   * New upstream release (Closes: #806396).
