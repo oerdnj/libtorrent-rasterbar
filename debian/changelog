@@ -5,6 +5,7 @@ libtorrent-rasterbar (1.1.0-1) UNRELEASED; urgency=medium
      chunked HTTP or UPnP response (Closes: #826380).
   * Drop python-clean-without-bjam.patch, applied upstream.
   * Drop missing_rst_file.patch, applied upstream.
+  * Build depend on libboost-chrono-dev and libboost-random-dev.
 
  -- Andrew Starr-Bochicchio <asb@debian.org>  Sun, 12 Jun 2016 14:01:35 -0400
 
