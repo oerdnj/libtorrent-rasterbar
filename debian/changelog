@@ -1,3 +1,10 @@
+libtorrent-rasterbar (1.1.0-2) UNRELEASED; urgency=medium
+
+  * Fix builds on arches where the multiarch tuple (i386-*) and
+    the GNU tuple (i686-*) differ (Closes: #833944).
+
+ -- Andrew Starr-Bochicchio <a.starr.b@gmail.com>  Wed, 10 Aug 2016 20:11:34 -0400
+
 libtorrent-rasterbar (1.1.0-1) unstable; urgency=medium
 
   * New upstream release.
