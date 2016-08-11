@@ -1,2 +1,3 @@
+remove-msse4.2.patch
 python-dbg-build-fix.patch
 fix-html-docs.patch
