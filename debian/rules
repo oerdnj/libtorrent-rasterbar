@@ -12,7 +12,7 @@ ALLPY=$(PYTHON2) $(PYTHON3) $(PYTHON2:%=%-dbg) $(PYTHON3:%=%-dbg)
 CONFIGURE_ARGS = --with-libgeoip --with-libiconv --with-boost-libdir=/usr/lib/$(DEB_HOST_MULTIARCH)
 
 %:
-	dh $@ --parallel --with autoreconf,python2,python3
+	dh $@ --parallel --with autoreconf,python2,python3 --fail-missing
 
 override_dh_auto_configure-nopy:
 	dh_auto_configure --builddirectory build -- $(CONFIGURE_ARGS)
