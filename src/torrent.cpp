@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2003-2014, Arvid Norberg
+Copyright (c) 2003-2016, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -623,7 +623,7 @@ namespace libtorrent
 		TORRENT_ASSERT(num_torrents == int(m_ses.m_torrents.size()));
 
 		// if the user added any trackers while downloading the
-		// .torrent file, serge them into the new tracker list
+		// .torrent file, merge them into the new tracker list
 		std::vector<announce_entry> new_trackers = m_torrent_file->trackers();
 		for (std::vector<announce_entry>::iterator i = m_trackers.begin()
 			, end(m_trackers.end()); i != end; ++i)
@@ -638,6 +638,10 @@ namespace libtorrent
 				, boost::bind(&announce_entry::tier, _1) >= i->tier), *i);
 		}
 		m_trackers.swap(new_trackers);
+
+		// add the web seeds from the .torrent file
+		std::vector<web_seed_entry> const& web_seeds = m_torrent_file->web_seeds();
+		m_web_seeds.insert(m_web_seeds.end(), web_seeds.begin(), web_seeds.end());
 
 #ifndef TORRENT_DISABLE_ENCRYPTION
 		hasher h;
@@ -7366,6 +7370,17 @@ namespace libtorrent
 		disconnect_all(errors::torrent_removed);
 		stop_announcing();
 
+		// if we don't have metadata yet, we don't know anything about the file
+		// structure and we have to assume we don't have any file. Deleting files
+		// in this mode would cause us to (recursively) delete m_save_path, which
+		// is bad.
+		if (!valid_metadata())
+		{
+			alerts().post_alert(torrent_deleted_alert(get_handle(), m_torrent_file->info_hash()));
+			return true;
+		}
+
+		if (m_torrent_file)
 		// storage may be NULL during shutdown
 		if (m_owning_storage.get())
 		{

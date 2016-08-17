@@ -5,7 +5,7 @@
 
 AC_PREREQ([2.63])
 
-AC_INIT([libtorrent-rasterbar],[1.0.7],[arvid@libtorrent.org],
+AC_INIT([libtorrent-rasterbar],[1.0.9],[arvid@libtorrent.org],
         [libtorrent-rasterbar],[http://www.libtorrent.org])
 AC_CONFIG_SRCDIR([src/torrent.cpp])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -563,6 +563,8 @@ AS_CASE(["$ARG_ENABLE_PYTHON_BINDING"],
 
       AS_IF([test -z "$BOOST_PYTHON_LIB"],
             [AC_MSG_ERROR([Boost.Python library not found. Try using --with-boost-python=lib.])])
+
+      BOOST_PYTHON_LIB="-l$BOOST_PYTHON_LIB"
     ],
   ["no"], [
       AC_MSG_RESULT([no])

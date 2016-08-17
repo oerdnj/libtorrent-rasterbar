@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2003-2014, Arvid Norberg
+Copyright (c) 2003-2016, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -97,25 +97,11 @@ namespace libtorrent
 	namespace asio = boost::asio;
 #endif
 
-#if TORRENT_USE_IPV6
-#ifdef IPV6_V6ONLY
-	struct v6only
-	{
-		v6only(bool enable): m_value(enable) {}
-		template<class Protocol>
-		int level(Protocol const&) const { return IPPROTO_IPV6; }
-		template<class Protocol>
-		int name(Protocol const&) const { return IPV6_V6ONLY; }
-		template<class Protocol>
-		int const* data(Protocol const&) const { return &m_value; }
-		template<class Protocol>
-		size_t size(Protocol const&) const { return sizeof(m_value); }
-		int m_value;
-	};
-#endif
-#endif
-	
 #ifdef TORRENT_WINDOWS
+
+#ifndef PROTECTION_LEVEL_UNRESTRICTED
+#define PROTECTION_LEVEL_UNRESTRICTED 10
+#endif
 
 #ifndef IPV6_PROTECTION_LEVEL
 #define IPV6_PROTECTION_LEVEL 30
@@ -133,7 +119,21 @@ namespace libtorrent
 		size_t size(Protocol const&) const { return sizeof(m_value); }
 		int m_value;
 	};
-#endif
+
+	struct exclusive_address_use
+	{
+		exclusive_address_use(int enable): m_value(enable) {}
+		template<class Protocol>
+		int level(Protocol const&) const { return SOL_SOCKET; }
+		template<class Protocol>
+		int name(Protocol const&) const { return SO_EXCLUSIVEADDRUSE; }
+		template<class Protocol>
+		int const* data(Protocol const&) const { return &m_value; }
+		template<class Protocol>
+		size_t size(Protocol const&) const { return sizeof(m_value); }
+		int m_value;
+	};
+#endif // TORRENT_WINDOWS
 
 #ifdef IPV6_TCLASS
 	struct traffic_class
