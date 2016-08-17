@@ -7,6 +7,7 @@ libtorrent-rasterbar (1:1.0.9-1) unstable; urgency=medium
   * Build depend on libboost-chrono-dev and libboost-random-dev.
   * python-dbg-build-fix.patch: Fix building bindings with python-dbg. Thanks to Calum Lind.
   * Merge various packaging changes from 1.1.0 release
+  * Re-enable fix-html-docs.patch
 
  -- Ondřej Surý <ondrej@debian.org>  Wed, 17 Aug 2016 08:58:06 +0200
 
