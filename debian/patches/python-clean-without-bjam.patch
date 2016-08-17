@@ -4,11 +4,9 @@ Description: Running setup.py without LDFLAGS or explicitly passing includes
 Origin: vendor
 Author: Andrew Starr-Bochicchio <asb@debian.org>
 
-Index: libtorrent-rasterbar/bindings/python/setup.py
-===================================================================
---- libtorrent-rasterbar.orig/bindings/python/setup.py	2015-11-27 11:21:15.696003799 -0500
-+++ libtorrent-rasterbar/bindings/python/setup.py	2015-11-27 11:21:15.696003799 -0500
-@@ -51,7 +51,7 @@
+--- libtorrent-rasterbar.orig/bindings/python/setup.py
++++ libtorrent-rasterbar/bindings/python/setup.py
+@@ -51,7 +51,7 @@ except:
  ext = None
  packages = None
  
@@ -17,7 +15,7 @@ Index: libtorrent-rasterbar/bindings/python/setup.py
  
  	if '--bjam' in sys.argv:
  		del sys.argv[sys.argv.index('--bjam')]
-@@ -94,15 +94,16 @@
+@@ -97,15 +97,16 @@ else:
  	source_list = os.listdir(os.path.join(os.path.dirname(__file__), "src"))
  	source_list = [os.path.join("src", s) for s in source_list if s.endswith(".cpp")]
  
@@ -42,4 +40,4 @@ Index: libtorrent-rasterbar/bindings/python/setup.py
 +			libraries = ['torrent-rasterbar'] + parse_cmd(extra_cmd, '-l'))]
  
  setup(name = 'python-libtorrent',
- 	version = '1.0.7',
+ 	version = '1.0.9',

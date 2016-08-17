@@ -1,7 +1,5 @@
-Index: libtorrent-rasterbar/docs/stats_counters.rst
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libtorrent-rasterbar/docs/stats_counters.rst	2015-11-27 12:39:47.613512180 -0500
+--- /dev/null
++++ libtorrent-rasterbar/docs/stats_counters.rst
 @@ -0,0 +1,2005 @@
 +.. _peer.error_peers:
 +

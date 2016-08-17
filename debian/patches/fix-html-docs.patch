@@ -5,10 +5,8 @@ Forwarded: not-needed
 Origin: vendor
 Author: Cristian Greco <cristian@regolo.cc>
 
-Index: libtorrent-rasterbar/docs/template.txt
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libtorrent-rasterbar/docs/template.txt	2015-11-27 11:23:06.910039791 -0500
+--- /dev/null
++++ libtorrent-rasterbar/docs/template.txt
 @@ -0,0 +1,29 @@
 +%(head_prefix)s
 +%(head)s
@@ -39,10 +37,8 @@ Index: libtorrent-rasterbar/docs/template.txt
 +    </div>
 +    </div>
 +%(body_suffix)s
-Index: libtorrent-rasterbar/docs/makefile
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libtorrent-rasterbar/docs/makefile	2015-11-27 11:23:06.910039791 -0500
+--- /dev/null
++++ libtorrent-rasterbar/docs/makefile
 @@ -0,0 +1,34 @@
 +#!/usr/bin/make -f
 +# Upstream Author: Arvid Norberg - Modified by: Cristian Greco
@@ -78,10 +74,8 @@ Index: libtorrent-rasterbar/docs/makefile
 +
 +clean:
 +	@rm -f $(TARGETS:=.html)
-Index: libtorrent-rasterbar/docs/css/base.css
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libtorrent-rasterbar/docs/css/base.css	2015-11-27 11:23:06.910039791 -0500
+--- /dev/null
++++ libtorrent-rasterbar/docs/css/base.css
 @@ -0,0 +1,136 @@
 +/* Page template */
 +
@@ -219,10 +213,8 @@ Index: libtorrent-rasterbar/docs/css/base.css
 +
 +p, ul, ol, img {margin-bottom: 1em;}
 +
-Index: libtorrent-rasterbar/docs/css/rst.css
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ libtorrent-rasterbar/docs/css/rst.css	2015-11-27 11:23:06.910039791 -0500
+--- /dev/null
++++ libtorrent-rasterbar/docs/css/rst.css
 @@ -0,0 +1,245 @@
 +.document {
 +    margin-left: 10px;
@@ -469,11 +461,9 @@ Index: libtorrent-rasterbar/docs/css/rst.css
 +* html #table-of-contents ul ul { height: 1%; }
 +/* End hide from IE-mac */
 +
-Index: libtorrent-rasterbar/docs/index.rst
-===================================================================
---- libtorrent-rasterbar.orig/docs/index.rst	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/index.rst	2015-11-27 11:23:06.910039791 -0500
-@@ -88,7 +88,7 @@
+--- libtorrent-rasterbar.orig/docs/index.rst
++++ libtorrent-rasterbar/docs/index.rst
+@@ -88,7 +88,7 @@ libtorrent
  .. _`ruby bindings`: http://libtorrent-ruby.rubyforge.org/
  .. _`python bindings`: python_binding.html
  
@@ -482,7 +472,7 @@ Index: libtorrent-rasterbar/docs/index.rst
  
  libtorrent is a feature complete C++ bittorrent implementation focusing
  on efficiency and scalability. It runs on embedded devices as well as
-@@ -108,13 +108,9 @@
+@@ -108,13 +108,9 @@ The main goals of libtorrent are:
  Donate
  ======
  
@@ -498,10 +488,8 @@ Index: libtorrent-rasterbar/docs/index.rst
  
  
  Feedback
-Index: libtorrent-rasterbar/docs/reference-Alerts.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Alerts.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Alerts.html	2015-11-27 11:23:06.910039791 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Alerts.html
++++ libtorrent-rasterbar/docs/reference-Alerts.html
 @@ -7,17 +7,6 @@
  <title>Alerts</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -520,10 +508,8 @@ Index: libtorrent-rasterbar/docs/reference-Alerts.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Bencoding.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Bencoding.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Bencoding.html	2015-11-27 11:23:06.910039791 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Bencoding.html
++++ libtorrent-rasterbar/docs/reference-Bencoding.html
 @@ -7,17 +7,6 @@
  <title>Bencoding</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -542,10 +528,8 @@ Index: libtorrent-rasterbar/docs/reference-Bencoding.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Core.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Core.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Core.html	2015-11-27 11:23:06.910039791 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Core.html
++++ libtorrent-rasterbar/docs/reference-Core.html
 @@ -7,17 +7,6 @@
  <title>Core</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -564,10 +548,8 @@ Index: libtorrent-rasterbar/docs/reference-Core.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Create_Torrents.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Create_Torrents.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Create_Torrents.html	2015-11-27 11:23:06.910039791 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Create_Torrents.html
++++ libtorrent-rasterbar/docs/reference-Create_Torrents.html
 @@ -7,17 +7,6 @@
  <title>Create Torrents</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -586,10 +568,8 @@ Index: libtorrent-rasterbar/docs/reference-Create_Torrents.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Custom_Storage.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Custom_Storage.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Custom_Storage.html	2015-11-27 11:23:06.910039791 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Custom_Storage.html
++++ libtorrent-rasterbar/docs/reference-Custom_Storage.html
 @@ -7,17 +7,6 @@
  <title>Custom Storage</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -608,10 +588,8 @@ Index: libtorrent-rasterbar/docs/reference-Custom_Storage.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Error_Codes.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Error_Codes.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Error_Codes.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Error_Codes.html
++++ libtorrent-rasterbar/docs/reference-Error_Codes.html
 @@ -7,17 +7,6 @@
  <title>Error Codes</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -630,10 +608,8 @@ Index: libtorrent-rasterbar/docs/reference-Error_Codes.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Plugins.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Plugins.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Plugins.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Plugins.html
++++ libtorrent-rasterbar/docs/reference-Plugins.html
 @@ -6,17 +6,6 @@
  <meta name="generator" content="Docutils 0.12: http://docutils.sourceforge.net/" />
  <title></title>
@@ -652,10 +628,8 @@ Index: libtorrent-rasterbar/docs/reference-Plugins.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-RSS.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-RSS.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-RSS.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/reference-RSS.html
++++ libtorrent-rasterbar/docs/reference-RSS.html
 @@ -7,17 +7,6 @@
  <title>RSS</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -674,10 +648,8 @@ Index: libtorrent-rasterbar/docs/reference-RSS.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Session.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Session.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Session.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Session.html
++++ libtorrent-rasterbar/docs/reference-Session.html
 @@ -7,17 +7,6 @@
  <title>Session</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -696,10 +668,8 @@ Index: libtorrent-rasterbar/docs/reference-Session.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Settings.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Settings.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Settings.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Settings.html
++++ libtorrent-rasterbar/docs/reference-Settings.html
 @@ -7,17 +7,6 @@
  <title>Settings</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -718,10 +688,8 @@ Index: libtorrent-rasterbar/docs/reference-Settings.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Storage.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Storage.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Storage.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Storage.html
++++ libtorrent-rasterbar/docs/reference-Storage.html
 @@ -7,17 +7,6 @@
  <title>Storage</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -740,10 +708,8 @@ Index: libtorrent-rasterbar/docs/reference-Storage.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-String.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-String.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-String.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/reference-String.html
++++ libtorrent-rasterbar/docs/reference-String.html
 @@ -7,17 +7,6 @@
  <title>String</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -762,10 +728,8 @@ Index: libtorrent-rasterbar/docs/reference-String.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Time.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Time.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Time.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Time.html
++++ libtorrent-rasterbar/docs/reference-Time.html
 @@ -7,17 +7,6 @@
  <title>Time</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -784,10 +748,8 @@ Index: libtorrent-rasterbar/docs/reference-Time.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Utility.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Utility.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Utility.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Utility.html
++++ libtorrent-rasterbar/docs/reference-Utility.html
 @@ -7,17 +7,6 @@
  <title>Utility</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -806,10 +768,8 @@ Index: libtorrent-rasterbar/docs/reference-Utility.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/reference.html
++++ libtorrent-rasterbar/docs/reference.html
 @@ -6,17 +6,6 @@
  <meta name="generator" content="Docutils 0.12: http://docutils.sourceforge.net/" />
  <title>libtorrent reference documentation</title>
@@ -828,10 +788,8 @@ Index: libtorrent-rasterbar/docs/reference.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/reference-Filter.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/reference-Filter.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/reference-Filter.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/reference-Filter.html
++++ libtorrent-rasterbar/docs/reference-Filter.html
 @@ -7,17 +7,6 @@
  <title>Filter</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
@@ -850,10 +808,8 @@ Index: libtorrent-rasterbar/docs/reference-Filter.html
  <link rel="stylesheet" href="style.css" type="text/css" />
  <link rel="stylesheet" type="text/css" href="rst.css" />
  <style type="text/css">
-Index: libtorrent-rasterbar/docs/hacking.html
-===================================================================
---- libtorrent-rasterbar.orig/docs/hacking.html	2015-11-27 11:23:06.914039868 -0500
-+++ libtorrent-rasterbar/docs/hacking.html	2015-11-27 11:23:06.914039868 -0500
+--- libtorrent-rasterbar.orig/docs/hacking.html
++++ libtorrent-rasterbar/docs/hacking.html
 @@ -7,17 +7,6 @@
  <title>libtorrent hacking</title>
  <meta name="author" content="Arvid Norberg, arvid&#64;libtorrent.org" />
