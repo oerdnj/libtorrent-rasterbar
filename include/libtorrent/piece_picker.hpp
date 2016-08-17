@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2003-2014, Arvid Norberg
+Copyright (c) 2003-2016, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -58,6 +58,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #ifdef TORRENT_DEBUG_REFCOUNTS
 #include <set>
 #endif
+
+//#define TORRENT_PICKER_LOG
 
 namespace libtorrent
 {
