@@ -1,3 +1,12 @@
+libtorrent-rasterbar (1:1.0.9-1) unstable; urgency=medium
+
+  * Add custom gbp.conf
+  * Imported Upstream version 1.0.9
+  * Refresh patches on top of 1.0.9 release
+  * Bump epoch to 1 to always override official packages
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 17 Aug 2016 08:58:06 +0200
+
 libtorrent-rasterbar (1.0.7-1) unstable; urgency=medium
 
   * New upstream release (Closes: #806396).
