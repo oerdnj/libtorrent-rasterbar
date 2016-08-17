@@ -4,6 +4,9 @@ libtorrent-rasterbar (1:1.0.9-1) unstable; urgency=medium
   * Imported Upstream version 1.0.9
   * Refresh patches on top of 1.0.9 release
   * Bump epoch to 1 to always override official packages
+  * Build depend on libboost-chrono-dev and libboost-random-dev.
+  * python-dbg-build-fix.patch: Fix building bindings with python-dbg. Thanks to Calum Lind.
+  * Merge various packaging changes from 1.1.0 release
 
  -- Ondřej Surý <ondrej@debian.org>  Wed, 17 Aug 2016 08:58:06 +0200
 
