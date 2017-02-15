@@ -1,5 +1,17 @@
+From: Cristian Greco <cristian@debian.org>
+Date: Wed, 15 Feb 2017 20:23:19 +0100
+Subject: missing_rst_file
+
+---
+ docs/stats_counters.rst | 2005 +++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 2005 insertions(+)
+ create mode 100644 docs/stats_counters.rst
+
+diff --git a/docs/stats_counters.rst b/docs/stats_counters.rst
+new file mode 100644
+index 0000000..7379a4f
 --- /dev/null
-+++ libtorrent-rasterbar/docs/stats_counters.rst
++++ b/docs/stats_counters.rst
 @@ -0,0 +1,2005 @@
 +.. _peer.error_peers:
 +

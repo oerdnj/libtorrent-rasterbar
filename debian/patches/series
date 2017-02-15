@@ -1,4 +1,3 @@
 missing_rst_file.patch
 python-clean-without-bjam.patch
-python-dbg-build-fix.patch
 fix-html-docs.patch

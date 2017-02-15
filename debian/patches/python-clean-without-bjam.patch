@@ -1,11 +1,15 @@
-Description: Running setup.py without LDFLAGS or explicitly passing includes
-  will attempt to use bjam. This causes "python setup.py clean -a" to fail
-  when building the package.
-Origin: vendor
-Author: Andrew Starr-Bochicchio <asb@debian.org>
+From: Cristian Greco <cristian@debian.org>
+Date: Wed, 15 Feb 2017 20:23:19 +0100
+Subject: python-clean-without-bjam
 
---- libtorrent-rasterbar.orig/bindings/python/setup.py
-+++ libtorrent-rasterbar/bindings/python/setup.py
+---
+ bindings/python/setup.py | 21 +++++++++++----------
+ 1 file changed, 11 insertions(+), 10 deletions(-)
+
+diff --git a/bindings/python/setup.py b/bindings/python/setup.py
+index 4a2f764..a0de2f4 100644
+--- a/bindings/python/setup.py
++++ b/bindings/python/setup.py
 @@ -51,7 +51,7 @@ except:
  ext = None
  packages = None
@@ -17,7 +21,7 @@ Author: Andrew Starr-Bochicchio <asb@debian.org>
  		del sys.argv[sys.argv.index('--bjam')]
 @@ -97,15 +97,16 @@ else:
  	source_list = os.listdir(os.path.join(os.path.dirname(__file__), "src"))
- 	source_list = [os.path.join("src", s) for s in source_list if s.endswith(".cpp")]
+ 	source_list = [os.path.abspath(os.path.join(os.path.dirname(__file__), "src", s)) for s in source_list if s.endswith(".cpp")]
  
 -	ext = [Extension('libtorrent',
 -		sources = source_list,
@@ -40,4 +44,4 @@ Author: Andrew Starr-Bochicchio <asb@debian.org>
 +			libraries = ['torrent-rasterbar'] + parse_cmd(extra_cmd, '-l'))]
  
  setup(name = 'python-libtorrent',
- 	version = '1.0.9',
+ 	version = '1.0.11',
