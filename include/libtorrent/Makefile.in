@@ -164,7 +164,7 @@ am__nobase_include_HEADERS_DIST = address.hpp add_torrent_params.hpp \
 	utp_socket_manager.hpp utp_stream.hpp utf8.hpp version.hpp \
 	web_connection_base.hpp web_peer_connection.hpp xml_parse.hpp \
 	GeoIP.h tommath.h tommath_class.h tommath_superclass.h \
-	aux_/session_impl.hpp extensions/logger.hpp \
+	tommath_private.h aux_/session_impl.hpp extensions/logger.hpp \
 	extensions/lt_trackers.hpp extensions/metadata_transfer.hpp \
 	extensions/smart_ban.hpp extensions/ut_metadata.hpp \
 	extensions/ut_pex.hpp kademlia/dht_tracker.hpp \
@@ -281,6 +281,7 @@ LN_S = @LN_S@
 LTLIBICONV = @LTLIBICONV@
 LTLIBOBJS = @LTLIBOBJS@
 LT_SYS_LIBRARY_PATH = @LT_SYS_LIBRARY_PATH@
+MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
 MKDIR_P = @MKDIR_P@
@@ -507,6 +508,7 @@ nobase_include_HEADERS = \
   tommath.h \
   tommath_class.h \
   tommath_superclass.h \
+  tommath_private.h \
   \
   aux_/session_impl.hpp        \
   \
@@ -537,7 +539,7 @@ nobase_include_HEADERS = \
 all: all-am
 
 .SUFFIXES:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -561,9 +563,9 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 
-$(top_srcdir)/configure:  $(am__configure_deps)
+$(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
-$(ACLOCAL_M4):  $(am__aclocal_m4_deps)
+$(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 

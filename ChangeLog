@@ -1,3 +1,23 @@
+1.0.11 release
+
+	* updating super seeding would include the torrent in state_update_alert
+	* finished non-seed torrents can also be in super-seeding mode
+	* make torrent_info::is_valid() return false if torrent failed to load
+	* fix torrent_status time_since_upload/download counters for paused torrents
+	* fix bug in last-seen-complete
+	* fix DHT announce stall when adding torrent immediately after startup
+	* fix bug in enumeration of network interfaces on windows
+	* fix padfile issue
+	* fix PMTUd bug
+	* update puff to fix gzip crash
+
+1.0.10 release
+
+	* fixed inverted priority of incoming piece suggestions
+	* fixed crash on invalid input in http_parser
+	* added a new "preformatted" type to bencode entry variant type
+	* fix division by zero in super-seeding logic
+
 1.0.9 release
 
 	* fix issue in checking outgoing interfaces (when that option is enabled)
