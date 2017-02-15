@@ -1665,9 +1665,10 @@ namespace libtorrent
 		TORRENT_ASSERT(block_size() > 0);
 		for (int i = 0; i < fs.num_files(); ++i)
 		{
+			if (!fs.pad_file_at(i) || fs.file_size(i) == 0) continue;
+
 			if (fs.pad_file_at(i)) ++num_pad_files;
 
-			if (!fs.pad_file_at(i) || fs.file_size(i) == 0) continue;
 			m_padding += boost::uint32_t(fs.file_size(i));
 
 			peer_request pr = m_torrent_file->map_file(i, 0, fs.file_size(i));
@@ -2328,7 +2329,19 @@ namespace libtorrent
 		if (req.downloaded < 0) req.downloaded = 0;
 
 		req.event = e;
-		error_code ec;
+
+#if TORRENT_USE_IPV6
+		// since sending our IPv6 address to the tracker may be sensitive. Only
+		// do that if we're not in anonymous mode and if it's a private torrent
+		if (!m_ses.m_settings.anonymous_mode
+			&& m_torrent_file
+			&& m_torrent_file->priv())
+		{
+			tcp::endpoint ep;
+			ep = m_ses.get_ipv6_interface();
+			if (ep != tcp::endpoint()) req.ipv6 = ep.address().to_v6();
+		}
+#endif
 
 		// if we are aborting. we don't want any new peers
 		req.num_want = (req.event == tracker_request::stopped)
@@ -2486,7 +2499,7 @@ namespace libtorrent
 		if (m_trackers.empty()) return;
 
 		int i = m_last_working_tracker;
-		if (i == -1) i = 0;
+		if (i < 0 || i >= int(m_trackers.size())) i = 0;
 
 		tracker_request req;
 		req.apply_ip_filter = m_apply_ip_filter && m_ses.m_settings.apply_ip_filter_to_trackers;
@@ -3647,6 +3660,8 @@ namespace libtorrent
 
 		m_super_seeding = on;
 
+		state_updated();
+
 		if (m_super_seeding) return;
 
 		// disable super seeding for all peers
@@ -3695,6 +3710,7 @@ namespace libtorrent
 			avail_vec.push_back(i);
 		}
 
+		if (avail_vec.empty()) return -1;
 		return avail_vec[random() % avail_vec.size()];
 	}
 
@@ -4097,14 +4113,13 @@ namespace libtorrent
 
 		// this call is only valid on torrents with metadata
 		TORRENT_ASSERT(valid_metadata());
-		if (is_seed())
+		if (!has_picker())
 		{
 			pieces->clear();
 			pieces->resize(m_torrent_file->num_pieces(), 1);
 			return;
 		}
 
-		TORRENT_ASSERT(m_picker.get());
 		m_picker->piece_priorities(*pieces);
 	}
 
@@ -5585,8 +5600,11 @@ namespace libtorrent
 		if (valid_metadata())
 		{
 			if (m_magnet_link || (m_save_resume_flags & torrent_handle::save_info_dict))
-				ret["info"] = bdecode(&torrent_file().metadata()[0]
-					, &torrent_file().metadata()[0] + torrent_file().metadata_size());
+			{
+				boost::shared_array<char> const info = torrent_file().metadata();
+				int const size = torrent_file().metadata_size();
+				ret["info"].preformatted().assign(&info[0], &info[0] + size);
+			}
 		}
 
 		// blocks per piece
@@ -8096,6 +8114,13 @@ namespace libtorrent
 			set_upload_mode(false);
 		}
 
+		int seconds_since_last_tick = 1;
+		if (m_ses.m_tick_residual >= 1000) ++seconds_since_last_tick;
+
+		m_last_scrape += seconds_since_last_tick;
+		m_last_download += seconds_since_last_tick;
+		m_last_upload += seconds_since_last_tick;
+
 		if (is_paused() && !m_graceful_pause_mode)
 		{
 			// let the stats fade out to 0
@@ -8129,16 +8154,10 @@ namespace libtorrent
 			}
 		}
 
-		int seconds_since_last_tick = 1;
-		if (m_ses.m_tick_residual >= 1000) ++seconds_since_last_tick;
-
 		if (is_seed()) m_seeding_time += seconds_since_last_tick;
 		if (is_finished()) m_finished_time += seconds_since_last_tick;
 		if (m_upload_mode) m_upload_mode_time += seconds_since_last_tick;
-		m_last_scrape += seconds_since_last_tick;
 		m_active_time += seconds_since_last_tick;
-		m_last_download += seconds_since_last_tick;
-		m_last_upload += seconds_since_last_tick;
 
 		// ---- TIME CRITICAL PIECES ----
 

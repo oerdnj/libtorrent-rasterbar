@@ -187,6 +187,7 @@ LN_S = @LN_S@
 LTLIBICONV = @LTLIBICONV@
 LTLIBOBJS = @LTLIBOBJS@
 LT_SYS_LIBRARY_PATH = @LT_SYS_LIBRARY_PATH@
+MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
 MKDIR_P = @MKDIR_P@
@@ -324,7 +325,7 @@ EXTRA_DIST = \
 all: all-am
 
 .SUFFIXES:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -348,9 +349,9 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 
-$(top_srcdir)/configure:  $(am__configure_deps)
+$(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
-$(ACLOCAL_M4):  $(am__aclocal_m4_deps)
+$(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 link_flags: $(top_builddir)/config.status $(srcdir)/link_flags.in
@@ -435,9 +436,9 @@ distclean-generic:
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
+@ENABLE_PYTHON_BINDING_FALSE@install-exec-local:
 @ENABLE_PYTHON_BINDING_FALSE@uninstall-local:
 @ENABLE_PYTHON_BINDING_FALSE@clean-local:
-@ENABLE_PYTHON_BINDING_FALSE@install-exec-local:
 clean: clean-am
 
 clean-am: clean-generic clean-libtool clean-local mostlyclean-am
@@ -523,16 +524,16 @@ uninstall-am: uninstall-local
 
 
 @ENABLE_PYTHON_BINDING_TRUE@all-local:
-@ENABLE_PYTHON_BINDING_TRUE@	$(PYTHON) setup.py build
+@ENABLE_PYTHON_BINDING_TRUE@	$(PYTHON) $(srcdir)/setup.py build
 
 @ENABLE_PYTHON_BINDING_TRUE@install-exec-local:
-@ENABLE_PYTHON_BINDING_TRUE@	$(PYTHON) setup.py install @PYTHON_INSTALL_PARAMS@
+@ENABLE_PYTHON_BINDING_TRUE@	$(PYTHON) $(srcdir)/setup.py install @PYTHON_INSTALL_PARAMS@
 
 @ENABLE_PYTHON_BINDING_TRUE@uninstall-local:
 @ENABLE_PYTHON_BINDING_TRUE@	rm -rf $(DESTDIR)$(libdir)/python*/*-packages/*libtorrent*
 
 @ENABLE_PYTHON_BINDING_TRUE@clean-local:
-@ENABLE_PYTHON_BINDING_TRUE@	$(PYTHON) setup.py clean --all
+@ENABLE_PYTHON_BINDING_TRUE@	$(PYTHON) $(srcdir)/setup.py clean --all
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -143,8 +143,9 @@ am__EXEEXT_1 = test_bitfield$(EXEEXT) test_file$(EXEEXT) \
 	test_threads$(EXEEXT) test_torrent$(EXEEXT) \
 	test_torrent_info$(EXEEXT) test_torrent_parse$(EXEEXT) \
 	test_tracker$(EXEEXT) test_trackers_extension$(EXEEXT) \
-	test_transfer$(EXEEXT) test_upnp$(EXEEXT) enum_if$(EXEEXT) \
-	test_utp$(EXEEXT) test_session$(EXEEXT) test_web_seed$(EXEEXT) \
+	test_transfer$(EXEEXT) test_create_torrent$(EXEEXT) \
+	test_upnp$(EXEEXT) enum_if$(EXEEXT) test_utp$(EXEEXT) \
+	test_session$(EXEEXT) test_web_seed$(EXEEXT) \
 	test_web_seed_ban$(EXEEXT) test_web_seed_chunked$(EXEEXT) \
 	test_web_seed_http$(EXEEXT) test_web_seed_http_pw$(EXEEXT) \
 	test_web_seed_redirect$(EXEEXT) test_web_seed_socks4$(EXEEXT) \
@@ -195,6 +196,11 @@ am_test_checking_OBJECTS = test_checking.$(OBJEXT)
 test_checking_OBJECTS = $(am_test_checking_OBJECTS)
 test_checking_LDADD = $(LDADD)
 test_checking_DEPENDENCIES = libtest.la \
+	$(top_builddir)/src/libtorrent-rasterbar.la
+am_test_create_torrent_OBJECTS = test_create_torrent.$(OBJEXT)
+test_create_torrent_OBJECTS = $(am_test_create_torrent_OBJECTS)
+test_create_torrent_LDADD = $(LDADD)
+test_create_torrent_DEPENDENCIES = libtest.la \
 	$(top_builddir)/src/libtorrent-rasterbar.la
 am_test_dht_OBJECTS = test_dht.$(OBJEXT)
 test_dht_OBJECTS = $(am_test_dht_OBJECTS)
@@ -517,13 +523,14 @@ SOURCES = $(libtest_la_SOURCES) $(enum_if_SOURCES) \
 	$(test_auto_unchoke_SOURCES) $(test_bandwidth_limiter_SOURCES) \
 	$(test_bdecode_performance_SOURCES) $(test_bencoding_SOURCES) \
 	$(test_bitfield_SOURCES) $(test_buffer_SOURCES) \
-	$(test_checking_SOURCES) $(test_dht_SOURCES) \
-	$(test_fast_extension_SOURCES) $(test_file_SOURCES) \
-	$(test_file_storage_SOURCES) $(test_gzip_SOURCES) \
-	$(test_hasher_SOURCES) $(test_http_connection_SOURCES) \
-	$(test_http_parser_SOURCES) $(test_ip_filter_SOURCES) \
-	$(test_ip_voter_SOURCES) $(test_lsd_SOURCES) \
-	$(test_magnet_SOURCES) $(test_metadata_extension_SOURCES) \
+	$(test_checking_SOURCES) $(test_create_torrent_SOURCES) \
+	$(test_dht_SOURCES) $(test_fast_extension_SOURCES) \
+	$(test_file_SOURCES) $(test_file_storage_SOURCES) \
+	$(test_gzip_SOURCES) $(test_hasher_SOURCES) \
+	$(test_http_connection_SOURCES) $(test_http_parser_SOURCES) \
+	$(test_ip_filter_SOURCES) $(test_ip_voter_SOURCES) \
+	$(test_lsd_SOURCES) $(test_magnet_SOURCES) \
+	$(test_metadata_extension_SOURCES) \
 	$(test_packet_buffer_SOURCES) $(test_pe_crypto_SOURCES) \
 	$(test_peer_priority_SOURCES) $(test_pex_SOURCES) \
 	$(test_piece_picker_SOURCES) $(test_primitives_SOURCES) \
@@ -551,13 +558,14 @@ DIST_SOURCES = $(libtest_la_SOURCES) $(enum_if_SOURCES) \
 	$(test_auto_unchoke_SOURCES) $(test_bandwidth_limiter_SOURCES) \
 	$(test_bdecode_performance_SOURCES) $(test_bencoding_SOURCES) \
 	$(test_bitfield_SOURCES) $(test_buffer_SOURCES) \
-	$(test_checking_SOURCES) $(test_dht_SOURCES) \
-	$(test_fast_extension_SOURCES) $(test_file_SOURCES) \
-	$(test_file_storage_SOURCES) $(test_gzip_SOURCES) \
-	$(test_hasher_SOURCES) $(test_http_connection_SOURCES) \
-	$(test_http_parser_SOURCES) $(test_ip_filter_SOURCES) \
-	$(test_ip_voter_SOURCES) $(test_lsd_SOURCES) \
-	$(test_magnet_SOURCES) $(test_metadata_extension_SOURCES) \
+	$(test_checking_SOURCES) $(test_create_torrent_SOURCES) \
+	$(test_dht_SOURCES) $(test_fast_extension_SOURCES) \
+	$(test_file_SOURCES) $(test_file_storage_SOURCES) \
+	$(test_gzip_SOURCES) $(test_hasher_SOURCES) \
+	$(test_http_connection_SOURCES) $(test_http_parser_SOURCES) \
+	$(test_ip_filter_SOURCES) $(test_ip_voter_SOURCES) \
+	$(test_lsd_SOURCES) $(test_magnet_SOURCES) \
+	$(test_metadata_extension_SOURCES) \
 	$(test_packet_buffer_SOURCES) $(test_pe_crypto_SOURCES) \
 	$(test_peer_priority_SOURCES) $(test_pex_SOURCES) \
 	$(test_piece_picker_SOURCES) $(test_primitives_SOURCES) \
@@ -870,6 +878,7 @@ LN_S = @LN_S@
 LTLIBICONV = @LTLIBICONV@
 LTLIBOBJS = @LTLIBOBJS@
 LT_SYS_LIBRARY_PATH = @LT_SYS_LIBRARY_PATH@
+MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
 MKDIR_P = @MKDIR_P@
@@ -1018,6 +1027,7 @@ test_programs = \
   test_tracker               \
   test_trackers_extension    \
   test_transfer              \
+  test_create_torrent        \
   test_upnp                  \
   enum_if                    \
   test_utp                   \
@@ -1043,10 +1053,13 @@ test_programs = \
 TESTS = $(check_PROGRAMS)
 EXTRA_DIST = Jamfile \
   test_torrents/base.torrent \
+  test_torrents/empty_path.torrent \
   test_torrents/parent_path.torrent \
   test_torrents/hidden_parent_path.torrent \
   test_torrents/single_multi_file.torrent \
   test_torrents/slash_path.torrent \
+  test_torrents/slash_path2.torrent \
+  test_torrents/slash_path3.torrent \
   test_torrents/backslash_path.torrent \
   test_torrents/url_list.torrent \
   test_torrents/url_list2.torrent \
@@ -1062,6 +1075,7 @@ EXTRA_DIST = Jamfile \
   test_torrents/no_name.torrent \
   test_torrents/invalid_name.torrent \
   test_torrents/invalid_name2.torrent \
+  test_torrents/invalid_name3.torrent \
   test_torrents/invalid_info.torrent \
   test_torrents/string.torrent \
   test_torrents/negative_size.torrent \
@@ -1073,6 +1087,7 @@ EXTRA_DIST = Jamfile \
   test_torrents/unaligned_pieces.torrent \
   test_torrents/creation_date.torrent \
   test_torrents/no_creation_date.torrent \
+  test_torrents/symlink1.torrent \
   test_torrents/url_seed.torrent \
   test_torrents/url_seed_multi.torrent \
   test_torrents/url_seed_multi_space.torrent \
@@ -1146,6 +1161,7 @@ test_torrent_parse_SOURCES = test_torrent_parse.cpp
 test_tracker_SOURCES = test_tracker.cpp
 test_trackers_extension_SOURCES = test_trackers_extension.cpp
 test_transfer_SOURCES = test_transfer.cpp
+test_create_torrent_SOURCES = test_create_torrent.cpp
 test_upnp_SOURCES = test_upnp.cpp
 enum_if_SOURCES = enum_if.cpp
 test_utp_SOURCES = test_utp.cpp
@@ -1175,7 +1191,7 @@ all: all-am
 
 .SUFFIXES:
 .SUFFIXES: .cpp .lo .log .o .obj .test .test$(EXEEXT) .trs
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1199,9 +1215,9 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 
-$(top_srcdir)/configure:  $(am__configure_deps)
+$(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
-$(ACLOCAL_M4):  $(am__aclocal_m4_deps)
+$(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 
@@ -1259,6 +1275,10 @@ test_buffer$(EXEEXT): $(test_buffer_OBJECTS) $(test_buffer_DEPENDENCIES) $(EXTRA
 test_checking$(EXEEXT): $(test_checking_OBJECTS) $(test_checking_DEPENDENCIES) $(EXTRA_test_checking_DEPENDENCIES) 
 	@rm -f test_checking$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(test_checking_OBJECTS) $(test_checking_LDADD) $(LIBS)
+
+test_create_torrent$(EXEEXT): $(test_create_torrent_OBJECTS) $(test_create_torrent_DEPENDENCIES) $(EXTRA_test_create_torrent_DEPENDENCIES) 
+	@rm -f test_create_torrent$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(test_create_torrent_OBJECTS) $(test_create_torrent_LDADD) $(LIBS)
 
 test_dht$(EXEEXT): $(test_dht_OBJECTS) $(test_dht_DEPENDENCIES) $(EXTRA_test_dht_DEPENDENCIES) 
 	@rm -f test_dht$(EXEEXT)
@@ -1498,6 +1518,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_bitfield.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_buffer.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_checking.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_create_torrent.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_dht.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_fast_extension.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test_file.Po@am__quote@
@@ -2076,6 +2097,13 @@ test_trackers_extension.log: test_trackers_extension$(EXEEXT)
 test_transfer.log: test_transfer$(EXEEXT)
 	@p='test_transfer$(EXEEXT)'; \
 	b='test_transfer'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
+test_create_torrent.log: test_create_torrent$(EXEEXT)
+	@p='test_create_torrent$(EXEEXT)'; \
+	b='test_create_torrent'; \
 	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \

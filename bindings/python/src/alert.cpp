@@ -6,14 +6,15 @@
 #include <libtorrent/alert.hpp>
 #include <libtorrent/alert_types.hpp>
 #include <memory>
+#include "bytes.hpp"
 
 using namespace boost::python;
 using namespace libtorrent;
 
-std::string get_buffer(read_piece_alert const& rpa)
+bytes get_buffer(read_piece_alert const& rpa)
 {
-    return rpa.buffer ? std::string(rpa.buffer.get(), rpa.size)
-       : std::string();
+    return rpa.buffer ? bytes(rpa.buffer.get(), rpa.size)
+       : bytes();
 }
 
 tuple endpoint_to_tuple(tcp::endpoint const& ep)
@@ -99,7 +100,11 @@ void bind_alert()
     using boost::noncopyable;
 
 #if BOOST_VERSION >= 106000
-    register_ptr_to_python<boost::shared_ptr<alert> >();
+    if (boost::python::converter::registry::query(
+        boost::python::type_id <boost::shared_ptr<alert> >()) == NULL)
+    {
+        register_ptr_to_python<boost::shared_ptr<alert> >();
+    }
 #endif
 
     {
@@ -530,7 +535,7 @@ void bind_alert()
         ;
     class_<torrent_need_cert_alert, bases<torrent_alert>, noncopyable>(
         "torrent_need_cert_alert", no_init)
-        .def_readonly("error", &torrent_need_cert_alert::error) 
+        .def_readonly("error", &torrent_need_cert_alert::error)
         ;
 
     class_<add_torrent_alert, bases<torrent_alert>, noncopyable>(

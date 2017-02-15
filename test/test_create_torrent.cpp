@@ -1,6 +1,6 @@
 /*
 
-Copyright (c) 2003-2016, Arvid Norberg
+Copyright (c) 2016, Arvid Norberg
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -30,27 +30,42 @@ POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#ifndef TORRENT_VERSION_HPP_INCLUDED
-#define TORRENT_VERSION_HPP_INCLUDED
+#include "test.hpp"
 
-#include "libtorrent/export.hpp"
+#include "libtorrent/torrent_info.hpp"
+#include "libtorrent/create_torrent.hpp"
+#include "libtorrent/bencode.hpp"
+#include "libtorrent/entry.hpp"
+#include "libtorrent/file.hpp"
+#include "libtorrent/escape_string.hpp" // for convert_path_to_posix
+#include <boost/make_shared.hpp>
+#include <cstring>
 
-#define LIBTORRENT_VERSION_MAJOR 1
-#define LIBTORRENT_VERSION_MINOR 0
-#define LIBTORRENT_VERSION_TINY 11
+namespace lt = libtorrent;
 
-// the format of this version is: MMmmtt
-// M = Major version, m = minor version, t = tiny version
-#define LIBTORRENT_VERSION_NUM ((LIBTORRENT_VERSION_MAJOR * 10000) + (LIBTORRENT_VERSION_MINOR * 100) + LIBTORRENT_VERSION_TINY)
+// make sure creating a torrent from an existing handle preserves the
+// info-dictionary verbatim, so as to not alter the info-hash
+int test_main()
+{
+	char const test_torrent[] = "d4:infod4:name6:foobar6:lengthi12345e12:piece lengthi65536e6:pieces20:ababababababababababee";
 
-#define LIBTORRENT_VERSION "1.0.11.0"
-#define LIBTORRENT_REVISION "bbb38a9"
-namespace libtorrent {
+	lt::torrent_info info(test_torrent, sizeof(test_torrent) - 1);
 
-	// returns the libtorrent version as string form in this format:
-	// "<major>.<minor>.<tiny>.<tag>.<revision>"
-	TORRENT_EXPORT char const* version();
+	lt::create_torrent t(info);
 
+	std::vector<char> buffer;
+	lt::bencode(std::back_inserter(buffer), t.generate());
+
+	// now, make sure the info dictionary was unchanged
+	buffer.push_back('\0');
+	char const* dest_info = std::strstr(&buffer[0], "4:info");
+
+	TEST_CHECK(dest_info != NULL);
+
+	// +1 and -2 here is to strip the outermost dictionary from the source
+	// torrent, since create_torrent may have added items next to the info dict
+	TEST_CHECK(memcmp(dest_info, test_torrent + 1, sizeof(test_torrent)-3) == 0);
+
+	return 0;
 }
 
-#endif
