@@ -1,3 +1,12 @@
+libtorrent-rasterbar (1:1.0.11-1) unstable; urgency=medium
+
+  * Enable M-A install
+  * Ignore .la files
+  * New upstream version 1.0.11
+  * Rebase patches on top of 1.0.11 release
+
+ -- Ondřej Surý <ondrej@debian.org>  Wed, 15 Feb 2017 20:23:42 +0100
+
 libtorrent-rasterbar (1:1.0.9-1) unstable; urgency=medium
 
   * Add custom gbp.conf
